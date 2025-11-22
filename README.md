@@ -1,114 +1,40 @@
-# Raumbuch Service - Azure Web API
+# Raumbuch
+Trimble Connect Extension for Raumbuch
 
-## ?? Übersicht
+# ?? Raumbuch Service - Technical Overview
 
-Dieser Service ermöglicht die Verwaltung von Raumprogrammen und Raumbüchern in Trimble Connect.
+**Backend API for Trimble Connect Raumbuch Extension**
 
-**Workflow:**
-1. **Vorlage importieren** ? Erstellt Raumprogramm.xlsx
-2. **Aufgabe erstellen** ? Benachrichtigt Benutzer
-3. **Raumprogramm bearbeiten** ? In Excel for Web
-4. **IFC importieren** ? Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse
-5. **Räume analysieren** ? Markiert Räume in IFC mit Pset "Überprüfung der Raumkategorie"
-6. **IFC zurücksetzen** ? Entfernt Analyse-Markierungen
+This ASP.NET Web API (.NET Framework 4.8) service provides 5 main endpoints for managing "Raumprogramm" (room program) and "Raumbuch" (room book) workflows in Trimble Connect projects.
 
 ---
 
-## ? Implementierungsstatus
+## ?? Key Features
 
-### Backend (komplett implementiert):
-- ? TrimbleConnectService - Trimble Connect API wrapper
-- ? RaumbuchAnalyzer - SOLL/IST Analyse
-- ? IfcEditorService - IFC file editing (mit GeometryGymIFC 0.1.21)
-- ? RaumbuchController - 5 API endpoints
-- ? Excel Integration - ClosedXML (ReadSollFromExcel, CreateRaumbuchExcel)
-
-### Pakete installiert:
-- ? GeometryGymIFC 0.1.21
-- ? ClosedXML 0.102.3
-- ? Newtonsoft.Json 13.0.3
+| Feature | Description |
+|---------|-------------|
+| **Import Template** | Duplicates Raumprogramm template to project folder |
+| **Create TODO** | Creates Trimble Connect TODO notification |
+| **Import IFC** | Creates Raumbuch from IFC + Raumprogramm (SOLL/IST analysis) |
+| **Analyze Rooms** | Performs SOLL/IST comparison |
+| **Reset IFC** | Removes Raumbuch PropertySets from IFC file |
 
 ---
 
-## ?? Setup
+## ?? API Endpoints
 
-### 1. NuGet Packages wiederherstellen
+### 1. Import Template
+**POST** `/api/raumbuch/import-template`
 
-**WICHTIG: Führe dies jetzt aus!**
-
-In Visual Studio:
-1. Rechtsklick auf Lösung ? **"NuGet-Pakete wiederherstellen"**
-2. Oder in **Package Manager Console**:
-   ```powershell
-   Update-Package -reinstall
-   ```
-
-### 2. Build prüfen
-
-Nach Package Restore:
-```
-Ctrl+Shift+B
-```
-
-Sollte ohne Fehler kompilieren.
-
-### 3. Azure App Settings konfigurieren
-
-Im Azure Portal ? App Service ? Configuration ? Application Settings:
-
-```
-TRIMBLE_CLIENT_ID = <your-client-id>
-TRIMBLE_CLIENT_SECRET = <your-client-secret>
-TRIMBLE_AUTH_URL = https://id.trimble.com/oauth/authorize
-TRIMBLE_TOKEN_URL = https://id.trimble.com/oauth/token
-TRIMBLE_SCOPE = openid
-TRIMBLE_REDIRECT_URI = <your-redirect-uri>
-TRIMBLE_BASE_URL = https://app.connect.trimble.com/tc/api/2.0
-```
-
-### 4. Lokal Entwicklung
-
-Für lokales Testing, füge in `Web.config` ? `<appSettings>` hinzu:
-
-```xml
-<appSettings>
-  <add key="TRIMBLE_CLIENT_ID" value="your-client-id" />
-  <add key="TRIMBLE_CLIENT_SECRET" value="your-client-secret" />
-  <add key="TRIMBLE_BASE_URL" value="https://app.connect.trimble.com/tc/api/2.0" />
-</appSettings>
-```
-
-### 5. Publizieren nach Azure
-
-1. Rechtsklick auf Projekt ? **"Publish"**
-2. Wähle dein Azure App Service: **Raumbuch**
-3. Klick **"Publish"**
-
----
-
-## ?? API Endpunkte
-
-### Base URL
-```
-Lokal:  http://localhost:[port]/api/raumbuch
-Azure:  https://raumbuch.azurewebsites.net/api/raumbuch
-```
-
----
-
-### 1. Vorlage importieren
-
-**POST** `/import-template`
-
-Importiert eine Excel-Vorlage und erstellt Raumprogramm.xlsx.
+Duplicates a Raumprogramm Excel template file.
 
 **Request:**
 ```json
 {
-  "accessToken": "bearer-token-from-trimble",
-  "projectId": "project-guid",
-  "templateFileId": "file-guid",
-  "targetFolderId": "folder-guid"
+  "accessToken": "string",
+  "projectId": "string",
+  "templateFileId": "string",
+  "targetFolderId": "string"
 }
 ```
 
@@ -116,27 +42,25 @@ Importiert eine Excel-Vorlage und erstellt Raumprogramm.xlsx.
 ```json
 {
   "success": true,
-  "message": "Raumprogramm wurde erfolgreich erstellt.",
-  "raumprogrammFileId": "file-guid",
-  "raumprogrammFileName": "Raumprogramm.xlsx"
+  "raumprogrammFileId": "abc123",
+  "message": "Raumprogramm erfolgreich erstellt"
 }
 ```
 
 ---
 
-### 2. Aufgabe erstellen
+### 2. Create TODO
+**POST** `/api/raumbuch/create-todo`
 
-**POST** `/create-todo`
-
-Erstellt eine Aufgabe in Trimble Connect.
+Creates a Trimble Connect TODO notification.
 
 **Request:**
 ```json
 {
-  "accessToken": "bearer-token",
-  "projectId": "project-guid",
-  "assignees": ["user1@example.com", "user2@example.com"],
-  "title": "Raumprogramm wurde erstellt",
+  "accessToken": "string",
+  "projectId": "string",
+  "assignees": ["user@example.com"],
+  "title": "Raumprogramm erstellt",
   "label": "Raumbuch"
 }
 ```
@@ -145,27 +69,26 @@ Erstellt eine Aufgabe in Trimble Connect.
 ```json
 {
   "success": true,
-  "message": "Aufgabe wurde erfolgreich erstellt.",
-  "todoId": "todo-guid"
+  "todoId": "todo123",
+  "message": "TODO erfolgreich erstellt"
 }
 ```
 
 ---
 
-### 3. IFC importieren
+### 3. Import IFC
+**POST** `/api/raumbuch/import-ifc`
 
-**POST** `/import-ifc`
-
-Importiert IFC und erstellt Raumbuch.xlsx mit SOLL/IST-Analyse.
+Creates Raumbuch from IFC file and Raumprogramm (SOLL/IST comparison).
 
 **Request:**
 ```json
 {
-  "accessToken": "bearer-token",
-  "projectId": "project-guid",
-  "ifcFileId": "ifc-file-guid",
-  "raumprogrammFileId": "raumprogramm-file-guid",
-  "targetFolderId": "folder-guid"
+  "accessToken": "string",
+  "projectId": "string",
+  "ifcFileId": "string",
+  "raumprogrammFileId": "string",
+  "targetFolderId": "string"
 }
 ```
 
@@ -173,44 +96,26 @@ Importiert IFC und erstellt Raumbuch.xlsx mit SOLL/IST-Analyse.
 ```json
 {
   "success": true,
-  "message": "Raumbuch wurde erfolgreich erstellt.",
-  "raumbuchFileId": "file-guid",
-  "raumbuchFileName": "Raumbuch.xlsx",
-  "analysis": [
-    {
-      "roomCategory": "Meeting Room",
-      "sollArea": 45.0,
-      "istArea": 50.0,
-      "percentage": 111.11,
-      "isOverLimit": true
-    }
-  ]
+  "raumbuchFileId": "xyz789",
+  "updatedIfcFileId": "ifc456",
+  "message": "Raumbuch erfolgreich erstellt"
 }
 ```
 
-**Raumbuch Excel Format:**
-
-| Raumtyp | Raum ID | Fläche IST (m²) | SIA d0165 | SOLL Fläche (m²) | SOLL/IST (%) | Differenz (m²) |
-|---------|---------|-----------------|-----------|------------------|--------------|----------------|
-| Meeting | 101     | 15.5            | ...       | 15.0             | 103.3        | +0.5           |
-| Meeting | 102     | 18.2            | ...       | 15.0             | 121.3        | +3.2           |
-
 ---
 
-### 4. Räume analysieren
+### 4. Analyze Rooms
+**POST** `/api/raumbuch/analyze-rooms`
 
-**POST** `/analyze-rooms`
-
-Schreibt Pset "Überprüfung der Raumkategorie" in IFC-Datei.
+Performs SOLL/IST room comparison.
 
 **Request:**
 ```json
 {
-  "accessToken": "bearer-token",
-  "projectId": "project-guid",
-  "ifcFileId": "ifc-file-guid",
-  "raumbuchFileId": "raumbuch-file-guid",
-  "targetFolderId": "folder-guid"
+  "accessToken": "string",
+  "projectId": "string",
+  "raumprogrammFileId": "string",
+  "ifcFileId": "string"
 }
 ```
 
@@ -218,35 +123,31 @@ Schreibt Pset "Überprüfung der Raumkategorie" in IFC-Datei.
 ```json
 {
   "success": true,
-  "message": "5 Räume wurden markiert.",
-  "updatedIfcFileId": "file-guid",
-  "roomsMarked": 5,
-  "markedRoomNames": ["101", "102", "103", "104", "105"]
+  "analysis": {
+    "totalRoomsSOLL": 150,
+    "totalRoomsIST": 148,
+    "matchedRooms": 140,
+    "missingRooms": 10,
+    "extraRooms": 8,
+    "areaDifference": 25.5
+  }
 }
-```
-
-**IFC Pset Details:**
-```
-Pset: "Überprüfung der Raumkategorie"
-?? "Prozentuale Fläche" : IfcReal (z.B. 115.5)
-?? "Über angegebener Raumfläche" : IfcBoolean (true wenn > 100%)
 ```
 
 ---
 
-### 5. IFC zurücksetzen
+### 5. Reset IFC
+**POST** `/api/raumbuch/reset-ifc`
 
-**POST** `/reset-ifc`
-
-Entfernt Pset "Überprüfung der Raumkategorie" aus IFC.
+Removes Raumbuch PropertySets from IFC file (cleanup).
 
 **Request:**
 ```json
 {
-  "accessToken": "bearer-token",
-  "projectId": "project-guid",
-  "ifcFileId": "ifc-file-guid",
-  "targetFolderId": "folder-guid"
+  "accessToken": "string",
+  "projectId": "string",
+  "ifcFileId": "string",
+  "targetFolderId": "string"
 }
 ```
 
@@ -254,23 +155,108 @@ Entfernt Pset "Überprüfung der Raumkategorie" aus IFC.
 ```json
 {
   "success": true,
-  "message": "5 Analyse-Markierungen wurden entfernt.",
-  "updatedIfcFileId": "file-guid",
-  "psetsRemoved": 5
+  "cleanedIfcFileId": "ifc999",
+  "message": "PropertySets erfolgreich entfernt"
 }
 ```
 
 ---
 
-## ?? Testing mit Postman
+## ?? Technology Stack
 
-### 1. Access Token erhalten
+| Component | Technology |
+|-----------|------------|
+| **Framework** | ASP.NET Web API (.NET Framework 4.8) |
+| **Excel Processing** | EPPlus (4.5.3.3) |
+| **IFC Processing** | GeometryGym.Ifc (0.2.1) |
+| **HTTP Client** | Newtonsoft.Json (13.0.3) |
+| **Deployment** | Azure App Service |
 
-Für Testing benötigst du einen Trimble Connect Access Token.
+---
 
-**Option A: OAuth Flow (manuell)**
+## ?? Dependencies (NuGet)
+
+```xml
+<package id="EPPlus" version="4.5.3.3" />
+<package id="GeometryGym.Ifc" version="0.2.1" />
+<package id="Newtonsoft.Json" version="13.0.3" />
+<package id="Microsoft.AspNet.WebApi" version="5.3.0" />
+<package id="Microsoft.AspNet.Cors" version="5.3.0" />
 ```
-1. Browser: https://id.trimble.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/callback&scope=openid
+
+---
+
+## ?? Configuration
+
+### Azure App Settings
+
+```json
+{
+  "TrimbleClientId": "your_client_id",
+  "TrimbleClientSecret": "your_client_secret",
+  "TrimbleRedirectUri": "https://raumbuch.azurewebsites.net/callback"
+}
+```
+
+### Local Development (Web.config)
+
+```xml
+<appSettings>
+  <add key="TrimbleClientId" value="your_dev_client_id" />
+  <add key="TrimbleClientSecret" value="your_dev_client_secret" />
+  <add key="TrimbleRedirectUri" value="http://localhost:3000/callback" />
+</appSettings>
+```
+
+---
+
+## ?? Setup & Installation
+
+### Local Development
+
+1. **Clone Repository**
+```bash
+git clone https://github.com/JoachimSalomonsen/Raumbuch.git
+cd RaumbuchService
+```
+
+2. **Restore NuGet Packages**
+```bash
+nuget restore RaumbuchService.sln
+```
+
+3. **Update Web.config**
+Add your Trimble Connect credentials.
+
+4. **Run in Visual Studio**
+Press F5 to start IIS Express.
+
+---
+
+### Azure Deployment
+
+1. **Publish from Visual Studio**
+   - Right-click project ? Publish
+   - Choose Azure App Service
+   - Select existing: `Connect_Extensions/Raumbuch`
+
+2. **Configure App Settings in Azure Portal**
+   - Navigate to App Service
+   - Settings ? Configuration
+   - Add `TrimbleClientId`, `TrimbleClientSecret`, `TrimbleRedirectUri`
+
+3. **Test Deployment**
+```bash
+curl https://raumbuch.azurewebsites.net/api/raumbuch/test
+```
+
+---
+
+## ?? Authentication Flow
+
+**Option A: OAuth2 Authorization Code Flow (testing)**
+```bash
+1. GET https://id.trimble.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/callback&scope=openid
 2. Login ? Copy authorization code
 3. POST https://id.trimble.com/oauth/token
    Body: grant_type=authorization_code&code=...&client_id=...&client_secret=...
