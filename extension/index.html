@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raumbuch Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>?? Raumbuch Manager</h1>
+            <p class="subtitle">Raumprogramm und Raumbuch Verwaltung</p>
+        </header>
+
+        <main>
+            <!-- Step 1: Import Template -->
+            <section class="card">
+                <h2>1?? Vorlage importieren</h2>
+                <p>Erstellt Raumprogramm.xlsx aus einer Vorlage</p>
+                <div class="form-group">
+                    <label for="templateFile">Vorlage ausw�hlen:</label>
+                    <select id="templateFile" class="form-control">
+                        <option value="">Lade Dateien...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="targetFolder">Zielordner:</label>
+                    <select id="targetFolder" class="form-control">
+                        <option value="">Lade Ordner...</option>
+                    </select>
+                </div>
+                <button id="btnImportTemplate" class="btn btn-primary">
+                    ?? Vorlage importieren
+                </button>
+                <div id="step1Result" class="result"></div>
+            </section>
+
+            <!-- Step 2: Create TODO -->
+            <section class="card">
+                <h2>2?? Aufgabe erstellen</h2>
+                <p>Benachrichtigt Benutzer �ber das neue Raumprogramm</p>
+                <div class="form-group">
+                    <label for="todoTitle">Titel:</label>
+                    <input type="text" id="todoTitle" class="form-control" value="Raumprogramm wurde erstellt" />
+                </div>
+                <div class="form-group">
+                    <label for="todoAssignees">Zuweisen an (E-Mail):</label>
+                    <input type="email" id="todoAssignees" class="form-control" placeholder="user@example.com" />
+                </div>
+                <button id="btnCreateTodo" class="btn btn-primary">
+                    ? Aufgabe erstellen
+                </button>
+                <div id="step2Result" class="result"></div>
+            </section>
+
+            <!-- Step 3: Import IFC -->
+            <section class="card">
+                <h2>3?? IFC importieren</h2>
+                <p>Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse</p>
+                <div class="form-group">
+                    <label for="ifcFile">IFC Datei:</label>
+                    <select id="ifcFile" class="form-control">
+                        <option value="">Lade IFC Dateien...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="raumprogrammFile">Raumprogramm:</label>
+                    <select id="raumprogrammFile" class="form-control">
+                        <option value="">Lade Excel Dateien...</option>
+                    </select>
+                </div>
+                <button id="btnImportIfc" class="btn btn-primary">
+                    ?? IFC importieren
+                </button>
+                <div id="step3Result" class="result"></div>
+            </section>
+
+            <!-- Step 4: Analyze Rooms -->
+            <section class="card">
+                <h2>4?? R�ume analysieren</h2>
+                <p>Markiert R�ume in IFC mit Pset</p>
+                <button id="btnAnalyzeRooms" class="btn btn-primary">
+                    ?? R�ume analysieren
+                </button>
+                <div id="step4Result" class="result"></div>
+            </section>
+
+            <!-- Step 5: Reset IFC -->
+            <section class="card">
+                <h2>5?? IFC zur�cksetzen</h2>
+                <p>Entfernt Analyse-Markierungen</p>
+                <button id="btnResetIfc" class="btn btn-warning">
+                    ?? IFC zur�cksetzen
+                </button>
+                <div id="step5Result" class="result"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Raumbuch Manager v1.0 | � 2024 Joachim Salomonsen</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

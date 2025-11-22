@@ -1,0 +1,176 @@
+{
+  "info": {
+    "name": "Raumbuch API - Local Testing",
+    "description": "Test requests for Raumbuch Service running on localhost (port 44305)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Test - Get Values (Verify API is running)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://localhost:44305/api/values",
+          "protocol": "https",
+          "host": ["localhost"],
+          "port": "44305",
+          "path": ["api", "values"]
+        },
+        "description": "Quick test to verify API is running. Should return: [\"value1\", \"value2\"]"
+      },
+      "response": []
+    },
+    {
+      "name": "2. Import Template (Mock Token - Will Fail)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accessToken\": \"mock-token-for-testing\",\n  \"projectId\": \"test-project-id\",\n  \"templateFileId\": \"test-template-file-id\",\n  \"targetFolderId\": \"test-folder-id\"\n}"
+        },
+        "url": {
+          "raw": "https://localhost:44305/api/raumbuch/import-template",
+          "protocol": "https",
+          "host": ["localhost"],
+          "port": "44305",
+          "path": ["api", "raumbuch", "import-template"]
+        },
+        "description": "NOTE: This will fail because mock token is not valid. You need a real Trimble Connect access token to download files. Expected error: 401 or 500."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Import Template (Real Token - REPLACE VALUES)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accessToken\": \"YOUR_REAL_TOKEN_HERE\",\n  \"projectId\": \"YOUR_PROJECT_ID\",\n  \"templateFileId\": \"YOUR_TEMPLATE_FILE_ID\",\n  \"targetFolderId\": \"YOUR_FOLDER_ID\"\n}"
+        },
+        "url": {
+          "raw": "https://localhost:44305/api/raumbuch/import-template",
+          "protocol": "https",
+          "host": ["localhost"],
+          "port": "44305",
+          "path": ["api", "raumbuch", "import-template"]
+        },
+        "description": "Replace placeholders with real values:\n- accessToken: Get from OAuth flow (see LOCAL_TESTING_GUIDE.md)\n- projectId: From Trimble Connect URL\n- templateFileId: Excel file ID in Trimble Connect\n- targetFolderId: Destination folder ID"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Create TODO (Real Token - REPLACE VALUES)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accessToken\": \"YOUR_REAL_TOKEN_HERE\",\n  \"projectId\": \"YOUR_PROJECT_ID\",\n  \"assignees\": [\"your.email@example.com\"],\n  \"title\": \"Raumprogramm wurde erstellt\",\n  \"label\": \"Raumbuch\"\n}"
+        },
+        "url": {
+          "raw": "https://localhost:44305/api/raumbuch/create-todo",
+          "protocol": "https",
+          "host": ["localhost"],
+          "port": "44305",
+          "path": ["api", "raumbuch", "create-todo"]
+        },
+        "description": "Creates a TODO in Trimble Connect. Replace accessToken and projectId with real values."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Import IFC (Real Token - REPLACE VALUES)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accessToken\": \"YOUR_REAL_TOKEN_HERE\",\n  \"projectId\": \"YOUR_PROJECT_ID\",\n  \"ifcFileId\": \"YOUR_IFC_FILE_ID\",\n  \"raumprogrammFileId\": \"YOUR_RAUMPROGRAMM_FILE_ID\",\n  \"targetFolderId\": \"YOUR_FOLDER_ID\"\n}"
+        },
+        "url": {
+          "raw": "https://localhost:44305/api/raumbuch/import-ifc",
+          "protocol": "https",
+          "host": ["localhost"],
+          "port": "44305",
+          "path": ["api", "raumbuch", "import-ifc"]
+        },
+        "description": "Imports IFC and creates Raumbuch.xlsx with SOLL/IST analysis. Requires valid IFC file and Raumprogramm Excel file in Trimble Connect."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Get Token from Trimble (OAuth Token Exchange)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "authorization_code",
+              "type": "text"
+            },
+            {
+              "key": "code",
+              "value": "YOUR_AUTHORIZATION_CODE_HERE",
+              "type": "text",
+              "description": "Get this from OAuth redirect URL after login"
+            },
+            {
+              "key": "client_id",
+              "value": "073a84b7-323b-43bf-b5a9-96bf17638dcc",
+              "type": "text"
+            },
+            {
+              "key": "client_secret",
+              "value": "7f4e6d7c6c0c45f387866e86e6eda65c",
+              "type": "text"
+            },
+            {
+              "key": "redirect_uri",
+              "value": "http://localhost:5005/callback/",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://id.trimble.com/oauth/token",
+          "protocol": "https",
+          "host": ["id", "trimble", "com"],
+          "path": ["oauth", "token"]
+        },
+        "description": "Exchange authorization code for access token.\n\nSteps:\n1. Go to: https://id.trimble.com/oauth/authorize?client_id=073a84b7-323b-43bf-b5a9-96bf17638dcc&response_type=code&redirect_uri=http://localhost:5005/callback/&scope=openid%20CST-PowerBI\n2. Login and approve\n3. Copy 'code' parameter from redirect URL\n4. Paste it in this request body\n5. Send request\n6. Copy 'access_token' from response"
+      },
+      "response": []
+    }
+  ]
+}

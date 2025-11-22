@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Callback - Trimble Connect</title>
+    <style>
+        /* Trimble Connect Color Palette */
+        :root {
+            --tc-primary-blue: #0078D4;
+            --tc-dark-blue: #003168;
+            --tc-success-green: #2E8540;
+            --tc-error-red: #D64545;
+            --tc-warning-yellow: #FFBF47;
+            --tc-bg-neutral: #f3f5f7;
+            --tc-bg-card: #ffffff;
+            --tc-border: #e1e4e8;
+            --tc-text-primary: #003168;
+            --tc-text-secondary: #5a5e62;
+            --tc-success-bg: #dff3e6;
+            --tc-error-bg: #f8d7da;
+            --tc-loading-bg: #fff3cd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--tc-bg-neutral);
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--tc-bg-card);
+            padding: 40px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--tc-primary-blue);
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .code-box {
+            background-color: var(--tc-bg-neutral);
+            border: 2px solid var(--tc-primary-blue);
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: var(--tc-text-primary);
+        }
+
+        .btn {
+            background-color: var(--tc-primary-blue);
+            color: white;
+            padding: 11px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #005a9e;
+        }
+
+        .success {
+            color: var(--tc-success-green);
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .error {
+            color: var(--tc-error-red);
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .instructions {
+            text-align: left;
+            background-color: var(--tc-loading-bg);
+            border: 1px solid var(--tc-warning-yellow);
+            border-left: 4px solid var(--tc-warning-yellow);
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 24px;
+        }
+
+        .instructions h3 {
+            color: var(--tc-dark-blue);
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .instructions ol {
+            margin: 12px 0;
+            padding-left: 24px;
+            color: var(--tc-text-secondary);
+        }
+
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .instructions strong {
+            color: var(--tc-text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Trimble Connect Authorization</h1>
+        
+        <div id="result"></div>
+        
+        <div class="instructions">
+            <h3>?? Nächste Schritte:</h3>
+            <ol>
+                <li>Kopieren Sie den <strong>Authorization Code</strong> oben</li>
+                <li>Fügen Sie ihn in Postman ein (Token Exchange Request)</li>
+                <li>Senden Sie die Token Exchange Anfrage</li>
+                <li>Kopieren Sie das <strong>access_token</strong> aus der Antwort</li>
+                <li>Verwenden Sie es in der Raumbuch GUI</li>
+            </ol>
+        </div>
+        
+        <button class="btn" onclick="window.close()">Fenster schließen</button>
+        <button class="btn" onclick="location.href='/'">Zurück zur App</button>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+
+        const resultDiv = document.getElementById('result');
+
+        if (error) {
+            resultDiv.innerHTML = `
+                <p class="error">? Fehler: ${error}</p>
+                <p>${errorDescription || 'Unbekannter Fehler'}</p>
+            `;
+        } else if (code) {
+            resultDiv.innerHTML = `
+                <p class="success">? Authorization erfolgreich!</p>
+                <p><strong>Authorization Code:</strong></p>
+                <div class="code-box" id="codeBox">${code}</div>
+                <button class="btn" onclick="copyCode()">?? Code kopieren</button>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <p class="error">? Kein Code gefunden</p>
+                <p>Die URL sollte einen 'code' Parameter enthalten.</p>
+            `;
+        }
+
+        function copyCode() {
+            const codeText = document.getElementById('codeBox').textContent;
+            navigator.clipboard.writeText(codeText).then(() => {
+                alert('? Code wurde in die Zwischenablage kopiert!');
+            });
+        }
+    </script>
+</body>
+</html>

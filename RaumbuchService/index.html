@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raumbuch Manager - Lokal</title>
+    <link rel="stylesheet" href="Content/Site.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Raumbuch Manager</h1>
+            <p class="subtitle">Lokale Version - Raumprogramm und Raumbuch Verwaltung</p>
+        </header>
+
+        <main>
+            <!-- Token Setup -->
+            <div class="token-section">
+                <strong>🔑 Trimble Connect Token erforderlich</strong>
+                <p>Holen Sie sich ein Access Token: 
+                    <a href="https://id.trimble.com/oauth/authorize?client_id=073a84b7-323b-43bf-b5a9-96bf17638dcc&response_type=code&redirect_uri=http://localhost:5005/callback/&scope=openid%20CST-PowerBI" target="_blank">
+                        Hier klicken
+                    </a>
+                </p>
+                <p><small>Kopieren Sie den Authorization Code aus der callback-Seite und verwenden Sie ihn in Postman, um ein access_token zu erhalten.</small></p>
+            </div>
+
+            <!-- Configuration -->
+            <section class="card">
+                <h2>⚙️ Konfiguration</h2>
+                
+                <div class="form-group">
+                    <label for="accessToken">Access Token:</label>
+                    <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectId">Project ID:</label>
+                    <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
+                </div>
+
+                <!-- Configuration Management -->
+                <div class="form-group">
+                    <label for="configName">Konfigurations-Name:</label>
+                    <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
+                    <small>Geben Sie einen Namen ein (wird beim ersten Speichern verwendet)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Konfiguration:</label>
+                    <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfig()" style="display:inline-block; width:auto;">
+                    <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
+                    <button class="btn btn-secondary" onclick="loadProjectData()">📁 Projektdaten laden</button>
+                </div>
+
+                <hr>
+
+                <!-- Target Folder Dropdown -->
+                <div class="form-group">
+                    <label for="targetFolder">Zielordner:</label>
+                    <select id="targetFolder" class="form-control">
+                        <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
+                </div>
+
+                <div id="connectionResult" class="result"></div>
+            </section>
+
+            <!-- Step 1: Import Template -->
+            <section class="card">
+                <h2>1️⃣ Vorlage importieren</h2>
+                <p>Erstellt Raumprogramm.xlsx aus einer Vorlage</p>
+                
+                <!-- Template Dropdown -->
+                <div class="form-group">
+                    <label for="templateFile">Vorlagendatei (.xlsx):</label>
+                    <select id="templateFile" class="form-control">
+                        <option value="">-- Vorlage auswählen nach "Dateien laden" --</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="importTemplate()">📥 Vorlage importieren</button>
+                
+                <div id="step1Result" class="result"></div>
+            </section>
+
+            <!-- Step 2: Create BCF Topic -->
+            <section class="card">
+                <h2>2️⃣ BCF Topic erstellen</h2>
+                <p>Benachrichtigt Benutzer über das neue Raumprogramm via Trimble Connect</p>
+                
+                <div class="form-group">
+                    <label for="bcfTitle">Titel:</label>
+                    <input type="text" id="bcfTitle" class="form-control" value="Raumbuch">
+                </div>
+
+                <!-- Users Multi-Select Dropdown -->
+                <div class="form-group">
+                    <label for="bcfAssignees">Zuweisen an (E-Mail):</label>
+                    <select id="bcfAssignees" class="form-control" multiple size="5">
+                        <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                    </select>
+                    <small>Erste ausgewählte Benutzer erhalten E-Mail direkt. Halten Sie Strg/Cmd gedrückt, um mehrere auszuwählen.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="bcfDescription">Beschreibung (optional):</label>
+                    <textarea id="bcfDescription" class="form-control" rows="3" placeholder="Raumprogramm wurde in diesem Verzeichnis erstellt.">Raumprogramm wurde in diesem Verzeichnis erstellt.</textarea>
+                    <small>Link zum Ordner wird automatisch als Dokumentreferenz hinzugefügt.</small>
+                </div>
+
+                <button class="btn btn-primary" onclick="createBcfTopic()">📋 BCF Topic erstellen</button>
+
+                <div id="step2Result" class="result"></div>
+            </section>
+
+            <!-- Step 3: Import IFC -->
+            <section class="card">
+                <h2>3️⃣ IFC importieren</h2>
+                <p>Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse</p>
+                
+                <!-- IFC Dropdown -->
+                <div class="form-group">
+                    <label for="ifcFile">IFC-Datei (.ifc):</label>
+                    <select id="ifcFile" class="form-control">
+                        <option value="">-- IFC auswählen nach "Dateien laden" --</option>
+                    </select>
+                </div>
+                
+                <!-- Raumprogramm Dropdown -->
+                <div class="form-group">
+                    <label for="raumprogrammFile">Raumprogramm-Datei (.xlsx):</label>
+                    <select id="raumprogrammFile" class="form-control">
+                        <option value="">-- Raumprogramm auswählen nach "Dateien laden" --</option>
+                    </select>
+                    <small>Wählen Sie die Raumprogramm.xlsx aus Schritt 1</small>
+                </div>
+                
+                <!-- Raumbuch Dropdown (moved from Step 4) -->
+                <div class="form-group">
+                    <label for="raumbuchFile">Raumbuch-Datei (.xlsx):</label>
+                    <select id="raumbuchFile" class="form-control">
+                        <option value="">-- Raumbuch auswählen nach "Dateien laden" --</option>
+                    </select>
+                    <small>Wird automatisch ausgefüllt nach "IFC importieren" oder wählen Sie eine existierende Datei</small>
+                </div>
+                
+                <button class="btn btn-primary" onclick="importIfc()">🏗️ IFC importieren</button>
+                <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
+                
+                <div id="step3Result" class="result"></div>
+            </section>
+
+            <!-- Step 4: Write Raumbuch Pset to IFC -->
+            <section class="card">
+                <h2>4️⃣ Raumbuch Pset in IFC schreiben</h2>
+                <p>Schreibt Differenz und Gemäss Raumprogramm als Pset "Raumbuch" in die IFC-Datei</p>
+                <p><small>Verwendet IFC-Datei und Raumbuch-Datei aus Schritt 3</small></p>
+                
+                <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
+                <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
+                <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
+                <div id="step4Result" class="result"></div>
+            </section>
+
+            <!-- Step 5: Inventory Management -->
+            <section class="card">
+                <h2>5️⃣ Inventarverwaltung</h2>
+                <p>Erstellt Raumlisten und füllt sie mit Inventar aus IFC-Dateien</p>
+                
+                <!-- Step 5.1: Create Room Sheets -->
+                <div class="subsection">
+                    <h3>5.1 Raumlisten erstellen</h3>
+                    <p><small>Erstellt ein Blatt pro Raum in der Raumbuch.xlsx</small></p>
+                    
+                    <button class="btn btn-primary" onclick="createRoomSheets()">📋 Raumliste erstellen</button>
+                    <div id="step5_1Result" class="result"></div>
+                </div>
+
+                <hr style="margin: 20px 0;">
+
+                <!-- Step 5.2: Fill Inventory -->
+                <div class="subsection">
+                    <h3>5.2 Inventar erstellen</h3>
+                    <p><small>Füllt Raumlisten mit Inventardaten aus IFC-Dateien</small></p>
+                    
+                    <!-- IFC Folder Dropdown -->
+                    <div class="form-group">
+                        <label for="inventoryFolder">IFC-Dateien aus Zielordner:</label>
+                        <select id="inventoryFolder" class="form-control">
+                            <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                        </select>
+                        <small>Ordner für IFC-Dateien (kann unterschiedlich vom Raumbuch-Ordner sein)</small>
+                    </div>
+
+                    <!-- Load IFC Files Button -->
+                    <div class="form-group">
+                        <button class="btn btn-secondary" onclick="loadIfcFilesForInventory()">📁 IFC-Dateien laden</button>
+                    </div>
+
+                    <!-- IFC Files Multi-Select List -->
+                    <div class="form-group">
+                        <label for="inventoryIfcFiles">IFC-Dateien auswählen:</label>
+                        <div id="ifcFilesList" class="file-selection-list">
+                            <p style="color: #666; font-style: italic;">Klicken Sie auf "IFC-Dateien laden"</p>
+                        </div>
+                    </div>
+
+                    <!-- Pset Configuration -->
+                    <div class="form-group">
+                        <label for="psetPartialName">Pset Name (teilweise):</label>
+                        <input type="text" id="psetPartialName" class="form-control" value="Plancal nova" placeholder="z.B. 'Plancal nova'">
+                        <small>Teilweiser Name des Psets, z.B. "Plancal nova" findet "Pset Plancal nova - Electrical"</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roomPropertyName">Raumnummer-Eigenschaft:</label>
+                        <input type="text" id="roomPropertyName" class="form-control" value="Room Nbr" placeholder="z.B. 'Room Nbr'">
+                        <small>Name der Eigenschaft, die die Raumnummer enthält</small>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="fillInventory()">📦 Inventar erstellen</button>
+                    <div id="step5_2Result" class="result"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Raumbuch Manager v2.0 - Lokale Version mit Konfigurationsverwaltung</p>
+            <p>API: https://localhost:44305</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = 'https://localhost:44305/api/raumbuch';
+        const API_PROJECT = 'https://localhost:44305/api/project';
+
+        // Global configuration object
+        let currentConfig = {
+            projectId: '',
+            projectName: '',
+            targetFolder: null,
+            files: {
+                template: null,
+                raumprogramm: null,
+                ifcModel: null,
+                raumbuch: null
+            },
+            bcfAssignees: []
+        };
+
+        function getToken() {
+            return document.getElementById('accessToken').value.trim();
+        }
+
+        function getProjectId() {
+            return document.getElementById('projectId').value.trim();
+        }
+
+        function getTargetFolder() {
+            const select = document.getElementById('targetFolder');
+            const value = select.value;
+            console.log('getTargetFolder() - selected value:', value);
+            console.log('getTargetFolder() - selected index:', select.selectedIndex);
+            console.log('getTargetFolder() - selected option:', select.options[select.selectedIndex]);
+            return value;
+        }
+
+        function showResult(elementId, type, message) {
+            const el = document.getElementById(elementId);
+            el.className = `result ${type}`;
+            el.innerHTML = message;
+        }
+
+        // ====================================================================
+        //  CONFIGURATION MANAGEMENT
+        // ====================================================================
+
+        async function loadProjectData() {
+            const token = getToken();
+            const projectId = getProjectId();
+
+            if (!token || !projectId) {
+                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                return;
+            }
+
+            showResult('connectionResult', 'loading', '⏳ Projektdaten werden geladen...');
+
+            try {
+                // Load folders
+                console.log('Loading folders...');
+                const foldersResponse = await fetch(`${API_PROJECT}/folders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessToken: token, projectId: projectId })
+                });
+
+                const contentType = foldersResponse.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResponse = await foldersResponse.text();
+                    console.error('Non-JSON response:', textResponse);
+                    showResult('connectionResult', 'error', '❌ Ungültige Antwort vom Server (kein JSON)');
+                    return;
+                }
+
+                const foldersData = await foldersResponse.json();
+                console.log('Folders response:', foldersData);
+
+                if (foldersResponse.ok && foldersData.success) {
+                    const select = document.getElementById('targetFolder');
+                    
+                    if (!foldersData.folders || !Array.isArray(foldersData.folders)) {
+                        showResult('connectionResult', 'error', '❌ Keine Ordner-Daten in Antwort');
+                        return;
+                    }
+
+                    select.innerHTML = '<option value="">-- Ordner auswählen --</option>';
+                    
+                    // Also populate inventory folder dropdown
+                    const inventoryFolderSelect = document.getElementById('inventoryFolder');
+                    if (inventoryFolderSelect) {
+                        inventoryFolderSelect.innerHTML = '<option value="">-- Ordner auswählen --</option>';
+                    }
+                    
+                    if (foldersData.folders.length === 0) {
+                        showResult('connectionResult', 'error', '⚠ Keine Ordner gefunden');
+                        return;
+                    }
+
+                    foldersData.folders.forEach((folder) => {
+                        const option = document.createElement('option');
+                        option.value = folder.id || '';
+                        option.textContent = folder.path || folder.name || 'Unnamed folder';
+                        option.dataset.name = folder.name || '';
+                        option.dataset.path = folder.path || '';
+                        select.appendChild(option);
+                        
+                        // Add to inventory folder dropdown
+                        if (inventoryFolderSelect) {
+                            const inventoryOption = document.createElement('option');
+                            inventoryOption.value = folder.id || '';
+                            inventoryOption.textContent = folder.path || folder.name || 'Unnamed folder';
+                            inventoryOption.dataset.name = folder.name || '';
+                            inventoryOption.dataset.path = folder.path || '';
+                            inventoryFolderSelect.appendChild(inventoryOption);
+                        }
+                    });
+
+                    console.log('Folders loaded:', foldersData.folders.length);
+                } else {
+                    const errorMsg = foldersData.message || foldersData.Message || 'Unbekannter Fehler';
+                    showResult('connectionResult', 'error', `❌ ${errorMsg}`);
+                    return;
+                }
+
+                // Load users
+                console.log('Loading users...');
+                const usersResponse = await fetch(`${API_PROJECT}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessToken: token, projectId: projectId })
+                });
+
+                const usersData = await usersResponse.json();
+                console.log('Users response:', usersData);
+
+                if (usersResponse.ok && usersData.success) {
+                    const select = document.getElementById('bcfAssignees');
+                    select.innerHTML = '';
+                    
+                    if (!usersData.users || !Array.isArray(usersData.users)) {
+                        showResult('connectionResult', 'warning', `✅ ${foldersData.folders.length} Ordner geladen, aber keine Benutzer gefunden`);
+                        return;
+                    }
+
+                    usersData.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.email;
+                        option.textContent = `${user.displayName} (${user.email})`;
+                        option.dataset.id = user.id;
+                        option.dataset.displayName = user.displayName;
+                        select.appendChild(option);
+                    });
+
+                    console.log('Users loaded:', usersData.users.length);
+                    showResult('connectionResult', 'success', `✅ ${foldersData.folders.length} Ordner und ${usersData.users.length} Benutzer geladen!`);
+                } else {
+                    const errorMsg = usersData.message || usersData.Message || 'Unbekannter Fehler';
+                    showResult('connectionResult', 'warning', `✅ ${foldersData.folders.length} Ordner geladen, aber Fehler beim Laden der Benutzer: ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in loadProjectData:', error);
+                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function fetchFolders() {
+            // This function is now replaced by loadProjectData()
+            // Keeping it for backward compatibility if called from elsewhere
+            await loadProjectData();
+        }
+
+        async function fetchUsers() {
+            // This function is now replaced by loadProjectData()
+            // Keeping it for backward compatibility if called from elsewhere
+            await loadProjectData();
+        }
+
+        async function fetchFiles() {
+            const token = getToken();
+            const folderId = getTargetFolder();
+
+            console.log('fetchFiles() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Folder ID:', folderId);
+
+            if (!token || !folderId) {
+                showResult('connectionResult', 'error', '⚠ Bitte Token and Zielordner auswählen');
+                console.error('Missing token or folderId');
+                return;
+            }
+
+            showResult('connectionResult', 'loading', '⏳ Dateien werden geladen...');
+
+            try {
+                // Fetch Excel files for all dropdowns (template, raumprogramm, raumbuch)
+                console.log('Fetching Excel files from folder:', folderId);
+                const excelResponse = await fetch(`${API_PROJECT}/files`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        accessToken: token, 
+                        folderId: folderId,
+                        fileExtensions: ['xlsx']
+                    })
+                });
+
+                console.log('Excel response status:', excelResponse.status);
+                const excelData = await excelResponse.json();
+                console.log('Excel response data:', excelData);
+
+                if (excelResponse.ok && excelData.success) {
+                    // Populate template dropdown
+                    const templateSelect = document.getElementById('templateFile');
+                    templateSelect.innerHTML = '<option value="">-- Vorlage auswählen --</option>';
+                    
+                    // Populate raumprogramm dropdown (Step 3)
+                    const raumprogrammSelect = document.getElementById('raumprogrammFile');
+                    raumprogrammSelect.innerHTML = '<option value="">-- Raumprogramm auswählen --</option>';
+                    
+                    // Populate raumbuch dropdown (Step 4)
+                    const raumbuchSelect = document.getElementById('raumbuchFile');
+                    raumbuchSelect.innerHTML = '<option value="">-- Raumbuch auswählen --</option>';
+                    
+                    console.log('Excel files found:', excelData.files?.length || 0);
+                    
+                    if (excelData.files && excelData.files.length > 0) {
+                        excelData.files.forEach(file => {
+                            console.log('Adding Excel file:', file.name);
+                            
+                            // Add to template dropdown
+                            const templateOption = document.createElement('option');
+                            templateOption.value = file.id;
+                            templateOption.textContent = file.name;
+                            templateOption.dataset.name = file.name;
+                            templateOption.dataset.versionId = file.versionId;
+                            templateSelect.appendChild(templateOption);
+                            
+                            // Add to raumprogramm dropdown
+                            const raumprogrammOption = document.createElement('option');
+                            raumprogrammOption.value = file.id;
+                            raumprogrammOption.textContent = file.name;
+                            raumprogrammOption.dataset.name = file.name;
+                            raumprogrammOption.dataset.versionId = file.versionId;
+                            raumprogrammSelect.appendChild(raumprogrammOption);
+                            
+                            // Add to raumbuch dropdown (used by both Step 3 update and Step 4 pset operations)
+                            const raumbuchOption = document.createElement('option');
+                            raumbuchOption.value = file.id;
+                            raumbuchOption.textContent = file.name;
+                            raumbuchOption.dataset.name = file.name;
+                            raumbuchOption.dataset.versionId = file.versionId;
+                            raumbuchSelect.appendChild(raumbuchOption);
+                        });
+                    }
+                } else {
+                    console.error('Excel fetch failed:', excelData);
+                }
+
+                // Fetch IFC files for IFC dropdown
+                console.log('Fetching IFC files from folder:', folderId);
+                const ifcResponse = await fetch(`${API_PROJECT}/files`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        accessToken: token, 
+                        folderId: folderId,
+                        fileExtensions: ['ifc']
+                    })
+                });
+
+                console.log('IFC response status:', ifcResponse.status);
+                const ifcData = await ifcResponse.json();
+                console.log('IFC response data:', ifcData);
+
+                if (ifcResponse.ok && ifcData.success) {
+                    const ifcSelect = document.getElementById('ifcFile');
+                    
+                    ifcSelect.innerHTML = '<option value="">-- IFC auswählen --</option>';
+                    
+                    console.log('IFC files found:', ifcData.files?.length || 0);
+                    
+                    if (ifcData.files && ifcData.files.length > 0) {
+                        ifcData.files.forEach(file => {
+                            console.log('Adding IFC file:', file.name);
+                            const option = document.createElement('option');
+                            option.value = file.id;
+                            option.textContent = file.name;
+                            option.dataset.name = file.name;
+                            ifcSelect.appendChild(option);
+                        });
+                    }
+                } else {
+                    console.error('IFC fetch failed:', ifcData);
+                }
+
+                const excelCount = excelData.files?.length || 0;
+                const ifcCount = ifcData.files?.length || 0;
+                
+                console.log('Total files:', excelCount, 'Excel,', ifcCount, 'IFC');
+                showResult('connectionResult', 'success', `✅ Dateien geladen! ${excelCount} Excel, ${ifcCount} IFC`);
+            } catch (error) {
+                console.error('Error in fetchFiles:', error);
+                console.error('Error stack:', error.stack);
+                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function fetchUsers() {
+            const token = getToken();
+            const projectId = getProjectId();
+
+            if (!token || !projectId) {
+                showResult('step2Result', 'error', '⚠ Bitte Token und Project ID eingeben');
+                return;
+            }
+
+            showResult('step2Result', 'loading', '⏳ Benutzer werden geladen...');
+
+            try {
+                const response = await fetch(`${API_PROJECT}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessToken: token, projectId: projectId })
+                });
+
+                console.log('Response status:', response.status);
+                const contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResponse = await response.text();
+                    console.error('Non-JSON response:', textResponse);
+                    showResult('step2Result', 'error', '❌ Ungültige Antwort vom Server (kein JSON)');
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && data.success) {
+                    const select = document.getElementById('bcfAssignees');
+                    select.innerHTML = '';
+                    
+                    if (!data.users || !Array.isArray(data.users)) {
+                        showResult('step2Result', 'error', '⚠ Keine Benutzer-Daten in Antwort');
+                        return;
+                    }
+
+                    console.log('Number of users:', data.users.length);
+                    
+                    data.users.forEach(user => {
+                        console.log('Adding user:', user.email, user.displayName);
+                        const option = document.createElement('option');
+                        option.value = user.email;
+                        option.textContent = `${user.displayName} (${user.email})`;
+                        option.dataset.id = user.id;
+                        option.dataset.displayName = user.displayName;
+                        select.appendChild(option);
+                    });
+
+                    showResult('step2Result', 'success', `✅ ${data.users.length} Benutzer geladen!`);
+                } else {
+                    console.error('Response not OK or success=false');
+                    const errorMsg = data.message || data.Message || 'Unbekannter Fehler';
+                    showResult('step2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in fetchUsers:', error);
+                console.error('Error stack:', error.stack);
+                showResult('step2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        function saveConfig() {
+            const configName = document.getElementById('configName').value.trim();
+            
+            if (!configName) {
+                alert('⚠ Bitte geben Sie einen Konfigurations-Namen ein!');
+                return;
+            }
+
+            // Build configuration object
+            const config = {
+                projectId: getProjectId(),
+                projectName: configName,
+                lastUpdated: new Date().toISOString(),
+                targetFolder: getSelectedOption('targetFolder'),
+                files: {
+                    template: getSelectedOption('templateFile'),
+                    raumprogramm: getSelectedOption('raumprogrammFile'),
+                    ifcModel: getSelectedOption('ifcFile'),
+                    raumbuch: getSelectedOption('raumbuchFile')
+                },
+                bcfAssignees: getSelectedUsers()
+            };
+
+            // Download as JSON file
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${configName}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showResult('connectionResult', 'success', `✅ Konfiguration "${configName}.json" heruntergeladen!`);
+        }
+
+        function loadConfig() {
+            const fileInput = document.getElementById('loadConfigFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    applyConfiguration(config);
+                    showResult('connectionResult', 'success', `✅ Konfiguration "${config.projectName}" geladen!`);
+                } catch (error) {
+                    console.error('Error loading config:', error);
+                    showResult('connectionResult', 'error', `❌ Ungültige Konfigurationsdatei: ${error.message}`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function applyConfiguration(config) {
+            currentConfig = config;
+
+            // Fill Project ID and Name
+            document.getElementById('projectId').value = config.projectId || '';
+            document.getElementById('configName').value = config.projectName || '';
+
+            // Fill Target Folder (display name in readonly field if not in dropdown yet)
+            if (config.targetFolder) {
+                const folderSelect = document.getElementById('targetFolder');
+                // Try to find and select the folder
+                let found = false;
+                for (let i = 0; i < folderSelect.options.length; i++) {
+                    if (folderSelect.options[i].value === config.targetFolder.id) {
+                        folderSelect.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found && config.targetFolder.id) {
+                    // Add as option if not found
+                    const option = document.createElement('option');
+                    option.value = config.targetFolder.id;
+                    option.textContent = config.targetFolder.path || config.targetFolder.name;
+                    option.dataset.name = config.targetFolder.name;
+                    option.dataset.path = config.targetFolder.path;
+                    folderSelect.appendChild(option);
+                    folderSelect.value = config.targetFolder.id;
+                }
+            }
+
+            // Fill Template
+            if (config.files?.template) {
+                setSelectValue('templateFile', config.files.template.id, config.files.template.name);
+            }
+
+            // Fill Raumprogramm (changed from readonly to dropdown)
+            if (config.files?.raumprogramm) {
+                setSelectValue('raumprogrammFile', config.files.raumprogramm.id, config.files.raumprogramm.name);
+            }
+
+            // Fill IFC
+            if (config.files?.ifcModel) {
+                setSelectValue('ifcFile', config.files.ifcModel.id, config.files.ifcModel.name);
+            }
+
+            // Fill Raumbuch (changed from readonly to dropdown)
+            if (config.files?.raumbuch) {
+                setSelectValue('raumbuchFile', config.files.raumbuch.id, config.files.raumbuch.name);
+            }
+
+            // Fill BCF Assignees
+            if (config.bcfAssignees && config.bcfAssignees.length > 0) {
+                const select = document.getElementById('bcfAssignees');
+                // Pre-select users if they exist in dropdown
+                for (let i = 0; i < select.options.length; i++) {
+                    const option = select.options[i];
+                    const isSelected = config.bcfAssignees.some(u => u.email === option.value);
+                    option.selected = isSelected;
+                }
+            }
+        }
+
+        function getSelectedOption(selectId) {
+            const select = document.getElementById(selectId);
+            const option = select.options[select.selectedIndex];
+            if (!option || !option.value) return null;
+
+            return {
+                id: option.value,
+                name: option.dataset.name || option.textContent,
+                path: option.dataset.path || ''
+            };
+        }
+
+        function getSelectedUsers() {
+            const select = document.getElementById('bcfAssignees');
+            const users = [];
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].selected) {
+                    users.push({
+                        id: select.options[i].dataset.id || '',
+                        email: select.options[i].value,
+                        displayName: select.options[i].dataset.displayName || select.options[i].textContent
+                    });
+                }
+            }
+            return users;
+        }
+
+        function setSelectValue(selectId, value, name) {
+            const select = document.getElementById(selectId);
+            let found = false;
+            
+            // Try to find existing option
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === value) {
+                    select.selectedIndex = i;
+                    found = true;
+                    return;
+                }
+            }
+            
+            // If not found, add as option
+            if (!found && value && name) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = name;
+                option.dataset.name = name;
+                select.appendChild(option);
+                select.value = value;
+            }
+        }
+
+        // ====================================================================
+        //  POLLING HELPER FUNCTION
+        // ====================================================================
+
+        /**
+         * Polls the folder for a newly created file by name.
+         * Tries up to 5 times with 500ms intervals.
+         * Returns the file ID if found, or null if not found.
+         */
+        async function pollForFile(fileName, maxAttempts = 5, delayMs = 500) {
+            const token = getToken();
+            const folderId = getTargetFolder();
+
+            console.log(`Starting polling for file: ${fileName}`);
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                console.log(`Poll attempt ${attempt}/${maxAttempts}`);
+//                
+                // Wait before querying
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                
+                try {
+                    const response = await fetch(`${API_PROJECT}/files`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            accessToken: token, 
+                            folderId: folderId,
+                            fileExtensions: ['xlsx']
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.warn(`Folder query failed with status ${response.status}`);
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.success && data.files) {
+                        // Find the file by name (case-insensitive)
+                        const foundFile = data.files.find(f => 
+                            f.name.toLowerCase() === fileName.toLowerCase()
+                        );
+                        
+                        if (foundFile && foundFile.id) {
+                            console.log(`Found file: ${foundFile.name}, ID: ${foundFile.id}`);
+                            return foundFile;
+                        }
+                    }
+                    
+                    console.log(`File '${fileName}' not found yet. Will retry...`);
+                } catch (error) {
+                    console.error(`Error during poll attempt ${attempt}:`, error);
+                }
+            }
+            
+            console.warn(`File '${fileName}' not found after ${maxAttempts} attempts.`);
+            return null;
+        }
+
+        /**
+         * Updates a dropdown with a new file option and selects it.
+         */
+        function updateDropdownWithFile(selectId, file) {
+            const select = document.getElementById(selectId);
+            
+            // Check if file already exists in dropdown
+            let optionExists = false;
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === file.id) {
+                    select.selectedIndex = i;
+                    optionExists = true;
+                    break;
+                }
+            }
+            
+            // If not exists, add it
+            if (!optionExists) {
+                const option = document.createElement('option');
+                option.value = file.id;
+                option.textContent = file.name;
+                option.dataset.name = file.name;
+                select.appendChild(option);
+                select.value = file.id;
+            }
+            
+            console.log(`Updated dropdown ${selectId} with file: ${file.name}`);
+        }
+
+        // ====================================================================
+        //  EXISTING FUNCTIONS (updated to use polling)
+        // ====================================================================
+
+        async function testConnection() {
+            const token = getToken();
+            const projectId = getProjectId();
+
+            if (!token || !projectId) {
+                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                return;
+            }
+
+            showResult('connectionResult', 'loading', '⏳ Teste Verbindung...');
+
+            try {
+                const response = await fetch(`${API_BASE}/test-project`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accessToken: token, projectId: projectId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('connectionResult', 'success', `✅ Verbindung OK! Projekt: ${data.projectId || projectId}`);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('connectionResult', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function importTemplate() {
+            const token = getToken();
+            const projectId = getProjectId();
+            const templateFileId = document.getElementById('templateFile').value;
+            const targetFolder = getTargetFolder();
+
+            console.log('importTemplate() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('ProjectId:', projectId);
+            console.log('Template File ID:', templateFileId);
+            console.log('Target Folder:', targetFolder);
+
+            if (!token || !templateFileId || !targetFolder || !projectId) {
+                showResult('step1Result', 'error', '⚠ Bitte alle Felder ausfüllen');
+                return;
+            }
+
+            showResult('step1Result', 'loading', '⏳ Importiere Vorlage...');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    projectId: projectId,
+                    templateFileId: templateFileId,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/import-template`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    const fileName = data.raumprogrammFileName || 'Raumprogramm.xlsx';
+                    const fileId = data.raumprogrammFileId || 'N/A';
+                    
+                    console.log('Raumprogramm created successfully:', fileName, fileId);
+                    
+                    // Save to config
+                    currentConfig.files.raumprogramm = {
+                        id: fileId,
+                        name: fileName
+                    };
+                    
+                    console.log('Updated currentConfig.files.raumprogramm:', currentConfig.files.raumprogramm);
+                    
+                    showResult('step1Result', 'loading', `✅ Raumprogramm erstellt!<br>⏳ Warte auf ID von Connect...`);
+                    
+                    // Poll for the file to get the actual Connect ID
+                    const foundFile = await pollForFile(fileName);
+                    
+                    if (foundFile) {
+                        // Update config with correct ID
+                        currentConfig.files.raumprogramm.id = foundFile.id;
+                        
+                        // Update dropdown in Step 3
+                        updateDropdownWithFile('raumprogrammFile', foundFile);
+                        
+                        showResult('step1Result', 'success', 
+                            `✅ Erfolgreich!<br>Datei: ${fileName}<br>ID: ${foundFile.id}<br>✅ Raumprogramm wurde zur Dropdown-Liste hinzugefügt!`);
+                    } else {
+                        // File not found after polling, use backend ID
+                        showResult('step1Result', 'warning', 
+                            `⚠️ Raumprogramm wurde erstellt, aber ID konnte nicht sofort abgerufen werden.<br>Datei: ${fileName}<br>Bitte klicken Sie auf "Dateien laden" um die Liste zu aktualisieren.`);
+                    }
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    console.error('Import template failed:', errorMsg);
+                    showResult('step1Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in importTemplate:', error);
+                showResult('step1Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function createBcfTopic() {
+            const token = getToken();
+            const projectId = getProjectId();
+            const folderId = getTargetFolder();
+            const title = document.getElementById('bcfTitle').value.trim();
+            const description = document.getElementById('bcfDescription').value.trim();
+
+            // Get selected users
+            const selectedUsers = getSelectedUsers();
+            if (selectedUsers.length === 0) {
+                showResult('step2Result', 'error', '⚠ Bitte mindestens einen Benutzer auswählen');
+                return;
+            }
+
+            const assignedTo = selectedUsers.map(u => u.email).join(',');
+
+            if (!token || !projectId || !folderId) {
+                showResult('step2Result', 'error', '⚠ Bitte Token, Project ID und Folder auswählen');
+                return;
+            }
+
+            showResult('step2Result', 'loading', '⏳ Erstelle BCF Topic...');
+
+            try {
+                const response = await fetch(`${API_BASE}/create-bcf-topic`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        projectId: projectId,
+                        folderId: folderId,
+                        title: title,
+                        description: description,
+                        assignedTo: assignedTo,
+                        createMultipleTopics: false
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let resultHtml = `✅ BCF Topic erfolgreich erstellt!<br>Topic GUID: ${data.topicGuid || 'N/A'}`;
+                    
+                    if (data.documentReferenceGuid) {
+                        resultHtml += `<br>Dokumentreferenz GUID: ${data.documentReferenceGuid}`;
+                    }
+					
+					resultHtml += `<br><br>⚠️ Bitte prüfen Sie die Benutzerzuweisungen und Berechtigungen in Trimble Connect.`;
+                    
+                    showResult('step2Result', 'success', resultHtml);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('step2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function importIfc() {
+            const token = getToken();
+            const projectId = getProjectId();
+            const ifcFileId = document.getElementById('ifcFile').value;
+            const raumprogrammFileSelect = document.getElementById('raumprogrammFile');
+            const raumprogrammFileId = raumprogrammFileSelect.value;
+            const targetFolder = getTargetFolder();
+
+            console.log('importIfc() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('ProjectId:', projectId);
+            console.log('IFC File ID:', ifcFileId);
+            console.log('Raumprogramm File ID:', raumprogrammFileId);
+            console.log('Target Folder:', targetFolder);
+
+            if (!token || !projectId || !ifcFileId || !raumprogrammFileId || !targetFolder) {
+                let missingFields = [];
+                if (!token) missingFields.push('Token');
+                if (!projectId) missingFields.push('Project ID');
+                if (!ifcFileId) missingFields.push('IFC File');
+                if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
+                if (!targetFolder) missingFields.push('Target Folder');
+                
+                showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            showResult('step3Result', 'loading', '⏳ Importiere IFC und erstelle Raumbuch... (kann einige Sekunden dauern)');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    projectId: projectId,
+                    ifcFileId: ifcFileId,
+                    raumprogrammFileId: raumprogrammFileId,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/import-ifc`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    const fileName = data.raumbuchFileName || 'Raumbuch.xlsx';
+                    const fileId = data.raumbuchFileId || 'N/A';
+                    
+                    console.log('Raumbuch created successfully:', fileName, fileId);
+                    
+                    // Save to config
+                    currentConfig.files.raumbuch = {
+                        id: fileId,
+                        name: fileName
+                    };
+                    
+                    let message = `✅ Raumbuch erstellt!<br>Datei: ${fileName}<br>⏳ Warte auf ID von Connect...<br><br><strong>Analyse:</strong><br>`;
+                    if (data.analysis && data.analysis.length > 0) {
+                        data.analysis.forEach(a => {
+                            const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
+                            message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
+                        });
+                    }
+                    
+                    showResult('step3Result', 'loading', message);
+                    
+                    // Poll for the file to get the actual Connect ID
+                    const foundFile = await pollForFile(fileName);
+                    
+                    if (foundFile) {
+                        // Update config with correct ID
+                        currentConfig.files.raumbuch.id = foundFile.id;
+                        
+                        // Update dropdown (used by both Step 3 update and Step 4 pset operations)
+                        updateDropdownWithFile('raumbuchFile', foundFile);
+                        
+                        message = `✅ Raumbuch erfolgreich erstellt!<br>Datei: ${fileName}<br>ID: ${foundFile.id}<br>✅ Raumbuch wurde zur Dropdown-Liste hinzugefügt!`;
+                        showResult('step3Result', 'success', message);
+                    } else {
+                        // File not found after polling, use backend ID
+                        message = `⚠️ Raumbuch wurde erstellt, aber ID konnte nicht sofort abgerufen werden.<br>Datei: ${fileName}<br>Bitte klicken Sie auf "Dateien laden" um die Liste zu aktualisieren.<br><br><strong>Analyse:</strong><br>`;
+                        if (data.analysis && data.analysis.length > 0) {
+                            data.analysis.forEach(a => {
+                                const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
+                                message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
+                            });
+                        }
+                        showResult('step3Result', 'warning', message);
+                    }
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('step3Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in importIfc:', error);
+                showResult('step3Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function updateRaumbuch() {
+            const token = getToken();
+            const projectId = getProjectId();
+            const ifcFileId = document.getElementById('ifcFile').value;
+            const raumprogrammFileId = document.getElementById('raumprogrammFile').value;
+            const existingRaumbuchFileId = document.getElementById('raumbuchFile').value; // Use Step 4 dropdown
+            const targetFolder = getTargetFolder();
+
+            console.log('updateRaumbuch() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('ProjectId:', projectId);
+            console.log('IFC File ID:', ifcFileId);
+            console.log('Raumprogramm File ID:', raumprogrammFileId);
+            console.log('Existing Raumbuch File ID:', existingRaumbuchFileId);
+            console.log('Target Folder:', targetFolder);
+
+            if (!token || !projectId || !ifcFileId || !raumprogrammFileId || !existingRaumbuchFileId || !targetFolder) {
+                let missingFields = [];
+                if (!token) missingFields.push('Token');
+                if (!projectId) missingFields.push('Project ID');
+                if (!ifcFileId) missingFields.push('IFC File');
+                if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
+                if (!existingRaumbuchFileId) missingFields.push('Raumbuch File (siehe Schritt 4)');
+                if (!targetFolder) missingFields.push('Target Folder');
+                
+                showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            showResult('step3Result', 'loading', '⏳ Aktualisiere Raumbuch... (kann einige Sekunden dauern)');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    projectId: projectId,
+                    raumbuchFileId: existingRaumbuchFileId,
+                    ifcFileId: ifcFileId,
+                    raumprogrammFileId: raumprogrammFileId,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/update-raumbuch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    const fileName = data.raumbuchFileName || 'Raumbuch.xlsx';
+                    const fileId = data.raumbuchFileId || 'N/A';
+                    
+                    console.log('Raumbuch updated successfully:', fileName, fileId);
+                    
+                    // Save to config
+                    currentConfig.files.raumbuch = {
+                        id: fileId,
+                        name: fileName
+                    };
+                    
+                    let message = `✅ Raumbuch aktualisiert!<br>Datei: ${fileName}<br>`;
+                    message += `Räume hinzugefügt: ${data.roomsAdded || 0}<br>`;
+                    message += `Räume aktualisiert: ${data.roomsUpdated || 0}<br>`;
+                    message += `Räume unverändert: ${data.roomsUnchanged || 0}<br>`;
+                    message += `<br><strong>Neue Analyse:</strong><br>`;
+                    
+                    if (data.analysis && data.analysis.length > 0) {
+                        data.analysis.forEach(a => {
+                            const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
+                            message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
+                        });
+                    }
+                    
+                    showResult('step3Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('step3Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in updateRaumbuch:', error);
+                showResult('step3Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function writePset() {
+            const token = getToken();
+            const ifcFileId = document.getElementById('ifcFile').value; // Read from Step 3
+            const raumbuchFileId = document.getElementById('raumbuchFile').value; // Read from Step 3
+            const targetFolder = getTargetFolder();
+
+            if (!token || !ifcFileId || !raumbuchFileId || !targetFolder) {
+                showResult('step4Result', 'error', '⚠ Bitte alle Felder ausfüllen (IFC und Raumbuch aus Schritt 3 erforderlich)');
+                return;
+            }
+
+            showResult('step4Result', 'loading', '⏳ Schreibe Pset "Raumbuch" in IFC... (kann einige Sekunden dauern)');
+
+            try {
+                const response = await fetch(`${API_BASE}/write-raumbuch-pset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        ifcFileId: ifcFileId,
+                        raumbuchFileId: raumbuchFileId,
+                        targetFolderId: targetFolder
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let message = `✅ ${data.Message || data.message || 'Pset erfolgreich geschrieben!'}<br>`;
+                    message += `Räume aktualisiert: ${data.RoomsUpdated || data.roomsUpdated || 0}<br>`;
+                    message += `Räume übersprungen: ${data.RoomsSkipped || data.roomsSkipped || 0}`;
+                    
+                    if (data.Warnings && data.Warnings.length > 0) {
+                        message += '<br><br><strong>Warnungen:</strong><br>';
+                        data.Warnings.forEach(w => {
+                            message += `- ${w}<br>`;
+                        });
+                    }
+                    
+                    showResult('step4Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('step4Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step4Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function updatePset() {
+            const token = getToken();
+            const ifcFileId = document.getElementById('ifcFile').value; // Read from Step 3
+            const raumbuchFileId = document.getElementById('raumbuchFile').value; // Read from Step 3
+            const targetFolder = getTargetFolder();
+
+            if (!token || !ifcFileId || !raumbuchFileId || !targetFolder) {
+                showResult('step4Result', 'error', '⚠ Bitte alle Felder ausfüllen (IFC und Raumbuch aus Schritt 3 erforderlich)');
+                return;
+            }
+
+            showResult('step4Result', 'loading', '⏳ Aktualisiere Pset "Raumbuch" in IFC...');
+
+            try {
+                const response = await fetch(`${API_BASE}/update-raumbuch-pset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        ifcFileId: ifcFileId,
+                        raumbuchFileId: raumbuchFileId,
+                        targetFolderId: targetFolder
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let message = `✅ ${data.Message || data.message || 'Pset erfolgreich aktualisiert!'}<br>`;
+                    message += `Räume aktualisiert: ${data.RoomsUpdated || data.roomsUpdated || 0}<br>`;
+                    message += `Räume übersprungen: ${data.RoomsSkipped || data.roomsSkipped || 0}`;
+                    
+                    showResult('step4Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    showResult('step4Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step4Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function deletePset() {
+            const token = getToken();
+            const ifcFileId = document.getElementById('ifcFile').value; // Read from Step 3
+            const targetFolder = getTargetFolder();
+
+            if (!token || !ifcFileId || !targetFolder) {
+                showResult('step4Result', 'error', '⚠ Bitte IFC File aus Schritt 3 auswählen');
+                return;
+            }
+
+            if (!confirm('Sind Sie sicher, dass Sie das Pset "Raumbuch" aus der IFC-Datei löschen möchten?')) {
+                return;
+            }
+
+            showResult('step4Result', 'loading', '⏳ Lösche Pset "Raumbuch" aus IFC...');
+
+            try {
+                const response = await fetch(`${API_BASE}/delete-raumbuch-pset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        ifcFileId: ifcFileId,
+                        targetFolderId: targetFolder
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let message = `✅ ${data.Message || data.message || 'Pset erfolgreich gelöscht!'}<br>`;
+                    message += `Psets entfernt: ${data.PsetsRemoved || data.pload}{0}>';
+  showResult('step5_1Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    console.error('Create room sheets failed:', errorMsg);
+                    showResult('step5_1Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in createRoomSheets:', error);
+                showResult('step5_1Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function loadIfcFilesForInventory() {
+            const token = getToken();
+            const inventoryFolderSelect = document.getElementById('inventoryFolder');
+            const folderId = inventoryFolderSelect.value;
+
+            console.log('loadIfcFilesForInventory() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Inventory Folder ID:', folderId);
+
+            if (!token || !folderId) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Token und IFC-Ordner auswählen');
+                return;
+            }
+
+            showResult('step5_2Result', 'loading', '⏳ Lade IFC-Dateien...');
+
+            try {
+                const response = await fetch(`${API_PROJECT}/files`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        accessToken: token, 
+                        folderId: folderId,
+                        fileExtensions: ['ifc']
+                    })
+                });
+
+                console.log('IFC response status:', response.status);
+                const data = await response.json();
+                console.log('IFC response data:', data);
+
+                if (response.ok && data.success) {
+                    const filesList = document.getElementById('ifcFilesList');
+                    filesList.innerHTML = '';
+                    
+                    if (!data.files || data.files.length === 0) {
+                        filesList.innerHTML = '<p style="color: #999;">Keine IFC-Dateien gefunden</p>';
+                        showResult('step5_2Result', 'warning', '⚠ Keine IFC-Dateien im Ordner gefunden');
+                        return;
+                    }
+
+                    // Clear previous selection
+                    selectedIfcFilesForInventory = [];
+
+                    // Create checkbox list
+                    data.files.forEach(file => {
+                        const label = document.createElement('label');
+                        label.className = 'file-checkbox-label';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'file-checkbox';
+                        checkbox.value = file.id;
+                        checkbox.dataset.name = file.name;
+                        checkbox.onchange = function() {
+                            if (this.checked) {
+                                selectedIfcFilesForInventory.push({
+                                    id: file.id,
+                                    name: file.name
+                                });
+                            } else {
+                                selectedIfcFilesForInventory = selectedIfcFilesForInventory.filter(f => f.id !== file.id);
+                            }
+                            console.log('Selected IFC files:', selectedIfcFilesForInventory.length);
+                        };
+                        
+                        const span = document.createElement('span');
+                        span.textContent = file.name;
+                        
+                        label.appendChild(checkbox);
+                        label.appendChild(span);
+                        filesList.appendChild(label);
+                    });
+
+                    showResult('step5_2Result', 'success', `✅ ${data.files.length} IFC-Dateien geladen`);
+                } else {
+                    const errorMsg = data.message || data.Message || 'Fehler beim Laden der IFC-Dateien';
+                    console.error('Load IFC files failed:', errorMsg);
+                    showResult('step5_2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in loadIfcFilesForInventory:', error);
+                showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function fillInventory() {
+            const token = getToken();
+            const raumbuchFileId = document.getElementById('raumbuchFile').value;
+            const targetFolder = getTargetFolder();
+            const psetPartialName = document.getElementById('psetPartialName').value.trim();
+            const roomPropertyName = document.getElementById('roomPropertyName').value.trim();
+
+            console.log('fillInventory() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Raumbuch File ID:', raumbuchFileId);
+            console.log('Target Folder:', targetFolder);
+            console.log('Selected IFC files:', selectedIfcFilesForInventory.length);
+            console.log('Pset partial name:', psetPartialName);
+            console.log('Room property name:', roomPropertyName);
+
+            if (!token || !raumbuchFileId || !targetFolder || selectedIfcFilesForInventory.length === 0 || !psetPartialName || !roomPropertyName) {
+                let missingFields = [];
+                if (!token) missingFields.push('Token');
+                if (!raumbuchFileId) missingFields.push('Raumbuch-Datei');
+                if (!targetFolder) missingFields.push('Zielordner');
+                if (selectedIfcFilesForInventory.length === 0) missingFields.push('IFC-Dateien (mindestens eine)');
+                if (!psetPartialName) missingFields.push('Pset Name');
+                if (!roomPropertyName) missingFields.push('Raumnummer-Eigenschaft');
+                
+                showResult('step5_2Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            showResult('step5_2Result', 'loading', '⏳ Fülle Inventar ein... (kann mehrere Sekunden dauern)');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    raumbuchFileId: raumbuchFileId,
+                    ifcFileIds: selectedIfcFilesForInventory.map(f => f.id),
+                    psetPartialName: psetPartialName,
+                    roomPropertyName: roomPropertyName,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/fill-inventory`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    let message = `✅ ${data.message || data.Message || 'Inventar erfolgreich erstellt!'}<br>`;
+                    message += `IFC-Dateien verarbeitet: ${selectedIfcFilesForInventory.length}<br>`;
+                    message += `Räume aktualisiert: ${data.roomsUpdated || data.RoomsUpdated || 0}<br>`;
+                    message += `Objekte hinzugefügt: ${data.totalItems || data.TotalItems || 0}<br>`;
+                    
+                    if ((data.warnings || data.Warnings) && (data.warnings || data.Warnings).length > 0) {
+                        const warnings = data.warnings || data.Warnings;
+                        message += '<br><strong>Warnungen:</strong><br>';
+                        warnings.slice(0, 5).forEach(w => {
+                            message += `- ${w}<br>`;
+                        });
+                        if (warnings.length > 5) {
+                            message += `... und ${warnings.length - 5} weitere<br>`;
+                        }
+                    }
+                    
+                    showResult('step5_2Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
+                    console.error('Fill inventory failed:', errorMsg);
+                    showResult('step5_2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in fillInventory:', error);
+                showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+    </script>
