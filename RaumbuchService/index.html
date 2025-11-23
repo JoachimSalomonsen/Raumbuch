@@ -242,7 +242,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     <div class="form-group">
                         <label for="bcfDueDate">Fälligkeitsdatum:</label>
                         <input type="date" id="bcfDueDate" class="form-control">
-                        <small>Standard ist heute</small>
+                        <small>Wird automatisch auf heute gesetzt</small>
                     </div>
 
                     <button class="btn btn-primary" onclick="createBcfTopic()">📋 BCF-Themen erstellen</button>
@@ -1823,8 +1823,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         // Initialize date picker with today's date as default
         document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('bcfDueDate').value = today;
+            const dueDateField = document.getElementById('bcfDueDate');
+            if (dueDateField) {
+                const today = new Date().toISOString().split('T')[0];
+                dueDateField.value = today;
+            }
         });
 
     </script>
