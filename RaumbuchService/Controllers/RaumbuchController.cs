@@ -1093,10 +1093,11 @@ namespace RaumbuchService.Controllers
                     // Sanitize sheet name (Excel limits: 31 chars, no special chars)
                     string sheetName = SanitizeSheetName(roomName);
                     
-                    // Check if sheet already exists, if so skip or update
+                    // Check if sheet already exists, if so skip
                     if (wb.Worksheets.Any(s => s.Name.Equals(sheetName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        continue; // Skip if sheet already exists
+                        System.Diagnostics.Debug.WriteLine($"Sheet '{sheetName}' already exists, skipping");
+                        continue;
                     }
 
                     var roomSheet = wb.Worksheets.Add(sheetName);
@@ -1117,8 +1118,8 @@ namespace RaumbuchService.Controllers
                     headerRange.Style.Font.Bold = true;
                     headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-                    // Data will be filled later by other processes
-                    // For now, just create the structure
+                    // NOTE: Data rows (starting from row 2) will be populated by the fill-inventory endpoint
+                    // which reads objects from IFC files and fills them into the appropriate room sheets
 
                     // Auto-fit columns
                     roomSheet.Columns().AdjustToContents();
