@@ -3,7 +3,7 @@
 const API_BASE_URL = 'https://raumbuch.azurewebsites.net/api/raumbuch';
 // const API_BASE_URL = 'https://localhost:44305/api/raumbuch'; // For local testing
 
-// State
+// State - Inventory Management enabled
 let accessToken = null;
 let projectId = null;
 let folderId = null;
