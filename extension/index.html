@@ -86,13 +86,29 @@
                 <div id="step4Result" class="result"></div>
             </section>
 
-            <!-- Step 5: Reset IFC -->
+            <!-- Step 5: Inventarverwaltung -->
             <section class="card">
-                <h2>5️⃣ IFC zurücksetzen</h2>
-                <p>Entfernt Analyse-Markierungen</p>
-                <button id="btnResetIfc" class="btn btn-warning">
-                    🔄 IFC zurücksetzen
-                </button>
+                <h2>5️⃣ Inventarverwaltung</h2>
+                <p>Verwaltet Raumlisten und Inventar</p>
+                
+                <div class="button-group">
+                    <button id="btnCreateRoomSheets" class="btn btn-primary">
+                        📋 Raumliste erstellen
+                    </button>
+                    <button id="btnDeleteRoomLists" class="btn btn-warning">
+                        🗑️ Raumlisten löschen
+                    </button>
+                </div>
+                
+                <div class="button-group">
+                    <button id="btnFillInventory" class="btn btn-primary">
+                        📦 Inventar erstellen
+                    </button>
+                    <button id="btnUpdateInventory" class="btn btn-primary">
+                        🔄 Inventar aktualisieren
+                    </button>
+                </div>
+                
                 <div id="step5Result" class="result"></div>
             </section>
         </main>

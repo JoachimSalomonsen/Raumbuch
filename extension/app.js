@@ -3,7 +3,7 @@
 const API_BASE_URL = 'https://raumbuch.azurewebsites.net/api/raumbuch';
 // const API_BASE_URL = 'https://localhost:44305/api/raumbuch'; // For local testing
 
-// State
+// State - Inventory Management enabled
 let accessToken = null;
 let projectId = null;
 let folderId = null;
@@ -37,7 +37,10 @@ function setupEventListeners() {
     document.getElementById('btnCreateTodo').addEventListener('click', createTodo);
     document.getElementById('btnImportIfc').addEventListener('click', importIfc);
     document.getElementById('btnAnalyzeRooms').addEventListener('click', analyzeRooms);
-    document.getElementById('btnResetIfc').addEventListener('click', resetIfc);
+    document.getElementById('btnCreateRoomSheets').addEventListener('click', createRoomSheets);
+    document.getElementById('btnDeleteRoomLists').addEventListener('click', deleteRoomLists);
+    document.getElementById('btnFillInventory').addEventListener('click', fillInventory);
+    document.getElementById('btnUpdateInventory').addEventListener('click', updateInventory);
 }
 
 // Get Access Token from Trimble Connect
@@ -212,8 +215,181 @@ async function analyzeRooms() {
     showError('Bitte implementieren Sie zuerst IFC Import', 'step4Result');
 }
 
-async function resetIfc() {
-    showError('Bitte implementieren Sie zuerst IFC Import', 'step5Result');
+async function createRoomSheets() {
+    showLoading('Erstelle Raumblätter...', 'step5Result');
+    
+    try {
+        const raumbuchFile = document.getElementById('raumbuchFile').value;
+        const targetFolder = document.getElementById('targetFolder').value;
+        
+        if (!raumbuchFile || !targetFolder) {
+            showError('❌ Bitte Raumbuch-Datei und Zielordner auswählen', 'step5Result');
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/create-room-sheets`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                raumbuchFileId: raumbuchFile,
+                targetFolderId: targetFolder
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            let message = `✅ ${data.message}<br>`;
+            message += `${data.roomSheetsCreated} Raumblätter erstellt`;
+            showSuccess(message, 'step5Result');
+        } else {
+            showError(`❌ Fehler: ${data.message}`, 'step5Result');
+        }
+    } catch (error) {
+        showError(`❌ Fehler: ${error.message}`, 'step5Result');
+    }
+}
+
+async function deleteRoomLists() {
+    showLoading('Lösche Raumlisten...', 'step5Result');
+    
+    try {
+        const raumbuchFile = document.getElementById('raumbuchFile').value;
+        const targetFolder = document.getElementById('targetFolder').value;
+        
+        if (!raumbuchFile || !targetFolder) {
+            showError('❌ Bitte Raumbuch-Datei und Zielordner auswählen', 'step5Result');
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/delete-room-lists`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                raumbuchFileId: raumbuchFile,
+                targetFolderId: targetFolder
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            let message = `✅ ${data.message}<br>`;
+            message += `${data.sheetsDeleted} Raumblätter gelöscht<br>`;
+            message += `${data.hyperlinksRemoved} Hyperlinks entfernt`;
+            showSuccess(message, 'step5Result');
+        } else {
+            showError(`❌ Fehler: ${data.message}`, 'step5Result');
+        }
+    } catch (error) {
+        showError(`❌ Fehler: ${error.message}`, 'step5Result');
+    }
+}
+
+async function fillInventory() {
+    showLoading('Erstelle Inventar...', 'step5Result');
+    
+    try {
+        const raumbuchFile = document.getElementById('raumbuchFile').value;
+        const targetFolder = document.getElementById('targetFolder').value;
+        const ifcFiles = getSelectedIfcFiles(); // Helper to get selected IFC files
+        
+        if (!raumbuchFile || !targetFolder || ifcFiles.length === 0) {
+            showError('❌ Bitte Raumbuch-Datei, Zielordner und IFC-Dateien auswählen', 'step5Result');
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/fill-inventory`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                raumbuchFileId: raumbuchFile,
+                targetFolderId: targetFolder,
+                ifcFileIds: ifcFiles,
+                psetPartialName: 'Raumzuordnung',
+                roomPropertyName: 'Room Nbr'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            let message = `✅ ${data.message}<br>`;
+            message += `${data.roomsUpdated} Räume aktualisiert<br>`;
+            message += `${data.totalItems} Objekte hinzugefügt`;
+            if (data.warnings && data.warnings.length > 0) {
+                message += `<br><br>⚠️ Warnungen:<br>${data.warnings.join('<br>')}`;
+            }
+            showSuccess(message, 'step5Result');
+        } else {
+            showError(`❌ Fehler: ${data.message}`, 'step5Result');
+        }
+    } catch (error) {
+        showError(`❌ Fehler: ${error.message}`, 'step5Result');
+    }
+}
+
+async function updateInventory() {
+    showLoading('Aktualisiere Inventar...', 'step5Result');
+    
+    try {
+        const raumbuchFile = document.getElementById('raumbuchFile').value;
+        const targetFolder = document.getElementById('targetFolder').value;
+        const ifcFiles = getSelectedIfcFiles(); // Helper to get selected IFC files
+        
+        if (!raumbuchFile || !targetFolder || ifcFiles.length === 0) {
+            showError('❌ Bitte Raumbuch-Datei, Zielordner und IFC-Dateien auswählen', 'step5Result');
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/update-inventory`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                raumbuchFileId: raumbuchFile,
+                targetFolderId: targetFolder,
+                ifcFileIds: ifcFiles,
+                psetPartialName: 'Raumzuordnung',
+                roomPropertyName: 'Room Nbr'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            let message = `✅ ${data.message}<br>`;
+            message += `${data.roomsUpdated} Räume aktualisiert<br>`;
+            message += `${data.itemsDeleted} Objekte gelöscht<br>`;
+            message += `${data.itemsAdded} Objekte hinzugefügt`;
+            if (data.warnings && data.warnings.length > 0) {
+                message += `<br><br>⚠️ Warnungen:<br>${data.warnings.join('<br>')}`;
+            }
+            showSuccess(message, 'step5Result');
+        } else {
+            showError(`❌ Fehler: ${data.message}`, 'step5Result');
+        }
+    } catch (error) {
+        showError(`❌ Fehler: ${error.message}`, 'step5Result');
+    }
+}
+
+function getSelectedIfcFiles() {
+    // For now, return a single IFC file from the selector
+    // This could be enhanced to support multiple IFC file selection
+    const ifcFile = document.getElementById('ifcFile').value;
+    return ifcFile ? [ifcFile] : [];
 }
 
 // UI Helpers

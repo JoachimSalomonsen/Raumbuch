@@ -160,6 +160,19 @@ footer {
     border-top: 1px solid #e0e0e0;
 }
 
+/* Button Group */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.button-group .btn {
+    flex: 1;
+    min-width: 200px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     body {
