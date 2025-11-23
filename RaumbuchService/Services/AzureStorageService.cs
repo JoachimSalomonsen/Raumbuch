@@ -21,6 +21,10 @@ namespace RaumbuchService.Services
         private readonly string _containerName = "raumbuch-configs";
         private readonly bool _isAzureEnabled;
 
+        // Invalid characters for Azure blob paths (shared for performance)
+        private static readonly HashSet<char> InvalidPathChars = new HashSet<char> { '<', '>', ':', '"', '|', '?', '*', '\\', '\0' };
+        private static readonly HashSet<char> InvalidFileNameChars = new HashSet<char> { '/', '\\', '<', '>', ':', '"', '|', '?', '*', '\0' };
+
         public AzureStorageService()
         {
             // Read from environment variable (Azure App Settings) or Web.config
@@ -228,8 +232,7 @@ namespace RaumbuchService.Services
 
             // Azure Blob Storage allows alphanumeric, hyphen, underscore, and period
             // Remove characters that are invalid for Azure blob paths (keeping slashes for structure)
-            var invalidChars = new[] { '<', '>', ':', '"', '|', '?', '*', '\\' };
-            string sanitized = new string(path.Where(c => !invalidChars.Contains(c) && c != '\0').ToArray());
+            string sanitized = new string(path.Where(c => !InvalidPathChars.Contains(c)).ToArray());
             
             // Replace any remaining problematic characters with underscores
             sanitized = sanitized.Trim().Replace(' ', '_');
@@ -254,9 +257,8 @@ namespace RaumbuchService.Services
                 throw new ArgumentException("File name cannot be empty.", nameof(fileName));
             }
 
-            // Remove characters that are invalid for Azure blob names
-            var invalidChars = new[] { '/', '\\', '<', '>', ':', '"', '|', '?', '*' };
-            string sanitized = new string(fileName.Where(c => !invalidChars.Contains(c) && c != '\0').ToArray());
+            // Remove characters that are invalid for Azure blob names using shared HashSet
+            string sanitized = new string(fileName.Where(c => !InvalidFileNameChars.Contains(c)).ToArray());
             
             // Replace spaces with underscores and trim
             sanitized = sanitized.Trim().Replace(' ', '_');

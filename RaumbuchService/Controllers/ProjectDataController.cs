@@ -314,7 +314,7 @@ namespace RaumbuchService.Controllers
                 if (request == null || request.Configuration == null || 
                     string.IsNullOrWhiteSpace(request.Configuration.ProjectId))
                 {
-                    return BadRequest("Ung�ltige Konfiguration.");
+                    return BadRequest("Ungueltige Konfiguration.");
                 }
 
                 if (string.IsNullOrWhiteSpace(request.ConfigName))
