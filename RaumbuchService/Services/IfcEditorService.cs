@@ -674,13 +674,13 @@ namespace RaumbuchService.Services
                             ElementType = ifcElement.GetType().Name,
                             PsetName = pset.Name,
                             RoomNumber = roomNumber,
-                            IfcFileName = ifcFileName,  // Add filename
-                            AdditionalProperties = new Dictionary<string, string>()
+                            IfcFileName = ifcFileName  // Add filename
                         };
 
                         // Extract additional properties if specified
                         if (additionalPropertyNames != null && additionalPropertyNames.Count > 0)
                         {
+                            inventoryItem.AdditionalProperties = new Dictionary<string, string>();
                             ExtractAdditionalProperties(ifcElement, additionalPropertyNames, inventoryItem.AdditionalProperties);
                         }
 
