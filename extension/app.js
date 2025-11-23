@@ -99,7 +99,7 @@ async function importTemplate() {
     const targetFolderId = document.getElementById('targetFolder').value;
     
     if (!templateFileId || !targetFolderId) {
-        showError('Bitte w�hlen Sie Vorlage und Zielordner', 'step1Result');
+        showError('Bitte wählen Sie Vorlage und Zielordner', 'step1Result');
         return;
     }
     
@@ -120,12 +120,12 @@ async function importTemplate() {
         const data = await response.json();
         
         if (data.success) {
-            showSuccess(`? ${data.message}<br>Datei: ${data.raumprogrammFileName}`, 'step1Result');
+            showSuccess(`✅ ${data.message}<br>Datei: ${data.raumprogrammFileName}`, 'step1Result');
         } else {
-            showError(`? Fehler: ${data.message}`, 'step1Result');
+            showError(`❌ Fehler: ${data.message}`, 'step1Result');
         }
     } catch (error) {
-        showError(`? Fehler: ${error.message}`, 'step1Result');
+        showError(`❌ Fehler: ${error.message}`, 'step1Result');
     }
 }
 
@@ -156,12 +156,12 @@ async function createTodo() {
         const data = await response.json();
         
         if (data.success) {
-            showSuccess(`? ${data.message}`, 'step2Result');
+            showSuccess(`✅ ${data.message}`, 'step2Result');
         } else {
-            showError(`? Fehler: ${data.message}`, 'step2Result');
+            showError(`❌ Fehler: ${data.message}`, 'step2Result');
         }
     } catch (error) {
-        showError(`? Fehler: ${error.message}`, 'step2Result');
+        showError(`❌ Fehler: ${error.message}`, 'step2Result');
     }
 }
 
@@ -171,7 +171,7 @@ async function importIfc() {
     const targetFolderId = document.getElementById('targetFolder').value;
     
     if (!ifcFileId || !raumprogrammFileId) {
-        showError('Bitte w�hlen Sie IFC und Raumprogramm', 'step3Result');
+        showError('Bitte wählen Sie IFC und Raumprogramm', 'step3Result');
         return;
     }
     
@@ -193,18 +193,18 @@ async function importIfc() {
         const data = await response.json();
         
         if (data.success) {
-            let message = `? ${data.message}<br>`;
+            let message = `✅ ${data.message}<br>`;
             message += `Datei: ${data.raumbuchFileName}<br>`;
             message += `<strong>Analyse:</strong><br>`;
             data.analysis.forEach(a => {
-                message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${a.isOverLimit ? '??' : '?'}<br>`;
+                message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${a.isOverLimit ? '⚠️' : '✅'}<br>`;
             });
             showSuccess(message, 'step3Result');
         } else {
-            showError(`? Fehler: ${data.message}`, 'step3Result');
+            showError(`❌ Fehler: ${data.message}`, 'step3Result');
         }
     } catch (error) {
-        showError(`? Fehler: ${error.message}`, 'step3Result');
+        showError(`❌ Fehler: ${error.message}`, 'step3Result');
     }
 }
 
@@ -221,7 +221,7 @@ async function resetIfc() {
 function showLoading(message, elementId) {
     const element = document.getElementById(elementId);
     element.className = 'result loading';
-    element.innerHTML = `? ${message}`;
+    element.innerHTML = `⏳ ${message}`;
 }
 
 function showSuccess(message, elementId) {

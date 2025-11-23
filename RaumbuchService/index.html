@@ -570,28 +570,29 @@
                 const data = await response.json();
                 console.log('Response data:', data);
 
-                if (response.ok && data.success) {
+                if (response.ok && (data.success || data.Success)) {
                     const select = document.getElementById('bcfAssignees');
                     select.innerHTML = '';
                     
-                    if (!data.users || !Array.isArray(data.users)) {
+                    const users = data.users || data.Users;
+                    if (!users || !Array.isArray(users)) {
                         showResult('step2Result', 'error', '⚠ Keine Benutzer-Daten in Antwort');
                         return;
                     }
 
-                    console.log('Number of users:', data.users.length);
+                    console.log('Number of users:', users.length);
                     
-                    data.users.forEach(user => {
+                    users.forEach(user => {
                         console.log('Adding user:', user.email, user.displayName);
                         const option = document.createElement('option');
-                        option.value = user.email;
-                        option.textContent = `${user.displayName} (${user.email})`;
-                        option.dataset.id = user.id;
-                        option.dataset.displayName = user.displayName;
+                        option.value = user.email || user.Email;
+                        option.textContent = `${user.displayName || user.DisplayName} (${user.email || user.Email})`;
+                        option.dataset.id = user.id || user.Id;
+                        option.dataset.displayName = user.displayName || user.DisplayName;
                         select.appendChild(option);
                     });
 
-                    showResult('step2Result', 'success', `✅ ${data.users.length} Benutzer geladen!`);
+                    showResult('step2Result', 'success', `✅ ${users.length} Benutzer geladen!`);
                 } else {
                     console.error('Response not OK or success=false');
                     const errorMsg = data.message || data.Message || 'Unbekannter Fehler';
@@ -814,14 +815,17 @@
 
                     const data = await response.json();
                     
-                    if (data.success && data.files) {
+                    if ((data.success || data.Success) && (data.files || data.Files)) {
                         // Find the file by name (case-insensitive)
-                        const foundFile = data.files.find(f => 
-                            f.name.toLowerCase() === fileName.toLowerCase()
+                        const files = data.files || data.Files;
+                        const foundFile = files.find(f => 
+                            (f.name || f.Name).toLowerCase() === fileName.toLowerCase()
                         );
                         
-                        if (foundFile && foundFile.id) {
-                            console.log(`Found file: ${foundFile.name}, ID: ${foundFile.id}`);
+                        if (foundFile && (foundFile.id || foundFile.Id)) {
+                            const fileId = foundFile.id || foundFile.Id;
+                            const fileName = foundFile.name || foundFile.Name;
+                            console.log(`Found file: ${fileName}, ID: ${fileId}`);
                             return foundFile;
                         }
                     }
@@ -1371,3 +1375,192 @@
         }
 
         async function createRoomSheets() {
+            const token = getToken();
+            const raumbuchFileId = document.getElementById('raumbuchFile').value;
+            const targetFolder = getTargetFolder();
+
+            console.log('createRoomSheets() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Raumbuch File ID:', raumbuchFileId);
+            console.log('Target Folder:', targetFolder);
+
+            if (!token || !raumbuchFileId || !targetFolder) {
+                showResult('step5_1Result', 'error', '⚠ Bitte Token, Raumbuch-Datei und Zielordner auswählen');
+                return;
+            }
+
+            showResult('step5_1Result', 'loading', '⏳ Erstelle Raumlisten...');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    raumbuchFileId: raumbuchFileId,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/create-room-sheets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && (data.success || data.Success)) {
+                    let message = `✅ ${data.message || data.Message}<br>`;
+                    message += `Raumlisten erstellt: ${data.roomSheetsCreated || data.RoomSheetsCreated || 0}`;
+                    
+                    showResult('step5_1Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
+                    showResult('step5_1Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step5_1Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function loadIfcFilesForInventory() {
+            const token = getToken();
+            const inventoryFolderId = document.getElementById('inventoryFolder').value;
+
+            console.log('loadIfcFilesForInventory() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Inventory Folder ID:', inventoryFolderId);
+
+            if (!token || !inventoryFolderId) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Token und IFC-Ordner auswählen');
+                return;
+            }
+
+            showResult('step5_2Result', 'loading', '⏳ IFC-Dateien werden geladen...');
+
+            try {
+                const response = await fetch(`${API_PROJECT}/files`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        accessToken: token, 
+                        folderId: inventoryFolderId,
+                        fileExtensions: ['ifc']
+                    })
+                });
+
+                console.log('IFC files response status:', response.status);
+                const data = await response.json();
+                console.log('IFC files response data:', data);
+
+                if (response.ok && (data.success || data.Success)) {
+                    const ifcFilesList = document.getElementById('ifcFilesList');
+                    
+                    const files = data.files || data.Files;
+                    if (files && files.length > 0) {
+                        // Create checkboxes for each IFC file
+                        let html = '';
+                        files.forEach(file => {
+                            const fileId = file.id || file.Id;
+                            const fileName = file.name || file.Name;
+                            html += `
+                                <label class="file-checkbox-label">
+                                    <input type="checkbox" id="ifc_${fileId}" value="${fileId}" class="ifc-file-checkbox file-checkbox">
+                                    <span>${fileName}</span>
+                                </label>
+                            `;
+                        });
+                        ifcFilesList.innerHTML = html;
+                        showResult('step5_2Result', 'success', `✅ ${files.length} IFC-Datei(en) gefunden`);
+                    } else {
+                        ifcFilesList.innerHTML = '<p style="color: #666;">Keine IFC-Dateien gefunden</p>';
+                        showResult('step5_2Result', 'warning', '⚠ Keine IFC-Dateien im ausgewählten Ordner gefunden');
+                    }
+                } else {
+                    const errorMsg = data.message || data.Message || `HTTP ${response.status}`;
+                    showResult('step5_2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function fillInventory() {
+            const token = getToken();
+            const raumbuchFileId = document.getElementById('raumbuchFile').value;
+            const targetFolder = getTargetFolder();
+            const psetPartialName = document.getElementById('psetPartialName').value;
+            const roomPropertyName = document.getElementById('roomPropertyName').value;
+
+            // Get selected IFC file IDs
+            const selectedCheckboxes = document.querySelectorAll('.ifc-file-checkbox:checked');
+            const ifcFileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            console.log('fillInventory() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Raumbuch File ID:', raumbuchFileId);
+            console.log('IFC File IDs:', ifcFileIds);
+            console.log('Pset Partial Name:', psetPartialName);
+            console.log('Room Property Name:', roomPropertyName);
+
+            if (!token || !raumbuchFileId || !targetFolder || ifcFileIds.length === 0) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Token, Raumbuch-Datei, Zielordner und mindestens eine IFC-Datei auswählen');
+                return;
+            }
+
+            if (!psetPartialName || !roomPropertyName) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Pset-Name und Raumnummer-Eigenschaft angeben');
+                return;
+            }
+
+            showResult('step5_2Result', 'loading', '⏳ Inventar wird erstellt...');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    raumbuchFileId: raumbuchFileId,
+                    ifcFileIds: ifcFileIds,
+                    psetPartialName: psetPartialName,
+                    roomPropertyName: roomPropertyName,
+                    targetFolderId: targetFolder
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/fill-inventory`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && (data.success || data.Success)) {
+                    let message = `✅ ${data.message || data.Message}<br>`;
+                    message += `Räume aktualisiert: ${data.roomsUpdated || data.RoomsUpdated || 0}<br>`;
+                    message += `Objekte hinzugefügt: ${data.totalItems || data.TotalItems || 0}`;
+                    
+                    const warnings = data.warnings || data.Warnings;
+                    if (warnings && warnings.length > 0) {
+                        message += '<br><br><strong>Warnungen:</strong><br>';
+                        warnings.forEach(w => {
+                            message += `⚠ ${w}<br>`;
+                        });
+                    }
+                    
+                    showResult('step5_2Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
+                    showResult('step5_2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+    </script>
+</body>
+</html>

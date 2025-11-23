@@ -25,7 +25,7 @@ namespace RaumbuchService.Controllers
         }
 
         // --------------------------------------------------------------------
-        //  1. IMPORT TEMPLATE – CREATE RAUMPROGRAMM
+        //  1. IMPORT TEMPLATE â€“ CREATE RAUMPROGRAMM
         // --------------------------------------------------------------------
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
                     System.Diagnostics.Debug.WriteLine("Validation failed");
-                    return BadRequest("Ungültige Anfrage. AccessToken, TemplateFileId und TargetFolderId sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. AccessToken, TemplateFileId und TargetFolderId sind erforderlich.");
                 }
 
                 System.Diagnostics.Debug.WriteLine($"Creating TrimbleConnectService with token length: {request.AccessToken.Length}");
@@ -116,7 +116,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.AccessToken) ||
                     string.IsNullOrWhiteSpace(request.ProjectId))
                 {
-                    return BadRequest("Ungültige Anfrage. AccessToken und ProjectId sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. AccessToken und ProjectId sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -165,7 +165,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.ProjectId) ||
                     string.IsNullOrWhiteSpace(request.AssignedTo))
                 {
-                    return BadRequest("Ungültige Anfrage. AccessToken, ProjectId und AssignedTo sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. AccessToken, ProjectId und AssignedTo sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -256,7 +256,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
                     System.Diagnostics.Debug.WriteLine("Validation failed - returning BadRequest");
-                    return BadRequest("Ungültige Anfrage. AccessToken, IfcFileId, RaumprogrammFileId und TargetFolderId sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. AccessToken, IfcFileId, RaumprogrammFileId und TargetFolderId sind erforderlich.");
                 }
 
                 System.Diagnostics.Debug.WriteLine("Validation passed, creating services...");
@@ -359,8 +359,8 @@ namespace RaumbuchService.Controllers
         // --------------------------------------------------------------------
 
         /// <summary>
-        /// Analyzes rooms and writes Pset "Überprüfung der Raumkategorie" to IFC.
-        /// Swiss German: Analysiert Räume und markiert diese in der IFC-Datei.
+        /// Analyzes rooms and writes Pset "ÃœberprÃ¼fung der Raumkategorie" to IFC.
+        /// Swiss German: Analysiert RÃ¤ume und markiert diese in der IFC-Datei.
         /// </summary>
         [HttpPost]
         [Route("analyze-rooms")]
@@ -374,7 +374,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -422,7 +422,7 @@ namespace RaumbuchService.Controllers
                 return Ok(new AnalyzeRoomsResponse
                 {
                     Success = true,
-                    Message = $"{result.RoomsMarked} Räume wurden markiert.",
+                    Message = $"{result.RoomsMarked} RÃ¤ume wurden markiert.",
                     UpdatedIfcFileId = fileId,
                     RoomsMarked = result.RoomsMarked,
                     MarkedRoomNames = result.MarkedRoomNames
@@ -430,7 +430,7 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                return InternalServerError(new Exception($"Fehler beim Analysieren der Räume: {ex.Message}", ex));
+                return InternalServerError(new Exception($"Fehler beim Analysieren der RÃ¤ume: {ex.Message}", ex));
             }
         }
 
@@ -439,7 +439,7 @@ namespace RaumbuchService.Controllers
         // --------------------------------------------------------------------
 
         /// <summary>
-        /// Removes Pset "Überprüfung der Raumkategorie" from IFC.
+        /// Removes Pset "ÃœberprÃ¼fung der Raumkategorie" from IFC.
         /// Swiss German: Entfernt die Analyse-Markierungen aus der IFC-Datei.
         /// </summary>
         [HttpPost]
@@ -453,7 +453,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.IfcFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -487,7 +487,7 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                return InternalServerError(new Exception($"Fehler beim Zurücksetzen der IFC-Datei: {ex.Message}", ex));
+                return InternalServerError(new Exception($"Fehler beim ZurÃ¼cksetzen der IFC-Datei: {ex.Message}", ex));
             }
         }
 
@@ -516,7 +516,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.RaumprogrammFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -634,7 +634,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -657,12 +657,12 @@ namespace RaumbuchService.Controllers
                     "Raumbuch.xlsx"
                 );
 
-                // Parse Raumbuch Excel to extract Differenz and calculate Gemäss Raumprogramm
+                // Parse Raumbuch Excel to extract Differenz and calculate GemÃ¤ss Raumprogramm
                 var raumbuchData = ParseRaumbuchForPset(raumbuchPath);
 
                 if (raumbuchData.Count == 0)
                 {
-                    return BadRequest("Keine Raumbuch-Daten gefunden. Bitte Raumbuch.xlsx prüfen.");
+                    return BadRequest("Keine Raumbuch-Daten gefunden. Bitte Raumbuch.xlsx prÃ¼fen.");
                 }
 
                 // Write Pset to IFC
@@ -676,7 +676,7 @@ namespace RaumbuchService.Controllers
                 File.Delete(ifcPath);
                 File.Delete(raumbuchPath);
 
-                string message = $"Pset 'Raumbuch' erfolgreich geschrieben. {result.RoomsUpdated} Räume aktualisiert, {result.RoomsSkipped} übersprungen.";
+                string message = $"Pset 'Raumbuch' erfolgreich geschrieben. {result.RoomsUpdated} RÃ¤ume aktualisiert, {result.RoomsSkipped} Ã¼bersprungen.";
 
                 return Ok(new WriteRaumbuchPsetResponse
                 {
@@ -710,7 +710,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -738,7 +738,7 @@ namespace RaumbuchService.Controllers
 
                 if (raumbuchData.Count == 0)
                 {
-                    return BadRequest("Keine Raumbuch-Daten gefunden. Bitte Raumbuch.xlsx prüfen.");
+                    return BadRequest("Keine Raumbuch-Daten gefunden. Bitte Raumbuch.xlsx prÃ¼fen.");
                 }
 
                 // Update Pset in IFC
@@ -752,7 +752,7 @@ namespace RaumbuchService.Controllers
                 File.Delete(ifcPath);
                 File.Delete(raumbuchPath);
 
-                string message = $"Pset 'Raumbuch' erfolgreich aktualisiert. {result.RoomsUpdated} Räume aktualisiert, {result.RoomsSkipped} übersprungen.";
+                string message = $"Pset 'Raumbuch' erfolgreich aktualisiert. {result.RoomsUpdated} RÃ¤ume aktualisiert, {result.RoomsSkipped} Ã¼bersprungen.";
 
                 return Ok(new WriteRaumbuchPsetResponse
                 {
@@ -772,7 +772,7 @@ namespace RaumbuchService.Controllers
 
         /// <summary>
         /// Removes Pset "Raumbuch" from IFC spaces.
-        /// Swiss German: Löscht Raumbuch Pset aus IFC-Datei.
+        /// Swiss German: LÃ¶scht Raumbuch Pset aus IFC-Datei.
         /// </summary>
         [HttpPost]
         [Route("delete-raumbuch-pset")]
@@ -785,7 +785,7 @@ namespace RaumbuchService.Controllers
                     string.IsNullOrWhiteSpace(request.IfcFileId) ||
                     string.IsNullOrWhiteSpace(request.TargetFolderId))
                 {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
                 }
 
                 var tcService = new TrimbleConnectService(request.AccessToken);
@@ -831,6 +831,248 @@ namespace RaumbuchService.Controllers
             catch (Exception ex)
             {
                 return InternalServerError(new Exception($"Fehler beim Entfernen des Raumbuch Pset: {ex.Message}", ex));
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  CREATE ROOM SHEETS
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Creates individual sheets for each room in Raumbuch Excel.
+        /// Swiss German: Erstellt einzelne ArbeitsblÃ¤tter fÃ¼r jeden Raum.
+        /// </summary>
+        [HttpPost]
+        [Route("create-room-sheets")]
+        public async Task<IHttpActionResult> CreateRoomSheets([FromBody] CreateRoomSheetsRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
+                    string.IsNullOrWhiteSpace(request.TargetFolderId))
+                {
+                    return BadRequest("UngÃ¼ltige Anfrage. AccessToken, RaumbuchFileId und TargetFolderId sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+
+                // Download Raumbuch Excel
+                string raumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch.xlsx"
+                );
+
+                // Add room sheets to the Excel file
+                var roomNames = CreateRoomSheetsInExcel(raumbuchPath);
+
+                // Upload updated Raumbuch to Trimble Connect
+                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
+
+                // Cleanup
+                File.Delete(raumbuchPath);
+
+                return Ok(new CreateRoomSheetsResponse
+                {
+                    Success = true,
+                    Message = $"{roomNames.Count} RaumblÃ¤tter wurden erfolgreich erstellt.",
+                    RaumbuchFileId = fileId,
+                    RoomSheetsCreated = roomNames.Count,
+                    RoomNames = roomNames
+                });
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(new Exception($"Fehler beim Erstellen der RaumblÃ¤tter: {ex.Message}", ex));
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  FILL INVENTORY
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Fills room sheets with inventory from IFC files.
+        /// Swiss German: FÃ¼llt RaumblÃ¤tter mit Inventar aus IFC-Dateien.
+        /// </summary>
+        [HttpPost]
+        [Route("fill-inventory")]
+        public async Task<IHttpActionResult> FillInventory([FromBody] FillInventoryRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
+                    string.IsNullOrWhiteSpace(request.TargetFolderId) ||
+                    request.IfcFileIds == null || request.IfcFileIds.Count == 0 ||
+                    string.IsNullOrWhiteSpace(request.PsetPartialName) ||
+                    string.IsNullOrWhiteSpace(request.RoomPropertyName))
+                {
+                    return BadRequest("UngÃ¼ltige Anfrage. Alle Felder sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+                var ifcEditor = new IfcEditorService();
+
+                // Download Raumbuch Excel
+                string raumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch.xlsx"
+                );
+
+                // Collect all inventory from all IFC files
+                var allInventoryByRoom = new Dictionary<string, List<Services.InventoryItem>>(StringComparer.OrdinalIgnoreCase);
+                var warnings = new List<string>();
+
+                foreach (var ifcFileId in request.IfcFileIds)
+                {
+                    try
+                    {
+                        // Download IFC file
+                        string ifcPath = await tcService.DownloadFileAsync(
+                            ifcFileId,
+                            _tempFolder,
+                            $"Inventory_{Guid.NewGuid()}.ifc"
+                        );
+
+                        // Read inventory by room
+                        var inventoryByRoom = ifcEditor.ReadInventoryByRoom(
+                            ifcPath,
+                            request.PsetPartialName,
+                            request.RoomPropertyName
+                        );
+
+                        // Merge into allInventoryByRoom
+                        foreach (var kvp in inventoryByRoom)
+                        {
+                            if (!allInventoryByRoom.ContainsKey(kvp.Key))
+                            {
+                                allInventoryByRoom[kvp.Key] = new List<Services.InventoryItem>();
+                            }
+                            allInventoryByRoom[kvp.Key].AddRange(kvp.Value);
+                        }
+
+                        // Cleanup IFC file
+                        File.Delete(ifcPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        warnings.Add($"Fehler beim Verarbeiten der IFC-Datei {ifcFileId}: {ex.Message}");
+                    }
+                }
+
+                // Fill room sheets with inventory
+                int roomsUpdated = 0;
+                int totalItems = 0;
+
+                using (var wb = new XLWorkbook(raumbuchPath))
+                {
+                    // Get Raumbuch sheet to find room names
+                    var raumbuchSheet = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch");
+                    if (raumbuchSheet == null)
+                    {
+                        throw new Exception("Raumbuch sheet not found");
+                    }
+
+                    var range = raumbuchSheet.RangeUsed();
+                    if (range == null)
+                    {
+                        throw new Exception("Raumbuch sheet is empty");
+                    }
+
+                    // Build a map of room names to room numbers
+                    var roomNameToNumber = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    int firstRow = range.FirstRow().RowNumber();
+                    int lastRow = range.LastRow().RowNumber();
+
+                    for (int r = firstRow + 1; r <= lastRow; r++) // Skip header
+                    {
+                        string roomName = raumbuchSheet.Cell(r, 2).GetString().Trim(); // Column B: Raum Name
+                        if (!string.IsNullOrWhiteSpace(roomName))
+                        {
+                            // Try to extract room number from room name or use it as-is
+                            // For now, we'll try to match inventory room numbers with room names directly
+                            roomNameToNumber[roomName] = roomName;
+                        }
+                    }
+
+                    // Fill each room sheet
+                    foreach (var kvp in allInventoryByRoom)
+                    {
+                        string roomNumber = kvp.Key;
+                        var items = kvp.Value;
+
+                        // Find the matching room name
+                        string roomName = null;
+                        foreach (var entry in roomNameToNumber)
+                        {
+                            // Try exact match first
+                            if (entry.Key.Equals(roomNumber, StringComparison.OrdinalIgnoreCase) ||
+                                entry.Key.Contains(roomNumber))
+                            {
+                                roomName = entry.Key;
+                                break;
+                            }
+                        }
+
+                        if (roomName == null)
+                        {
+                            warnings.Add($"Raum '{roomNumber}' nicht in Raumbuch gefunden");
+                            continue;
+                        }
+
+                        // Get the room sheet
+                        string sheetName = SanitizeSheetName(roomName);
+                        var roomSheet = wb.Worksheets.FirstOrDefault(s => s.Name.Equals(sheetName, StringComparison.OrdinalIgnoreCase));
+
+                        if (roomSheet == null)
+                        {
+                            warnings.Add($"Arbeitsblatt fÃ¼r Raum '{roomName}' nicht gefunden");
+                            continue;
+                        }
+
+                        // Fill inventory starting from row 2 (row 1 has headers)
+                        int row = 2;
+                        foreach (var item in items)
+                        {
+                            roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
+                            roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
+                            roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
+                            row++;
+                            totalItems++;
+                        }
+
+                        // Auto-fit columns
+                        roomSheet.Columns().AdjustToContents();
+                        roomsUpdated++;
+                    }
+
+                    wb.Save();
+                }
+
+                // Upload updated Raumbuch
+                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
+
+                // Cleanup
+                File.Delete(raumbuchPath);
+
+                return Ok(new FillInventoryResponse
+                {
+                    Success = true,
+                    Message = $"Inventar erfolgreich hinzugefÃ¼gt.",
+                    RaumbuchFileId = fileId,
+                    RoomsUpdated = roomsUpdated,
+                    TotalItems = totalItems,
+                    Warnings = warnings
+                });
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(new Exception($"Fehler beim FÃ¼llen des Inventars: {ex.Message}", ex));
             }
         }
 
@@ -889,13 +1131,13 @@ namespace RaumbuchService.Controllers
                 // Header
                 ws.Cell(1, 1).Value = "Raumtyp";
                 ws.Cell(1, 2).Value = "Raum Name";
-                ws.Cell(1, 3).Value = "Fläche IST (m²)";
+                ws.Cell(1, 3).Value = "FlÃ¤che IST (mÂ²)";
                 ws.Cell(1, 4).Value = "SIA d0165";
                 ws.Cell(1, 5).Value = "FloorCovering";
                 ws.Cell(1, 6).Value = "Category";
-                ws.Cell(1, 7).Value = "SOLL Fläche (m²)";
+                ws.Cell(1, 7).Value = "SOLL FlÃ¤che (mÂ²)";
                 ws.Cell(1, 8).Value = "SOLL/IST (%)";
-                ws.Cell(1, 9).Value = "Differenz (m²)";
+                ws.Cell(1, 9).Value = "Differenz (mÂ²)";
 
                 var headerRange = ws.Range(1, 1, 1, 9);
                 headerRange.Style.Font.Bold = true;
@@ -952,8 +1194,8 @@ namespace RaumbuchService.Controllers
 
                 // Header
                 summaryWs.Cell(1, 1).Value = "Raumkate";
-                summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
-                summaryWs.Cell(1, 3).Value = "IST Fläche";
+                summaryWs.Cell(1, 2).Value = "SOLL FlÃ¤che (mÂ²)";
+                summaryWs.Cell(1, 3).Value = "IST FlÃ¤che";
                 summaryWs.Cell(1, 4).Value = "Prozent (%)";
                 summaryWs.Cell(1, 5).Value = "Status";
 
@@ -978,7 +1220,7 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÃœBERSCHUSS" : "OK";
 
                     if (ana.IsOverLimit)
                     {
@@ -993,6 +1235,139 @@ namespace RaumbuchService.Controllers
 
                 wb.SaveAs(outputPath);
             }
+        }
+
+        /// <summary>
+        /// Creates individual sheets for each room in Raumbuch Excel.
+        /// Each room sheet has:
+        /// - A1: Hyperlink "Zum Raumbuch" back to main sheet
+        /// - B1, C1, D1: Headers (Objektname, Beschreibung, GUID)
+        /// - Row 2 onwards: Data rows
+        /// </summary>
+        private List<string> CreateRoomSheetsInExcel(string excelPath)
+        {
+            var roomNames = new List<string>();
+
+            using (var wb = new XLWorkbook(excelPath))
+            {
+                // Read room names from the Raumbuch sheet
+                var raumbuchSheet = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch");
+                if (raumbuchSheet == null)
+                {
+                    throw new Exception("Raumbuch sheet not found in Excel file");
+                }
+
+                var range = raumbuchSheet.RangeUsed();
+                if (range == null) return roomNames;
+
+                int firstRow = range.FirstRow().RowNumber();
+                int lastRow = range.LastRow().RowNumber();
+
+                // Collect unique room names from column 2 (Raum Name)
+                var uniqueRooms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int r = firstRow + 1; r <= lastRow; r++) // Skip header row
+                {
+                    string roomName = raumbuchSheet.Cell(r, 2).GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(roomName))
+                    {
+                        uniqueRooms.Add(roomName);
+                    }
+                }
+
+                // Create a sheet for each room and add hyperlinks from Raumbuch sheet
+                var roomToSheetMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var roomName in uniqueRooms.OrderBy(r => r))
+                {
+                    // Sanitize sheet name (Excel limits: 31 chars, no special chars)
+                    string sheetName = SanitizeSheetName(roomName);
+                    
+                    // Check if sheet already exists, if so skip
+                    if (wb.Worksheets.Any(s => s.Name.Equals(sheetName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Sheet '{sheetName}' already exists, skipping");
+                        continue;
+                    }
+
+                    var roomSheet = wb.Worksheets.Add(sheetName);
+
+                    // A1: Hyperlink back to Raumbuch sheet
+                    roomSheet.Cell(1, 1).Value = "Zum Raumbuch";
+                    roomSheet.Cell(1, 1).Style.Font.FontColor = XLColor.Blue;
+                    roomSheet.Cell(1, 1).Style.Font.Underline = XLFontUnderlineValues.Single;
+                    roomSheet.Cell(1, 1).SetHyperlink(new XLHyperlink("Raumbuch!A1"));
+
+                    // B1, C1, D1: Headers
+                    roomSheet.Cell(1, 2).Value = "Objektname";
+                    roomSheet.Cell(1, 3).Value = "Beschreibung";
+                    roomSheet.Cell(1, 4).Value = "GUID";
+
+                    // Style headers
+                    var headerRange = roomSheet.Range(1, 2, 1, 4);
+                    headerRange.Style.Font.Bold = true;
+                    headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+                    // NOTE: Data rows (starting from row 2) will be populated by the fill-inventory endpoint
+                    // which reads objects from IFC files and fills them into the appropriate room sheets
+
+                    // Auto-fit columns
+                    roomSheet.Columns().AdjustToContents();
+
+                    roomNames.Add(roomName);
+                    roomToSheetMap[roomName] = sheetName;
+                }
+
+                // Now add hyperlinks from Raumbuch sheet (column B "Raum Name") to the room sheets
+                for (int r = firstRow + 1; r <= lastRow; r++) // Skip header row
+                {
+                    string roomName = raumbuchSheet.Cell(r, 2).GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(roomName) && roomToSheetMap.ContainsKey(roomName))
+                    {
+                        string sheetName = roomToSheetMap[roomName];
+                        var cell = raumbuchSheet.Cell(r, 2);
+                        cell.Style.Font.FontColor = XLColor.Blue;
+                        cell.Style.Font.Underline = XLFontUnderlineValues.Single;
+                        // Set hyperlink to the room sheet
+                        cell.SetHyperlink(new XLHyperlink($"'{sheetName}'!A1", roomName));
+                    }
+                }
+
+                wb.Save();
+            }
+
+            return roomNames;
+        }
+
+        /// <summary>
+        /// Sanitizes sheet name for Excel compatibility.
+        /// Excel sheet names must be <= 31 chars and cannot contain: \ / ? * [ ]
+        /// </summary>
+        private string SanitizeSheetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "Sheet";
+
+            // Remove invalid characters
+            var invalidChars = new[] { '\\', '/', '?', '*', '[', ']', ':' };
+            string sanitized = name;
+            foreach (var c in invalidChars)
+            {
+                sanitized = sanitized.Replace(c.ToString(), "");
+            }
+
+            // Trim to 31 characters
+            if (sanitized.Length > 31)
+            {
+                sanitized = sanitized.Substring(0, 31);
+            }
+
+            // Ensure not empty
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                sanitized = "Sheet";
+            }
+
+            return sanitized.Trim();
         }
 
         /// <summary>
@@ -1233,8 +1608,8 @@ namespace RaumbuchService.Controllers
                     
                     // Header
                     summaryWs.Cell(1, 1).Value = "Raumkate";
-                    summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
-                    summaryWs.Cell(1, 3).Value = "IST Fläche";
+                    summaryWs.Cell(1, 2).Value = "SOLL FlÃ¤che (mÂ²)";
+                    summaryWs.Cell(1, 3).Value = "IST FlÃ¤che";
                     summaryWs.Cell(1, 4).Value = "Prozent (%)";
                     summaryWs.Cell(1, 5).Value = "Status";
 
@@ -1274,7 +1649,7 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÃœBERSCHUSS" : "OK";
 
                     if (ana.IsOverLimit)
                     {
