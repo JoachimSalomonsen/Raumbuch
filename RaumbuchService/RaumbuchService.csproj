@@ -254,11 +254,13 @@
     <Compile Include="Models\CreateRoomSheetsRequest.cs" />
     <Compile Include="Models\CreateTodoRequest.cs" />
     <Compile Include="Models\DeleteRaumbuchPsetRequest.cs" />
+    <Compile Include="Models\DeleteRoomListsRequest.cs" />
     <Compile Include="Models\FillInventoryRequest.cs" />
     <Compile Include="Models\ImportIfcRequest.cs" />
     <Compile Include="Models\ImportTemplateRequest.cs" />
     <Compile Include="Models\NotificationModels.cs" />
     <Compile Include="Models\ResetIfcRequest.cs" />
+    <Compile Include="Models\UpdateInventoryRequest.cs" />
     <Compile Include="Models\UpdateRaumbuchRequest.cs" />
     <Compile Include="Models\WriteRaumbuchPsetRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

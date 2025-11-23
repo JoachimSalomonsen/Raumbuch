@@ -1146,7 +1146,7 @@ namespace RaumbuchService.Controllers
                                 if (cell.HasHyperlink)
                                 {
                                     string text = cell.GetString(); // Keep the text
-                                    cell.Clear(XLClearOptions.Hyperlinks);
+                                    cell.Clear(XLClearOptions.Contents); // Clear cell contents including hyperlink
                                     cell.Value = text; // Restore the text
                                     cell.Style.Font.FontColor = XLColor.Black; // Remove blue color
                                     cell.Style.Font.Underline = XLFontUnderlineValues.None; // Remove underline
