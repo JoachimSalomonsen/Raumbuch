@@ -150,8 +150,8 @@ label {
 }
 
 .form-control {
-    width: 100%;
-    padding: 10px 12px;
+    width: 300px;
+    padding: 12px;
     border: 1px solid var(--tc-border);
     border-radius: 4px;
     font-size: 14px;
@@ -451,7 +451,7 @@ input[type="checkbox"]:focus-visible {
 input,
 select,
 textarea {
-    max-width: 280px;
+    max-width: 300px;
 }
 
 /* ------------------------------------------------------------
