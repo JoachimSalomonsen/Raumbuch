@@ -9,17 +9,17 @@
 <body>
     <div class="container">
         <header>
-            <h1>?? Raumbuch Manager</h1>
+            <h1>📊 Raumbuch Manager</h1>
             <p class="subtitle">Raumprogramm und Raumbuch Verwaltung</p>
         </header>
 
         <main>
             <!-- Step 1: Import Template -->
             <section class="card">
-                <h2>1?? Vorlage importieren</h2>
+                <h2>1️⃣ Vorlage importieren</h2>
                 <p>Erstellt Raumprogramm.xlsx aus einer Vorlage</p>
                 <div class="form-group">
-                    <label for="templateFile">Vorlage ausw�hlen:</label>
+                    <label for="templateFile">Vorlage auswählen:</label>
                     <select id="templateFile" class="form-control">
                         <option value="">Lade Dateien...</option>
                     </select>
@@ -31,15 +31,15 @@
                     </select>
                 </div>
                 <button id="btnImportTemplate" class="btn btn-primary">
-                    ?? Vorlage importieren
+                    📥 Vorlage importieren
                 </button>
                 <div id="step1Result" class="result"></div>
             </section>
 
             <!-- Step 2: Create TODO -->
             <section class="card">
-                <h2>2?? Aufgabe erstellen</h2>
-                <p>Benachrichtigt Benutzer �ber das neue Raumprogramm</p>
+                <h2>2️⃣ Aufgabe erstellen</h2>
+                <p>Benachrichtigt Benutzer über das neue Raumprogramm</p>
                 <div class="form-group">
                     <label for="todoTitle">Titel:</label>
                     <input type="text" id="todoTitle" class="form-control" value="Raumprogramm wurde erstellt" />
@@ -49,14 +49,14 @@
                     <input type="email" id="todoAssignees" class="form-control" placeholder="user@example.com" />
                 </div>
                 <button id="btnCreateTodo" class="btn btn-primary">
-                    ? Aufgabe erstellen
+                    ✅ Aufgabe erstellen
                 </button>
                 <div id="step2Result" class="result"></div>
             </section>
 
             <!-- Step 3: Import IFC -->
             <section class="card">
-                <h2>3?? IFC importieren</h2>
+                <h2>3️⃣ IFC importieren</h2>
                 <p>Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse</p>
                 <div class="form-group">
                     <label for="ifcFile">IFC Datei:</label>
@@ -71,34 +71,34 @@
                     </select>
                 </div>
                 <button id="btnImportIfc" class="btn btn-primary">
-                    ?? IFC importieren
+                    📦 IFC importieren
                 </button>
                 <div id="step3Result" class="result"></div>
             </section>
 
             <!-- Step 4: Analyze Rooms -->
             <section class="card">
-                <h2>4?? R�ume analysieren</h2>
+                <h2>4️⃣ Räume analysieren</h2>
                 <p>Markiert R�ume in IFC mit Pset</p>
                 <button id="btnAnalyzeRooms" class="btn btn-primary">
-                    ?? R�ume analysieren
+                    🔍 Räume analysieren
                 </button>
                 <div id="step4Result" class="result"></div>
             </section>
 
             <!-- Step 5: Reset IFC -->
             <section class="card">
-                <h2>5?? IFC zur�cksetzen</h2>
+                <h2>5️⃣ IFC zurücksetzen</h2>
                 <p>Entfernt Analyse-Markierungen</p>
                 <button id="btnResetIfc" class="btn btn-warning">
-                    ?? IFC zur�cksetzen
+                    🔄 IFC zurücksetzen
                 </button>
                 <div id="step5Result" class="result"></div>
             </section>
         </main>
 
         <footer>
-            <p>Raumbuch Manager v1.0 | � 2024 Joachim Salomonsen</p>
+            <p>Raumbuch Manager v1.0 | © 2024 Joachim Salomonsen</p>
         </footer>
     </div>
 
