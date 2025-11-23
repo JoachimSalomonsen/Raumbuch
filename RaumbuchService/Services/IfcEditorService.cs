@@ -853,10 +853,11 @@ namespace RaumbuchService.Services
         // --------------------------------------------------------------------
 
         /// <summary>
-        /// Extracts clean value from IFC label format.
+        /// Extracts clean value from IFC label format and decodes special characters.
         /// Examples:
         ///   IFCLABEL('TT U1.672') -> TT U1.672
         ///   IFCLABEL('Room 123') -> Room 123
+        ///   Geb\X2\00E4\X0\ude TT -> Gebäude TT
         ///   Normal text -> Normal text
         /// </summary>
         private string ExtractIfcLabelValue(string value)
@@ -870,11 +871,98 @@ namespace RaumbuchService.Services
                 // Extract content between quotes
                 int startIndex = "IFCLABEL('".Length;
                 int length = value.Length - startIndex - 2; // Remove ending ')
-                return value.Substring(startIndex, length);
+                value = value.Substring(startIndex, length);
             }
 
-            // Return as-is if not in label format
+            // Decode IFC string encoding (ISO 10303-21)
+            // Format: \X2\HHHH\X0\ where HHHH is hex Unicode code point
+            value = DecodeIfcString(value);
+
             return value;
+        }
+
+        /// <summary>
+        /// Decodes IFC string encoding (ISO 10303-21 format) for special characters.
+        /// Converts sequences like \X2\00E4\X0\ to their Unicode characters (e.g., ä).
+        /// </summary>
+        private string DecodeIfcString(string value)
+        {
+            if (string.IsNullOrEmpty(value) || !value.Contains("\\X"))
+                return value;
+
+            var result = new System.Text.StringBuilder();
+            int i = 0;
+
+            while (i < value.Length)
+            {
+                // Check for \X2\ encoding (ISO 10646 encoding)
+                if (i < value.Length - 3 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '2' && value[i + 3] == '\\')
+                {
+                    i += 4; // Skip \X2\
+                    var hexChars = new System.Text.StringBuilder();
+
+                    // Read hex characters until \X0\ is found
+                    while (i < value.Length)
+                    {
+                        if (i < value.Length - 3 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '0' && value[i + 3] == '\\')
+                        {
+                            i += 4; // Skip \X0\
+                            break;
+                        }
+                        hexChars.Append(value[i]);
+                        i++;
+                    }
+
+                    // Convert hex string to Unicode characters
+                    string hexString = hexChars.ToString();
+                    for (int j = 0; j < hexString.Length; j += 4)
+                    {
+                        if (j + 4 <= hexString.Length)
+                        {
+                            string hexCode = hexString.Substring(j, 4);
+                            try
+                            {
+                                int unicodeValue = Convert.ToInt32(hexCode, 16);
+                                result.Append((char)unicodeValue);
+                            }
+                            catch
+                            {
+                                // If conversion fails, keep original hex string
+                                result.Append("\\X2\\").Append(hexCode).Append("\\X0\\");
+                            }
+                        }
+                    }
+                }
+                // Check for \X\ encoding (ISO 8859-1 encoding)
+                else if (i < value.Length - 2 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '\\')
+                {
+                    i += 3; // Skip \X\
+                    if (i < value.Length - 1)
+                    {
+                        // Read 2-digit hex code
+                        string hexCode = value.Substring(i, Math.Min(2, value.Length - i));
+                        try
+                        {
+                            int charValue = Convert.ToInt32(hexCode, 16);
+                            result.Append((char)charValue);
+                            i += 2;
+                        }
+                        catch
+                        {
+                            // If conversion fails, keep original
+                            result.Append("\\X\\").Append(hexCode);
+                            i += 2;
+                        }
+                    }
+                }
+                else
+                {
+                    result.Append(value[i]);
+                    i++;
+                }
+            }
+
+            return result.ToString();
         }
 
         private double GetSpaceArea(IfcSpace space)
