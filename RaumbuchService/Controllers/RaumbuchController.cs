@@ -570,7 +570,8 @@ namespace RaumbuchService.Controllers
 
                 System.Diagnostics.Debug.WriteLine("Updating Raumbuch Excel...");
                 // Update Raumbuch Excel (merge with existing data)
-                string updatedRaumbuchPath = Path.Combine(_tempFolder, "Raumbuch_Updated.xlsx");
+                // Use same filename as original to create a new version
+                string updatedRaumbuchPath = Path.Combine(_tempFolder, "Raumbuch.xlsx");
                 var updateResult = UpdateRaumbuchExcel(
                     existingRaumbuchPath,
                     updatedRaumbuchPath,
