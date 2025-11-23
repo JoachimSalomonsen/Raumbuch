@@ -255,6 +255,7 @@
     <Compile Include="Models\CreateTodoRequest.cs" />
     <Compile Include="Models\DeleteRaumbuchPsetRequest.cs" />
     <Compile Include="Models\DeleteRoomListsRequest.cs" />
+    <Compile Include="Models\DiscoverPropertiesRequest.cs" />
     <Compile Include="Models\FillInventoryRequest.cs" />
     <Compile Include="Models\ImportIfcRequest.cs" />
     <Compile Include="Models\ImportTemplateRequest.cs" />

@@ -38,6 +38,11 @@ namespace RaumbuchService.Models
         /// Name of the property in the Pset that contains the room name/number
         /// </summary>
         public string RoomPropertyName { get; set; }
+
+        /// <summary>
+        /// Optional list of additional property names to extract and write to Excel
+        /// </summary>
+        public List<string> AdditionalProperties { get; set; }
     }
 
     /// <summary>

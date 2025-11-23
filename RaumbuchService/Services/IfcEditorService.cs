@@ -8,18 +8,18 @@ namespace RaumbuchService.Services
 {
     /// <summary>
     /// IFC editor service for reading and modifying IFC files.
-    /// Supports creating Pset "Überprüfung der Raumkategorie" on IfcSpace objects.
+    /// Supports creating Pset "ï¿½berprï¿½fung der Raumkategorie" on IfcSpace objects.
     /// Uses GeometryGymIFC 0.1.21
     /// </summary>
     public class IfcEditorService
     {
-        private const string VERIFICATION_PSET_NAME = "Überprüfung der Raumkategorie";
-        private const string PROP_PERCENTAGE = "Prozentuale Fläche";
-        private const string PROP_OVER_LIMIT = "Über angegebener Raumfläche";
+        private const string VERIFICATION_PSET_NAME = "ï¿½berprï¿½fung der Raumkategorie";
+        private const string PROP_PERCENTAGE = "Prozentuale Flï¿½che";
+        private const string PROP_OVER_LIMIT = "ï¿½ber angegebener Raumflï¿½che";
 
         private const string RAUMBUCH_PSET_NAME = "Raumbuch";
-        private const string PROP_DIFFERENZ = "Differenzfläche zur Raumkategorie";
-        private const string PROP_GEMAESS_RAUMPROGRAMM = "Gemäss Raumprogramm";
+        private const string PROP_DIFFERENZ = "Differenzflï¿½che zur Raumkategorie";
+        private const string PROP_GEMAESS_RAUMPROGRAMM = "Gemï¿½ss Raumprogramm";
 
         /// <summary>
         /// Reads all IfcSpace objects from an IFC file.
@@ -61,7 +61,7 @@ namespace RaumbuchService.Services
         }
 
         /// <summary>
-        /// Marks rooms with Pset "Überprüfung der Raumkategorie" based on analysis.
+        /// Marks rooms with Pset "ï¿½berprï¿½fung der Raumkategorie" based on analysis.
         /// Only marks rooms where category percentage > 100%.
         /// </summary>
         public MarkRoomsResult MarkRoomsOverLimit(
@@ -132,7 +132,7 @@ namespace RaumbuchService.Services
         }
 
         /// <summary>
-        /// Removes Pset "Überprüfung der Raumkategorie" from all IfcSpace objects.
+        /// Removes Pset "ï¿½berprï¿½fung der Raumkategorie" from all IfcSpace objects.
         /// </summary>
         public ResetIfcResult ResetVerificationPset(string ifcFilePath, string outputPath)
         {
@@ -251,7 +251,7 @@ namespace RaumbuchService.Services
                 // Find matching space
                 if (!spaceIndex.TryGetValue(raumName, out IfcSpace space))
                 {
-                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - übersprungen");
+                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - ï¿½bersprungen");
                     result.RoomsSkipped++;
                     continue;
                 }
@@ -284,7 +284,7 @@ namespace RaumbuchService.Services
                 // Create new Pset "Raumbuch" (dedicated to this space only)
                 var newPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
 
-                // Add property: Differenzfläche zum Raumprogramm (IfcAreaMeasure)
+                // Add property: Differenzflï¿½che zum Raumprogramm (IfcAreaMeasure)
                 var propDifferenz = new IfcPropertySingleValue(
                     db,
                     PROP_DIFFERENZ,
@@ -292,7 +292,7 @@ namespace RaumbuchService.Services
                 );
                 newPset.HasProperties[PROP_DIFFERENZ] = propDifferenz;
 
-                // Add property: Gemäss Raumprogramm (IfcText: "Ja" / "Nein")
+                // Add property: Gemï¿½ss Raumprogramm (IfcText: "Ja" / "Nein")
                 var propGemaess = new IfcPropertySingleValue(
                     db,
                     PROP_GEMAESS_RAUMPROGRAMM,
@@ -353,7 +353,7 @@ namespace RaumbuchService.Services
                 // Find matching space
                 if (!spaceIndex.TryGetValue(raumName, out IfcSpace space))
                 {
-                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - übersprugen");
+                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - ï¿½bersprugen");
                     result.RoomsSkipped++;
                     continue;
                 }
@@ -589,6 +589,18 @@ namespace RaumbuchService.Services
             string psetPartialName,
             string roomPropertyName)
         {
+            return ReadInventoryByRoom(ifcFilePath, psetPartialName, roomPropertyName, null);
+        }
+
+        /// <summary>
+        /// Reads inventory by room from IFC file, extracting standard properties and additional user-selected properties.
+        /// </summary>
+        public Dictionary<string, List<InventoryItem>> ReadInventoryByRoom(
+            string ifcFilePath,
+            string psetPartialName,
+            string roomPropertyName,
+            List<string> additionalPropertyNames)
+        {
             var db = new DatabaseIfc(ifcFilePath);
             var result = new Dictionary<string, List<InventoryItem>>(StringComparer.OrdinalIgnoreCase);
             
@@ -597,6 +609,10 @@ namespace RaumbuchService.Services
 
             System.Diagnostics.Debug.WriteLine($"ReadInventoryByRoom - Searching for Psets containing: '{psetPartialName}', Property: '{roomPropertyName}'");
             System.Diagnostics.Debug.WriteLine($"ReadInventoryByRoom - IFC file: '{ifcFileName}'");
+            if (additionalPropertyNames != null && additionalPropertyNames.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadInventoryByRoom - Additional properties to extract: {string.Join(", ", additionalPropertyNames)}");
+            }
 
             // Iterate through all IfcRelDefinesByProperties to find matching Psets
             foreach (var rel in db.OfType<IfcRelDefinesByProperties>())
@@ -661,6 +677,13 @@ namespace RaumbuchService.Services
                             IfcFileName = ifcFileName  // Add filename
                         };
 
+                        // Extract additional properties if specified
+                        if (additionalPropertyNames != null && additionalPropertyNames.Count > 0)
+                        {
+                            inventoryItem.AdditionalProperties = new Dictionary<string, string>();
+                            ExtractAdditionalProperties(ifcElement, additionalPropertyNames, inventoryItem.AdditionalProperties);
+                        }
+
                         // Add to result dictionary
                         if (!result.ContainsKey(roomNumber))
                         {
@@ -677,6 +700,66 @@ namespace RaumbuchService.Services
             System.Diagnostics.Debug.WriteLine($"ReadInventoryByRoom - Found {result.Count} rooms with inventory");
             
             return result;
+        }
+
+        /// <summary>
+        /// Discovers all available properties from IFC files matching the given Pset criteria.
+        /// Returns a list of unique properties found across all elements.
+        /// </summary>
+        public List<DiscoveredProperty> DiscoverAvailableProperties(
+            string ifcFilePath,
+            string psetPartialName)
+        {
+            var db = new DatabaseIfc(ifcFilePath);
+            var propertyOccurrences = new Dictionary<string, DiscoveredProperty>(StringComparer.OrdinalIgnoreCase);
+
+            System.Diagnostics.Debug.WriteLine($"DiscoverAvailableProperties - Searching in: '{ifcFilePath}'");
+            System.Diagnostics.Debug.WriteLine($"DiscoverAvailableProperties - Looking for Psets containing: '{psetPartialName}'");
+
+            // Iterate through all IfcRelDefinesByProperties to find matching Psets
+            foreach (var rel in db.OfType<IfcRelDefinesByProperties>())
+            {
+                foreach (var def in rel.RelatingPropertyDefinition)
+                {
+                    var pset = def as IfcPropertySet;
+                    if (pset == null || string.IsNullOrWhiteSpace(pset.Name))
+                        continue;
+
+                    // Check if Pset name contains the partial search string (case-insensitive)
+                    if (pset.Name.IndexOf(psetPartialName, StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+
+                    System.Diagnostics.Debug.WriteLine($"  Found matching Pset: {pset.Name}");
+
+                    // Collect all property names from this Pset
+                    foreach (var prop in pset.HasProperties.Values)
+                    {
+                        if (string.IsNullOrWhiteSpace(prop.Name))
+                            continue;
+
+                        string propertyKey = $"{pset.Name}:{prop.Name}";
+                        
+                        if (!propertyOccurrences.ContainsKey(propertyKey))
+                        {
+                            propertyOccurrences[propertyKey] = new DiscoveredProperty
+                            {
+                                PropertyName = prop.Name,
+                                PsetName = pset.Name,
+                                OccurrenceCount = 0
+                            };
+                        }
+                        
+                        propertyOccurrences[propertyKey].OccurrenceCount++;
+                    }
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"DiscoverAvailableProperties - Found {propertyOccurrences.Count} unique properties");
+
+            // Return sorted by property name
+            return propertyOccurrences.Values
+                .OrderBy(p => p.PropertyName)
+                .ToList();
         }
 
         /// <summary>
@@ -717,15 +800,64 @@ namespace RaumbuchService.Services
             return "";
         }
 
+        /// <summary>
+        /// Extracts additional properties from an IFC element.
+        /// Searches through all Psets attached to the element.
+        /// </summary>
+        private void ExtractAdditionalProperties(
+            IfcElement element,
+            List<string> propertyNames,
+            Dictionary<string, string> outputDictionary)
+        {
+            if (element == null || propertyNames == null || outputDictionary == null)
+                return;
+
+            // Iterate through all Psets on this element
+            foreach (var rel in element.IsDefinedBy.OfType<IfcRelDefinesByProperties>())
+            {
+                foreach (var def in rel.RelatingPropertyDefinition)
+                {
+                    var pset = def as IfcPropertySet;
+                    if (pset == null)
+                        continue;
+
+                    // Check each property in the Pset
+                    foreach (var prop in pset.HasProperties.Values)
+                    {
+                        // Check if this property is in the list of requested properties
+                        if (propertyNames.Any(pn => pn.Equals(prop.Name, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            var singleValue = prop as IfcPropertySingleValue;
+                            if (singleValue != null && singleValue.NominalValue != null)
+                            {
+                                string rawValue = singleValue.NominalValue.ToString();
+                                string cleanValue = ExtractIfcLabelValue(rawValue);
+                                
+                                // Use the property name as key (case-preserving from the request)
+                                string propertyKey = propertyNames.First(pn => 
+                                    pn.Equals(prop.Name, StringComparison.OrdinalIgnoreCase));
+                                
+                                if (!outputDictionary.ContainsKey(propertyKey))
+                                {
+                                    outputDictionary[propertyKey] = cleanValue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // --------------------------------------------------------------------
         //  HELPER METHODS
         // --------------------------------------------------------------------
 
         /// <summary>
-        /// Extracts clean value from IFC label format.
+        /// Extracts clean value from IFC label format and decodes special characters.
         /// Examples:
         ///   IFCLABEL('TT U1.672') -> TT U1.672
         ///   IFCLABEL('Room 123') -> Room 123
+        ///   Geb\X2\00E4\X0\ude TT -> GebÃ¤ude TT
         ///   Normal text -> Normal text
         /// </summary>
         private string ExtractIfcLabelValue(string value)
@@ -739,11 +871,98 @@ namespace RaumbuchService.Services
                 // Extract content between quotes
                 int startIndex = "IFCLABEL('".Length;
                 int length = value.Length - startIndex - 2; // Remove ending ')
-                return value.Substring(startIndex, length);
+                value = value.Substring(startIndex, length);
             }
 
-            // Return as-is if not in label format
+            // Decode IFC string encoding (ISO 10303-21)
+            // Format: \X2\HHHH\X0\ where HHHH is hex Unicode code point
+            value = DecodeIfcString(value);
+
             return value;
+        }
+
+        /// <summary>
+        /// Decodes IFC string encoding (ISO 10303-21 format) for special characters.
+        /// Converts sequences like \X2\00E4\X0\ to their Unicode characters (e.g., Ã¤).
+        /// </summary>
+        private string DecodeIfcString(string value)
+        {
+            if (string.IsNullOrEmpty(value) || !value.Contains("\\X"))
+                return value;
+
+            var result = new System.Text.StringBuilder();
+            int i = 0;
+
+            while (i < value.Length)
+            {
+                // Check for \X2\ encoding (ISO 10646 encoding)
+                if (i < value.Length - 3 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '2' && value[i + 3] == '\\')
+                {
+                    i += 4; // Skip \X2\
+                    var hexChars = new System.Text.StringBuilder();
+
+                    // Read hex characters until \X0\ is found
+                    while (i < value.Length)
+                    {
+                        if (i < value.Length - 3 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '0' && value[i + 3] == '\\')
+                        {
+                            i += 4; // Skip \X0\
+                            break;
+                        }
+                        hexChars.Append(value[i]);
+                        i++;
+                    }
+
+                    // Convert hex string to Unicode characters
+                    string hexString = hexChars.ToString();
+                    for (int j = 0; j < hexString.Length; j += 4)
+                    {
+                        if (j + 4 <= hexString.Length)
+                        {
+                            string hexCode = hexString.Substring(j, 4);
+                            try
+                            {
+                                int unicodeValue = Convert.ToInt32(hexCode, 16);
+                                result.Append((char)unicodeValue);
+                            }
+                            catch
+                            {
+                                // If conversion fails, keep original hex string
+                                result.Append("\\X2\\").Append(hexCode).Append("\\X0\\");
+                            }
+                        }
+                    }
+                }
+                // Check for \X\ encoding (ISO 8859-1 encoding)
+                else if (i < value.Length - 2 && value[i] == '\\' && value[i + 1] == 'X' && value[i + 2] == '\\')
+                {
+                    i += 3; // Skip \X\
+                    if (i < value.Length - 1)
+                    {
+                        // Read 2-digit hex code
+                        string hexCode = value.Substring(i, Math.Min(2, value.Length - i));
+                        try
+                        {
+                            int charValue = Convert.ToInt32(hexCode, 16);
+                            result.Append((char)charValue);
+                            i += 2;
+                        }
+                        catch
+                        {
+                            // If conversion fails, keep original
+                            result.Append("\\X\\").Append(hexCode);
+                            i += 2;
+                        }
+                    }
+                }
+                else
+                {
+                    result.Append(value[i]);
+                    i++;
+                }
+            }
+
+            return result.ToString();
         }
 
         private double GetSpaceArea(IfcSpace space)
@@ -835,7 +1054,7 @@ namespace RaumbuchService.Services
             if (src == null || db == null)
                 return null;
 
-            // Clone NominalValue – attempt same type
+            // Clone NominalValue ï¿½ attempt same type
             IfcValue clonedValue = null;
             if (src.NominalValue != null)
             {
@@ -896,7 +1115,7 @@ namespace RaumbuchService.Services
     /// </summary>
     public class RaumbuchPsetData
     {
-        public double Differenz { get; set; }               // Differenzfläche zum Raumprogramm (m²)
+        public double Differenz { get; set; }               // Differenzflï¿½che zum Raumprogramm (mï¿½)
         public string GemaessRaumprogramm { get; set; }     // "Ja" or "Nein"
     }
 
@@ -924,5 +1143,20 @@ namespace RaumbuchService.Services
         public string PsetName { get; set; }        // Pset where Room Nbr was found
         public string RoomNumber { get; set; }      // Room number from property
         public string IfcFileName { get; set; }     // IFC file where element was found
+        
+        /// <summary>
+        /// Additional properties selected by user (property name -> property value)
+        /// </summary>
+        public Dictionary<string, string> AdditionalProperties { get; set; }
+    }
+
+    /// <summary>
+    /// Represents a discovered property in IFC files
+    /// </summary>
+    public class DiscoveredProperty
+    {
+        public string PropertyName { get; set; }    // Name of the property
+        public string PsetName { get; set; }        // Pset where property was found
+        public int OccurrenceCount { get; set; }    // Number of times this property appears
     }
 }
