@@ -187,7 +187,11 @@ namespace RaumbuchService.Controllers
                     title,
                     description,
                     request.AssignedTo,
-                    referenceLinks
+                    referenceLinks,
+                    "Request",
+                    "New",
+                    request.Priority,
+                    request.DueDate
                 );
 
                 // Try to add document reference if folder ID is provided
