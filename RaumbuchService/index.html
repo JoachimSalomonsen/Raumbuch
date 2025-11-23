@@ -8,239 +8,237 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📊 Raumbuch Manager</h1>
-            <p class="subtitle">Lokale Version - Raumprogramm und Raumbuch Verwaltung</p>
-        </header>
+        <!-- =============================== -->
+        <!-- TOP TAB NAVIGATION (Trimble Connect style) -->
+        <!-- =============================== -->
+        <nav class="tc-tabs">
+            <div class="tc-tab active" onclick="openTab('tab-konfig')">Raumbuch</div>
+            <div class="tc-tab" onclick="openTab('tab-ausstattung')">Ausstattungsverwaltung</div>
+            <div class="tc-tab" onclick="openTab('tab-bcf')">Nachricht</div>
+        </nav>
 
         <main>
-            <!-- Token Setup -->
-            <div class="token-section">
-                <strong>🔑 Trimble Connect Token erforderlich</strong>
-                <p>Holen Sie sich ein Access Token: 
-                    <a href="https://id.trimble.com/oauth/authorize?client_id=073a84b7-323b-43bf-b5a9-96bf17638dcc&response_type=code&redirect_uri=http://localhost:5005/callback/&scope=openid%20CST-PowerBI" target="_blank">
-                        Hier klicken
-                    </a>
-                </p>
-                <p><small>Kopieren Sie den Authorization Code aus der callback-Seite und verwenden Sie ihn in Postman, um ein access_token zu erhalten.</small></p>
-            </div>
 
-            <!-- Configuration -->
-            <section class="card">
-                <h2>⚙️ Konfiguration</h2>
-                
-                <div class="form-group">
-                    <label for="accessToken">Access Token:</label>
-                    <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
-                </div>
-                
-                <div class="form-group">
-                    <label for="projectId">Project ID:</label>
-                    <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
-                </div>
+            <!-- ========================================================= -->
+            <!-- TAB 1 – KONFIGURATION + STEP 1 + STEP 3 + STEP 4          -->
+            <!-- ========================================================= -->
+            <div id="tab-konfig" class="tab-content active">
 
-                <!-- Configuration Management -->
-                <div class="form-group">
-                    <label for="configName">Konfigurations-Name:</label>
-                    <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
-                    <small>Geben Sie einen Namen ein (wird beim ersten Speichern verwendet)</small>
-                </div>
 
-                <div class="form-group">
-                    <label>Konfiguration:</label>
-                    <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfig()" style="display:inline-block; width:auto;">
-                    <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
-                    <button class="btn btn-secondary" onclick="loadProjectData()">📁 Projektdaten laden</button>
-                </div>
+                <!-- STEP 0 – CONFIGURATION -->
+                <section class="card">
+                    <h2>Konfiguration</h2>
 
-                <hr>
-
-                <!-- Target Folder Dropdown -->
-                <div class="form-group">
-                    <label for="targetFolder">Zielordner:</label>
-                    <select id="targetFolder" class="form-control">
-                        <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
-                    </select>
-                    <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
-                </div>
-
-                <div id="connectionResult" class="result"></div>
-            </section>
-
-            <!-- Step 1: Import Template -->
-            <section class="card">
-                <h2>1️⃣ Vorlage importieren</h2>
-                <p>Erstellt Raumprogramm.xlsx aus einer Vorlage</p>
-                
-                <!-- Template Dropdown -->
-                <div class="form-group">
-                    <label for="templateFile">Vorlagendatei (.xlsx):</label>
-                    <select id="templateFile" class="form-control">
-                        <option value="">-- Vorlage auswählen nach "Dateien laden" --</option>
-                    </select>
-                </div>
-                
-                <button class="btn btn-primary" onclick="importTemplate()">📥 Vorlage importieren</button>
-                
-                <div id="step1Result" class="result"></div>
-            </section>
-
-            <!-- Step 2: Create BCF Topic -->
-            <section class="card">
-                <h2>2️⃣ BCF Topic erstellen</h2>
-                <p>Benachrichtigt Benutzer über das neue Raumprogramm via Trimble Connect</p>
-                
-                <div class="form-group">
-                    <label for="bcfTitle">Titel:</label>
-                    <input type="text" id="bcfTitle" class="form-control" value="Raumbuch">
-                </div>
-
-                <!-- Users Multi-Select Dropdown -->
-                <div class="form-group">
-                    <label for="bcfAssignees">Zuweisen an (E-Mail):</label>
-                    <select id="bcfAssignees" class="form-control" multiple size="5">
-                        <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
-                    </select>
-                    <small>Erste ausgewählte Benutzer erhalten E-Mail direkt. Halten Sie Strg/Cmd gedrückt, um mehrere auszuwählen.</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="bcfDescription">Beschreibung (optional):</label>
-                    <textarea id="bcfDescription" class="form-control" rows="3" placeholder="Raumprogramm wurde in diesem Verzeichnis erstellt.">Raumprogramm wurde in diesem Verzeichnis erstellt.</textarea>
-                    <small>Link zum Ordner wird automatisch als Dokumentreferenz hinzugefügt.</small>
-                </div>
-
-                <button class="btn btn-primary" onclick="createBcfTopic()">📋 BCF Topic erstellen</button>
-
-                <div id="step2Result" class="result"></div>
-            </section>
-
-            <!-- Step 3: Create Raumbuch -->
-            <section class="card">
-                <h2>3️⃣ Raumbuch</h2>
-                <p>Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse</p>
-                
-                <!-- IFC Dropdown -->
-                <div class="form-group">
-                    <label for="ifcFile">Datei mit IfcSpaces (.ifc):</label>
-                    <select id="ifcFile" class="form-control">
-                        <option value="">-- IFC auswählen nach "Dateien laden" --</option>
-                    </select>
-                </div>
-                
-                <!-- Raumprogramm Dropdown -->
-                <div class="form-group">
-                    <label for="raumprogrammFile">Raumprogramm-Datei (.xlsx):</label>
-                    <select id="raumprogrammFile" class="form-control">
-                        <option value="">-- Raumprogramm auswählen nach "Dateien laden" --</option>
-                    </select>
-                    <small>Wählen Sie die Raumprogramm.xlsx aus Schritt 1</small>
-                </div>
-                
-                <!-- Raumbuch Dropdown (moved from Step 4) -->
-                <div class="form-group">
-                    <label for="raumbuchFile">Raumbuch-Datei (.xlsx):</label>
-                    <select id="raumbuchFile" class="form-control">
-                        <option value="">-- Raumbuch auswählen nach "Dateien laden" --</option>
-                    </select>
-                    <small>Wird automatisch ausgefüllt nach "IFC importieren" oder wählen Sie eine existierende Datei</small>
-                </div>
-                
-                <button class="btn btn-primary" onclick="importIfc()">🏗️ Raumbuch erstellen</button>
-                <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
-                
-                <div id="step3Result" class="result"></div>
-            </section>
-
-            <!-- Step 4: Write Raumbuch Pset to IFC -->
-            <section class="card">
-                <h2>4️⃣ Soll/Ist-Prüfung</h2>
-                <p>Die Differenz in der Fläche zwischen Raumprogramm (SOLL) und Raumbuch (IST) wird für jede Raumkategorie in Pset Raumbuch geschrieben.</p>
-                <p><small>Verwendet IFC-Datei und Raumbuch-Datei aus Schritt 3</small></p>
-                
-                <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
-                <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
-                <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
-                <div id="step4Result" class="result"></div>
-            </section>
-
-            <!-- Step 5: Inventory Management -->
-            <section class="card">
-                <h2>5️⃣ Ausstattungsverwaltung</h2>
-                <p>Erstellt Raumlisten und füllt sie mit Ausstattungen aus IFC-Dateien</p>
-                
-                <!-- Step 5.1: Create Room Sheets -->
-                <div class="subsection">
-                    <h3>5.1 Raumblätter erstellen</h3>
-                    <p><small>Erstellt ein Raumblatt pro Raum in der Raumbuch.xlsx</small></p>
-                    
-                    <button class="btn btn-primary" onclick="createRoomSheets()">📋 Raumblätter erstellen</button>
-                    <button class="btn btn-warning" onclick="deleteRoomLists()">🗑️ Raumblätter löschen</button>
-                    <div id="step5_1Result" class="result"></div>
-                </div>
-
-                <hr style="margin: 20px 0;">
-
-                <!-- Step 5.2: Fill Inventory -->
-                <div class="subsection">
-                    <h3>5.2 Ausstattung erstellen</h3>
-                    <p><small>Füllt Raumlisten mit Ausstattungen aus IFC-Dateien</small></p>
-                    
-                    <!-- IFC Folder Dropdown -->
                     <div class="form-group">
-                        <label for="inventoryFolder">IFC-Dateien aus Zielordner:</label>
-                        <select id="inventoryFolder" class="form-control">
+                        <label for="accessToken">Access Token:</label>
+                        <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="projectId">Project ID:</label>
+                        <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="configName">Konfigurationsname:</label>
+                        <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
+                        <small>Geben Sie einen Namen ein (wird beim ersten Speichern verwendet)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Konfigurationsdatei:</label>
+                        <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfig()" style="display:inline-block; width:auto;">
+                        <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
+                        <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
+                    </div>
+
+                    <hr>
+
+                    <!-- Target Folder -->
+                    <div class="form-group">
+                        <label for="targetFolder">Zielordner:</label>
+                        <select id="targetFolder" class="form-control">
                             <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
                         </select>
-                        <small>Ordner für IFC-Dateien (kann unterschiedlich vom Raumbuch-Ordner sein)</small>
+                        <button class="btn btn-primary" onclick="fetchFiles()">🔄 Dateien laden</button>
                     </div>
 
-                    <!-- Load IFC Files Button -->
-                    <div class="form-group">
-                        <button class="btn btn-secondary" onclick="loadIfcFilesForInventory()">📁 IFC-Dateien laden</button>
-                    </div>
+                    <div id="connectionResult" class="result"></div>
+                </section>
 
-                    <!-- IFC Files Multi-Select List -->
+
+                <!-- =============================== -->
+                <!-- Kombinert: Vorlage + Raumbuch -->
+                <!-- =============================== -->
+                <section class="card">
+                    <h2>Raumprogramm & Raumbuch</h2>
+                    <p>Vorlage importieren und Raumbuch erzeugen/aktualisieren</p>
+
+                    <!-- TEMPLATE -->
                     <div class="form-group">
-                        <label for="inventoryIfcFiles">IFC-Dateien auswählen:</label>
-                        <div id="ifcFilesList" class="file-selection-list">
-                            <p style="color: #666; font-style: italic;">Klicken Sie auf "IFC-Dateien laden"</p>
+                        <label for="templateFile">Vorlagendatei (.xlsx):</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <select id="templateFile" class="form-control">
+                                <option value="">-- Vorlage auswählen nach "Dateien laden" --</option>
+                            </select>
+
+                            <!-- Import template moved here -->
+                            <button class="btn btn-primary" onclick="importTemplate()">📥 Raumprogramm erstellen</button>
                         </div>
+                                                
                     </div>
 
-                    <!-- Pset Configuration -->
+                    <!-- RAUMPROGRAMM -->
                     <div class="form-group">
-                        <label for="psetPartialName">Pset Name (teilweise):</label>
-                        <input type="text" id="psetPartialName" class="form-control" value="Plancal nova" placeholder="z.B. 'Plancal nova'">
-                        <small>Teilweiser Name des Psets, z.B. "Plancal nova" findet "Pset Plancal nova - Electrical"</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="roomPropertyName">Raumnummer-Eigenschaft:</label>
-                        <input type="text" id="roomPropertyName" class="form-control" value="Room Nbr" placeholder="z.B. 'Room Nbr'">
-                        <small>Name der Eigenschaft, die die Raumnummer enthält</small>
-                    </div>
-
-                    <!-- Additional Properties Selection -->
-                    <div class="form-group">
-                        <button class="btn btn-secondary" onclick="discoverProperties()">🔍 Verfügbare Eigenschaften laden</button>
-                        <small>Lädt alle Eigenschaften aus den ausgewählten IFC-Dateien</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="additionalProperties">Zusätzliche Eigenschaften (optional):</label>
-                        <select id="additionalProperties" class="form-control" multiple size="8">
-                            <option value="">-- Klicken Sie auf "Verfügbare Eigenschaften laden" --</option>
+                        <label for="raumprogrammFile">Raumprogramm-Datei (.xlsx):</label>
+                        <select id="raumprogrammFile" class="form-control" style="flex:1;">
+                            <option value="">-- Raumprogramm auswählen nach "Dateien laden" --</option>
                         </select>
-                        <small>Halten Sie Strg/Cmd gedrückt, um mehrere Eigenschaften auszuwählen. Diese werden in zusätzlichen Spalten in Excel geschrieben.</small>
+
+                        <small>Wählen Sie die Raumprogramm.xlsx aus Schritt 1</small>
                     </div>
 
-                    <button class="btn btn-primary" onclick="fillInventory()">📦 Ausstattungen erstellen</button>
-                    <button class="btn btn-primary" onclick="updateInventory()">🔄 Ausstattungen aktualisieren</button>
-                    <div id="step5_2Result" class="result"></div>
-                </div>
-            </section>
+                    <!-- IFC FILE -->
+                    <div class="form-group">
+                        <label for="ifcFile">Datei mit IfcSpaces (.ifc):</label>
+                        <select id="ifcFile" class="form-control">
+                            <option value="">-- IFC auswählen nach "Dateien laden" --</option>
+                        </select>
+                    </div>
+
+
+
+                    <!-- RAUMBUCH -->
+                    <div class="form-group">
+                        <label for="raumbuchFile">Raumbuch-Datei (.xlsx):</label>
+
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <select id="raumbuchFile" class="form-control" style="flex:1;">
+                                <option value="">-- Raumbuch auswählen nach "Dateien laden" --</option>
+                            </select>
+
+                            <!-- IFC -> Raumbuch -->
+                            <button class="btn btn-primary" onclick="importIfc()">🏗️ Raumbuch erstellen</button>
+                            <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
+                        </div>
+
+                        <small>Wird automatisch ausgefüllt nach "IFC importieren"</small>
+                    </div>
+
+                    <div id="step1Result" class="result"></div>
+                    <div id="step3Result" class="result"></div>
+                </section>
+
+
+            </div> <!-- END TAB 1 -->
+            <!-- ========================================================= -->
+            <!-- TAB 2 – AUSSTATTUNGSVERWALTUNG (STEP 5)                   -->
+            <!-- ========================================================= -->
+            <div id="tab-ausstattung" class="tab-content">
+
+                <section class="card">
+                   
+                    <!-- Subsection: Room sheets -->
+                    <div class="subsection">
+                        <h2>Raumblätter erstellen</h2>
+                        <p>Erstellt ein Raumblatt pro Raum im Raumbuch</p>
+
+                        <button class="btn btn-primary" onclick="createRoomSheets()">📋 Raumblätter erstellen</button>
+                        <button class="btn btn-secondary" onclick="deleteRoomLists()">🗑️ Raumblätter löschen</button>
+
+                        <div id="step5_1Result" class="result"></div>
+                    </div>
+
+                    <hr style="margin:20px 0;">
+
+                    <!-- Subsection: Inventory -->
+                    <div class="subsection">
+                        <h2>Ausstattung erstellen</h2>
+                        <p>Raumblätter mit Ausstattungen füllen</p>
+
+                        <div class="form-group">
+                            <label for="inventoryFolder">Zielordner für IFC-Dateien:</label>
+                            <select id="inventoryFolder" class="form-control">
+                                <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="loadIfcFilesForInventory()">📁 IFC-Dateien laden</button>
+
+                        <div class="form-group">
+                            <label>IFC-Dateien auswählen:</label>
+                            <div id="ifcFilesList" class="file-selection-list">
+                                <p style="color:#666;">Klicken Sie auf "IFC-Dateien laden"</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="psetPartialName">Pset Name (teilweise):</label>
+                            <input type="text" id="psetPartialName" class="form-control" value="Plancal nova">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="roomPropertyName">Eigenschaft für Raumnummer:</label>
+                            <input type="text" id="roomPropertyName" class="form-control" value="Room Nbr">
+                        </div>
+
+                        <button class="btn btn-primary" onclick="discoverProperties()">🔍 Eigenschaften laden</button>
+
+                        <div class="form-group">
+                            <label for="additionalProperties">Zusätzliche Eigenschaften:</label>
+                            <select id="additionalProperties" class="form-control" multiple size="8">
+                                <option value="">-- Klicken Sie auf "Verfügbare Eigenschaften laden" --</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="fillInventory()">📦 Ausstattungen erstellen</button>
+                        <button class="btn btn-secondary" onclick="updateInventory()">🔄 Ausstattungen aktualisieren</button>
+
+                        <div id="step5_2Result" class="result"></div>
+
+                    </div>
+                </section>
+
+            </div> <!-- END TAB 2 -->
+            <!-- ========================================================= -->
+            <!-- TAB 3 – BCF TOPIC (STEP 2)                                -->
+            <!-- ========================================================= -->
+            <div id="tab-bcf" class="tab-content">
+
+                <section class="card">
+                    <h2>BCF-Themen erstellen</h2>
+
+                    <div class="form-group">
+                        <label for="bcfTitle">Titel:</label>
+                        <input type="text" id="bcfTitle" class="form-control" value="Raumbuch">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bcfAssignees">Zuweisen an (E-Mail):</label>
+                        <select id="bcfAssignees" class="form-control" multiple size="5">
+                            <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                        </select>
+                        <small>Mehrfachauswahl: Strg/Cmd</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bcfDescription">Beschreibung:</label>
+                        <textarea id="bcfDescription" class="form-control" rows="3">
+Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit finden Sie unter „Verweise”.
+                </textarea>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="createBcfTopic()">📋 BCF-Themen erstellen</button>
+
+                    <div id="step2Result" class="result"></div>
+
+                </section>
+
+            </div> <!-- END TAB 3 -->
+
         </main>
+
+
 
         <footer>
             <p>Raumbuch Manager v2.0 - Lokale Version mit Konfigurationsverwaltung</p>
@@ -251,6 +249,21 @@
     <script>
         const API_BASE = 'https://localhost:44305/api/raumbuch';
         const API_PROJECT = 'https://localhost:44305/api/project';
+
+        function openTab(tabId) {
+            // hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+            // deactivate tabs
+            document.querySelectorAll('.tc-tab').forEach(t => t.classList.remove('active'));
+
+            // show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // activate tab button
+            const index = ['tab-konfig', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
+            document.querySelectorAll('.tc-tab')[index].classList.add('active');
+        }
 
         // Global configuration object
         let currentConfig = {

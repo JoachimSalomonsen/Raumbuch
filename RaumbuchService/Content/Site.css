@@ -193,7 +193,8 @@ small {
     font-size: 14px;
     font-weight: 600;
     font-family: 'Segoe UI', sans-serif;
-    cursor: pointer;
+    width: 240px;
+    " cursor: pointer;
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
     display: inline-block;
     margin-right: 10px;
@@ -523,3 +524,44 @@ textarea {
     color: var(--tc-text-primary);
     font-size: 0.9em;
 }
+
+/* ============================================================
+   TRIMBLE CONNECT STYLE - TOP TABS
+   ============================================================ */
+
+.tc-tabs {
+    display: flex;
+    background-color: var(--tc-dark-blue);
+    padding: 0;
+    margin: 0;
+    border-bottom: 3px solid var(--tc-primary-blue);
+}
+
+.tc-tab {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+    .tc-tab:hover {
+        background-color: #004b8a;
+    }
+
+    .tc-tab.active {
+        background-color: var(--tc-primary-blue);
+        border-bottom: 3px solid white;
+    }
+
+.tab-content {
+    display: none;
+}
+
+    .tab-content.active {
+        display: block;
+    }
+
