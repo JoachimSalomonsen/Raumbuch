@@ -335,7 +335,7 @@ RaumbuchService/
 
 ---
 
-## ?? Nächste Schritte
+## ?? Nï¿½chste Schritte
 
 ### Phase 1: Backend Testing ?
 - [x] Implementiere alle Services
@@ -358,52 +358,22 @@ RaumbuchService/
 
 ---
 
-## ?? Trimble Connect Extension (Frontend)
+## ?? Frontend Interface
 
-Nach dem Backend-Setup, erstelle eine Trimble Connect Web Extension:
+The service includes a local testing interface at `RaumbuchService/index.html` with features:
 
-**Structure:**
-```
-extension/
-??? manifest.json
-??? index.html
-??? app.js
-??? styles.css
-```
+- Configuration management (save/load project settings)
+- Step-by-step workflow UI
+- BCF topic creation
+- IFC import and processing
+- Pset management (write/update/delete)
+- Room sheets and inventory management
 
-**Example manifest.json:**
-```json
-{
-  "name": "Raumbuch Manager",
-  "version": "1.0.0",
-  "description": "Raumprogramm und Raumbuch Verwaltung",
-  "extensionType": "panel",
-  "main": "index.html"
-}
-```
-
-**Example app.js:**
-```javascript
-// Get access token from Trimble Connect
-const token = await window.parent.TC.getToken();
-
-// Call backend
-async function importTemplate(templateFileId, folderId) {
-  const response = await fetch('https://raumbuch.azurewebsites.net/api/raumbuch/import-template', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      accessToken: token,
-      projectId: window.parent.TC.getProjectId(),
-      templateFileId: templateFileId,
-      targetFolderId: folderId
-    })
-  });
-  
-  const data = await response.json();
-  console.log('Raumprogramm created:', data);
-}
-```
+**To use:**
+1. Start the RaumbuchService locally
+2. Open `RaumbuchService/index.html` in your browser
+3. Enter your Trimble Connect access token and project ID
+4. Follow the step-by-step workflow
 
 ---
 
