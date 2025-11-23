@@ -1038,11 +1038,11 @@ namespace RaumbuchService.Controllers
                             continue;
                         }
 
-                        // Fill inventory starting from row 2 (row 1 has headers)
+                        // Fill inventory starting from row 2 (row 1 has link in A1, headers in B1-D1)
                         int row = 2;
                         foreach (var item in items)
                         {
-                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (no header)
+                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (A1 is link, no header for column A)
                             roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
                             roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
                             roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
@@ -1374,7 +1374,7 @@ namespace RaumbuchService.Controllers
                         int row = firstEmptyRow;
                         foreach (var item in items)
                         {
-                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (no header)
+                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (A1 is link, no header for column A)
                             roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
                             roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
                             roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
