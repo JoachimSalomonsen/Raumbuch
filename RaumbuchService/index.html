@@ -115,14 +115,14 @@
                 <div id="step2Result" class="result"></div>
             </section>
 
-            <!-- Step 3: Import IFC -->
+            <!-- Step 3: Create Raumbuch -->
             <section class="card">
-                <h2>3️⃣ IFC importieren</h2>
+                <h2>3️⃣ Raumbuch</h2>
                 <p>Erstellt Raumbuch.xlsx mit SOLL/IST-Analyse</p>
                 
                 <!-- IFC Dropdown -->
                 <div class="form-group">
-                    <label for="ifcFile">IFC-Datei (.ifc):</label>
+                    <label for="ifcFile">Datei mit IfcSpaces (.ifc):</label>
                     <select id="ifcFile" class="form-control">
                         <option value="">-- IFC auswählen nach "Dateien laden" --</option>
                     </select>
@@ -146,7 +146,7 @@
                     <small>Wird automatisch ausgefüllt nach "IFC importieren" oder wählen Sie eine existierende Datei</small>
                 </div>
                 
-                <button class="btn btn-primary" onclick="importIfc()">🏗️ IFC importieren</button>
+                <button class="btn btn-primary" onclick="importIfc()">🏗️ Raumbuch erstellen</button>
                 <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
                 
                 <div id="step3Result" class="result"></div>
@@ -154,8 +154,8 @@
 
             <!-- Step 4: Write Raumbuch Pset to IFC -->
             <section class="card">
-                <h2>4️⃣ Raumbuch Pset in IFC schreiben</h2>
-                <p>Schreibt Differenz und Gemäss Raumprogramm als Pset "Raumbuch" in die IFC-Datei</p>
+                <h2>4️⃣ Soll/Ist-Prüfung</h2>
+                <p>Die Differenz in der Fläche zwischen Raumprogramm (SOLL) und Raumbuch (IST) wird für jede Raumkategorie in Pset Raumbuch geschrieben.</p>
                 <p><small>Verwendet IFC-Datei und Raumbuch-Datei aus Schritt 3</small></p>
                 
                 <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
@@ -166,16 +166,16 @@
 
             <!-- Step 5: Inventory Management -->
             <section class="card">
-                <h2>5️⃣ Inventarverwaltung</h2>
-                <p>Erstellt Raumlisten und füllt sie mit Inventar aus IFC-Dateien</p>
+                <h2>5️⃣ Ausstattungsverwaltung</h2>
+                <p>Erstellt Raumlisten und füllt sie mit Ausstattungen aus IFC-Dateien</p>
                 
                 <!-- Step 5.1: Create Room Sheets -->
                 <div class="subsection">
-                    <h3>5.1 Raumlisten erstellen</h3>
-                    <p><small>Erstellt ein Blatt pro Raum in der Raumbuch.xlsx</small></p>
+                    <h3>5.1 Raumblätter erstellen</h3>
+                    <p><small>Erstellt ein Raumblatt pro Raum in der Raumbuch.xlsx</small></p>
                     
-                    <button class="btn btn-primary" onclick="createRoomSheets()">📋 Raumliste erstellen</button>
-                    <button class="btn btn-warning" onclick="deleteRoomLists()">🗑️ Raumlisten löschen</button>
+                    <button class="btn btn-primary" onclick="createRoomSheets()">📋 Raumblätter erstellen</button>
+                    <button class="btn btn-warning" onclick="deleteRoomLists()">🗑️ Raumblätter löschen</button>
                     <div id="step5_1Result" class="result"></div>
                 </div>
 
@@ -183,8 +183,8 @@
 
                 <!-- Step 5.2: Fill Inventory -->
                 <div class="subsection">
-                    <h3>5.2 Inventar erstellen</h3>
-                    <p><small>Füllt Raumlisten mit Inventardaten aus IFC-Dateien</small></p>
+                    <h3>5.2 Ausstattung erstellen</h3>
+                    <p><small>Füllt Raumlisten mit Ausstattungen aus IFC-Dateien</small></p>
                     
                     <!-- IFC Folder Dropdown -->
                     <div class="form-group">
@@ -221,8 +221,8 @@
                         <small>Name der Eigenschaft, die die Raumnummer enthält</small>
                     </div>
 
-                    <button class="btn btn-primary" onclick="fillInventory()">📦 Inventar erstellen</button>
-                    <button class="btn btn-primary" onclick="updateInventory()">🔄 Inventar aktualisieren</button>
+                    <button class="btn btn-primary" onclick="fillInventory()">📦 Ausstattungen erstellen</button>
+                    <button class="btn btn-primary" onclick="updateInventory()">🔄 Ausstattungen aktualisieren</button>
                     <div id="step5_2Result" class="result"></div>
                 </div>
             </section>

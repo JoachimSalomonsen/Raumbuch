@@ -18,7 +18,7 @@ namespace RaumbuchService.Services
         private const string PROP_OVER_LIMIT = "Über angegebener Raumfläche";
 
         private const string RAUMBUCH_PSET_NAME = "Raumbuch";
-        private const string PROP_DIFFERENZ = "Differenzfläche zum Raumprogramm";
+        private const string PROP_DIFFERENZ = "Differenzfläche zur Raumkategorie";
         private const string PROP_GEMAESS_RAUMPROGRAMM = "Gemäss Raumprogramm";
 
         /// <summary>
