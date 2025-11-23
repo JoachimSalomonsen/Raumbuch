@@ -46,8 +46,22 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Konfigurationsdatei:</label>
-                        <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfig()" style="display:inline-block; width:auto;">
+                        <label>Gespeicherte Konfigurationen (Azure):</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <select id="savedConfigs" class="form-control" style="flex:1;">
+                                <option value="">-- Laden Sie Projektdaten um Konfigurationen zu sehen --</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadConfigFromAzure()">📥 Laden</button>
+                        </div>
+                        <small>Konfigurationen werden in Azure Blob Storage gespeichert</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Oder lokale Datei hochladen:</label>
+                        <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfigFromFile()" style="display:inline-block; width:auto;">
+                    </div>
+
+                    <div class="form-group">
                         <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
                         <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
                     </div>
@@ -436,9 +450,47 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const errorMsg = usersData.message || usersData.Message || 'Unbekannter Fehler';
                     showResult('connectionResult', 'warning', `✅ ${foldersData.folders.length} Ordner geladen, aber Fehler beim Laden der Benutzer: ${errorMsg}`);
                 }
+
+                // Load saved configurations from Azure
+                await loadSavedConfigurations(projectId);
             } catch (error) {
                 console.error('Error in loadProjectData:', error);
                 showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        async function loadSavedConfigurations(projectId) {
+            try {
+                console.log('Loading saved configurations for project:', projectId);
+                const response = await fetch(`${API_PROJECT}/config/list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectId: projectId })
+                });
+
+                if (!response.ok) {
+                    console.warn('Failed to load configurations:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const configSelect = document.getElementById('savedConfigs');
+                configSelect.innerHTML = '<option value="">-- Konfiguration auswählen --</option>';
+
+                if (data.success && data.configurations && data.configurations.length > 0) {
+                    data.configurations.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config.name;
+                        const dateStr = config.lastModified ? new Date(config.lastModified).toLocaleDateString('de-DE') : '';
+                        option.textContent = `${config.name} ${dateStr ? '(' + dateStr + ')' : ''}`;
+                        configSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${data.configurations.length} saved configurations`);
+                } else {
+                    configSelect.innerHTML = '<option value="">-- Keine gespeicherten Konfigurationen --</option>';
+                }
+            } catch (error) {
+                console.error('Error loading saved configurations:', error);
             }
         }
 
@@ -651,17 +703,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
         }
 
-        function saveConfig() {
+        async function saveConfig() {
             const configName = document.getElementById('configName').value.trim();
+            const projectId = getProjectId();
             
             if (!configName) {
                 alert('⚠ Bitte geben Sie einen Konfigurations-Namen ein!');
                 return;
             }
 
+            if (!projectId) {
+                alert('⚠ Bitte geben Sie eine Project ID ein!');
+                return;
+            }
+
             // Build configuration object
             const config = {
-                projectId: getProjectId(),
+                projectId: projectId,
                 projectName: configName,
                 lastUpdated: new Date().toISOString(),
                 targetFolder: getSelectedOption('targetFolder'),
@@ -674,19 +732,91 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 bcfAssignees: getSelectedUsers()
             };
 
-            // Download as JSON file
-            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${configName}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            try {
+                showResult('connectionResult', 'info', '🔄 Speichere Konfiguration...');
 
-            showResult('connectionResult', 'success', `✅ Konfiguration "${configName}.json" heruntergeladen!`);
+                // Try to save to Azure
+                const response = await fetch(`${API_PROJECT}/config/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        configName: configName,
+                        configuration: config
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (data.savedToAzure) {
+                        showResult('connectionResult', 'success', `✅ ${data.message}`);
+                        // Reload the configurations list
+                        await loadSavedConfigurations(projectId);
+                    } else {
+                        // Azure not configured, download as file
+                        const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${configName}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        showResult('connectionResult', 'success', `✅ Konfiguration "${configName}.json" heruntergeladen (lokaler Modus)!`);
+                    }
+                } else {
+                    throw new Error(data.message || 'Fehler beim Speichern');
+                }
+            } catch (error) {
+                console.error('Error saving config:', error);
+                showResult('connectionResult', 'error', `❌ Fehler beim Speichern: ${error.message}`);
+            }
         }
 
-        function loadConfig() {
+        async function loadConfigFromAzure() {
+            const configName = document.getElementById('savedConfigs').value;
+            const projectId = getProjectId();
+
+            if (!configName) {
+                alert('⚠ Bitte wählen Sie eine Konfiguration aus!');
+                return;
+            }
+
+            if (!projectId) {
+                alert('⚠ Project ID nicht gefunden!');
+                return;
+            }
+
+            try {
+                showResult('connectionResult', 'info', '🔄 Lade Konfiguration...');
+
+                const response = await fetch(`${API_PROJECT}/config/load`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectId: projectId,
+                        configName: configName
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.configuration) {
+                    applyConfiguration(data.configuration);
+                    showResult('connectionResult', 'success', `✅ ${data.message}`);
+                } else {
+                    throw new Error(data.message || 'Fehler beim Laden');
+                }
+            } catch (error) {
+                console.error('Error loading config from Azure:', error);
+                showResult('connectionResult', 'error', `❌ Fehler beim Laden: ${error.message}`);
+            }
+        }
+
+        function loadConfigFromFile() {
             const fileInput = document.getElementById('loadConfigFile');
             const file = fileInput.files[0];
 
