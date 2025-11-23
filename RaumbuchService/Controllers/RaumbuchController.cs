@@ -890,6 +890,95 @@ namespace RaumbuchService.Controllers
         }
 
         // --------------------------------------------------------------------
+        //  DISCOVER PROPERTIES
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Discovers available properties from IFC files.
+        /// Swiss German: Entdeckt verfügbare Eigenschaften aus IFC-Dateien.
+        /// </summary>
+        [HttpPost]
+        [Route("discover-properties")]
+        public async Task<IHttpActionResult> DiscoverProperties([FromBody] DiscoverPropertiesRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    request.IfcFileIds == null || request.IfcFileIds.Count == 0 ||
+                    string.IsNullOrWhiteSpace(request.PsetPartialName))
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken, IfcFileIds und PsetPartialName sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+                var ifcEditor = new IfcEditorService();
+
+                // Collect properties from all IFC files
+                var allProperties = new Dictionary<string, PropertyInfo>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var ifcFileId in request.IfcFileIds)
+                {
+                    try
+                    {
+                        // Get original filename from Trimble Connect
+                        string originalFileName = await GetFileNameAsync(tcService, ifcFileId);
+                        
+                        // Download IFC file with original filename
+                        string ifcPath = await tcService.DownloadFileAsync(
+                            ifcFileId,
+                            _tempFolder,
+                            originalFileName
+                        );
+
+                        // Discover properties
+                        var discoveredProperties = ifcEditor.DiscoverAvailableProperties(
+                            ifcPath,
+                            request.PsetPartialName
+                        );
+
+                        // Merge into allProperties
+                        foreach (var prop in discoveredProperties)
+                        {
+                            string key = $"{prop.PsetName}:{prop.PropertyName}";
+                            if (!allProperties.ContainsKey(key))
+                            {
+                                allProperties[key] = new PropertyInfo
+                                {
+                                    PropertyName = prop.PropertyName,
+                                    PsetName = prop.PsetName,
+                                    OccurrenceCount = 0
+                                };
+                            }
+                            allProperties[key].OccurrenceCount += prop.OccurrenceCount;
+                        }
+
+                        // Cleanup IFC file
+                        File.Delete(ifcPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error processing IFC file {ifcFileId}: {ex.Message}");
+                        // Continue with other files
+                    }
+                }
+
+                return Ok(new DiscoverPropertiesResponse
+                {
+                    Success = true,
+                    Message = $"{allProperties.Count} Eigenschaften gefunden.",
+                    Properties = allProperties.Values
+                        .OrderBy(p => p.PropertyName)
+                        .ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(new Exception($"Fehler beim Entdecken der Eigenschaften: {ex.Message}", ex));
+            }
+        }
+
+        // --------------------------------------------------------------------
         //  FILL INVENTORY
         // --------------------------------------------------------------------
 
@@ -946,7 +1035,8 @@ namespace RaumbuchService.Controllers
                         var inventoryByRoom = ifcEditor.ReadInventoryByRoom(
                             ifcPath,
                             request.PsetPartialName,
-                            request.RoomPropertyName
+                            request.RoomPropertyName,
+                            request.AdditionalProperties
                         );
 
                         // Merge into allInventoryByRoom
@@ -1038,6 +1128,18 @@ namespace RaumbuchService.Controllers
                             continue;
                         }
 
+                        // Add headers for additional properties if specified
+                        if (request.AdditionalProperties != null && request.AdditionalProperties.Count > 0)
+                        {
+                            int col = 5; // Start from column E (after A-D: IfcFileName, Objektname, Beschreibung, GUID)
+                            foreach (var propName in request.AdditionalProperties)
+                            {
+                                roomSheet.Cell(1, col).Value = propName;
+                                roomSheet.Cell(1, col).Style.Font.Bold = true;
+                                col++;
+                            }
+                        }
+
                         // Fill inventory starting from row 2 (row 1 has link in A1, headers in B1-D1)
                         int row = 2;
                         foreach (var item in items)
@@ -1046,6 +1148,22 @@ namespace RaumbuchService.Controllers
                             roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
                             roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
                             roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
+                            
+                            // Write additional properties if they exist
+                            if (request.AdditionalProperties != null && request.AdditionalProperties.Count > 0 && 
+                                item.AdditionalProperties != null)
+                            {
+                                int col = 5; // Start from column E
+                                foreach (var propName in request.AdditionalProperties)
+                                {
+                                    if (item.AdditionalProperties.ContainsKey(propName))
+                                    {
+                                        roomSheet.Cell(row, col).Value = item.AdditionalProperties[propName];
+                                    }
+                                    col++;
+                                }
+                            }
+                            
                             row++;
                             totalItems++;
                         }
@@ -1253,7 +1371,8 @@ namespace RaumbuchService.Controllers
                         var inventoryByRoom = ifcEditor.ReadInventoryByRoom(
                             ifcPath,
                             request.PsetPartialName,
-                            request.RoomPropertyName
+                            request.RoomPropertyName,
+                            request.AdditionalProperties
                         );
 
                         // Merge into allInventoryByRoom
@@ -1370,6 +1489,23 @@ namespace RaumbuchService.Controllers
                             firstEmptyRow = currentRange.LastRow().RowNumber() + 1;
                         }
 
+                        // Add headers for additional properties if specified and not already present
+                        if (request.AdditionalProperties != null && request.AdditionalProperties.Count > 0)
+                        {
+                            int col = 5; // Start from column E (after A-D: IfcFileName, Objektname, Beschreibung, GUID)
+                            foreach (var propName in request.AdditionalProperties)
+                            {
+                                // Check if header already exists
+                                var existingHeader = roomSheet.Cell(1, col).GetString();
+                                if (string.IsNullOrWhiteSpace(existingHeader))
+                                {
+                                    roomSheet.Cell(1, col).Value = propName;
+                                    roomSheet.Cell(1, col).Style.Font.Bold = true;
+                                }
+                                col++;
+                            }
+                        }
+
                         // Add new inventory at first empty row
                         int row = firstEmptyRow;
                         foreach (var item in items)
@@ -1378,6 +1514,22 @@ namespace RaumbuchService.Controllers
                             roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
                             roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
                             roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
+                            
+                            // Write additional properties if they exist
+                            if (request.AdditionalProperties != null && request.AdditionalProperties.Count > 0 && 
+                                item.AdditionalProperties != null)
+                            {
+                                int col = 5; // Start from column E
+                                foreach (var propName in request.AdditionalProperties)
+                                {
+                                    if (item.AdditionalProperties.ContainsKey(propName))
+                                    {
+                                        roomSheet.Cell(row, col).Value = item.AdditionalProperties[propName];
+                                    }
+                                    col++;
+                                }
+                            }
+                            
                             row++;
                             itemsAdded++;
                         }

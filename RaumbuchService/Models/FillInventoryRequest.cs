@@ -37,6 +37,11 @@ namespace RaumbuchService.Models
         /// Target folder ID where updated Raumbuch will be uploaded
         /// </summary>
         public string TargetFolderId { get; set; }
+
+        /// <summary>
+        /// Optional list of additional property names to extract and write to Excel
+        /// </summary>
+        public List<string> AdditionalProperties { get; set; }
     }
 
     /// <summary>

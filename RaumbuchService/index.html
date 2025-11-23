@@ -221,6 +221,20 @@
                         <small>Name der Eigenschaft, die die Raumnummer enthält</small>
                     </div>
 
+                    <!-- Additional Properties Selection -->
+                    <div class="form-group">
+                        <button class="btn btn-secondary" onclick="discoverProperties()">🔍 Verfügbare Eigenschaften laden</button>
+                        <small>Lädt alle Eigenschaften aus den ausgewählten IFC-Dateien</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="additionalProperties">Zusätzliche Eigenschaften (optional):</label>
+                        <select id="additionalProperties" class="form-control" multiple size="8">
+                            <option value="">-- Klicken Sie auf "Verfügbare Eigenschaften laden" --</option>
+                        </select>
+                        <small>Halten Sie Strg/Cmd gedrückt, um mehrere Eigenschaften auszuwählen. Diese werden in zusätzlichen Spalten in Excel geschrieben.</small>
+                    </div>
+
                     <button class="btn btn-primary" onclick="fillInventory()">📦 Ausstattungen erstellen</button>
                     <button class="btn btn-primary" onclick="updateInventory()">🔄 Ausstattungen aktualisieren</button>
                     <div id="step5_2Result" class="result"></div>
@@ -1488,6 +1502,77 @@
             }
         }
 
+        async function discoverProperties() {
+            const token = getToken();
+            const psetPartialName = document.getElementById('psetPartialName').value;
+
+            // Get selected IFC file IDs
+            const selectedCheckboxes = document.querySelectorAll('.ifc-file-checkbox:checked');
+            const ifcFileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            console.log('discoverProperties() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('IFC File IDs:', ifcFileIds);
+            console.log('Pset Partial Name:', psetPartialName);
+
+            if (!token || ifcFileIds.length === 0) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Token und mindestens eine IFC-Datei auswählen');
+                return;
+            }
+
+            if (!psetPartialName) {
+                showResult('step5_2Result', 'error', '⚠ Bitte Pset-Name angeben');
+                return;
+            }
+
+            showResult('step5_2Result', 'loading', '⏳ Eigenschaften werden geladen...');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    ifcFileIds: ifcFileIds,
+                    psetPartialName: psetPartialName
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/discover-properties`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && (data.success || data.Success)) {
+                    const select = document.getElementById('additionalProperties');
+                    select.innerHTML = '';
+
+                    const properties = data.properties || data.Properties;
+                    if (properties && properties.length > 0) {
+                        properties.forEach(prop => {
+                            const option = document.createElement('option');
+                            option.value = prop.propertyName || prop.PropertyName;
+                            option.textContent = `${prop.propertyName || prop.PropertyName} (${prop.psetName || prop.PsetName})`;
+                            select.appendChild(option);
+                        });
+                        showResult('step5_2Result', 'success', `✅ ${properties.length} Eigenschaft(en) gefunden`);
+                    } else {
+                        select.innerHTML = '<option value="">-- Keine Eigenschaften gefunden --</option>';
+                        showResult('step5_2Result', 'warning', '⚠ Keine Eigenschaften gefunden');
+                    }
+                } else {
+                    const errorMsg = data.message || data.Message || `HTTP ${response.status}`;
+                    showResult('step5_2Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in discoverProperties:', error);
+                showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
         async function fillInventory() {
             const token = getToken();
             const raumbuchFileId = document.getElementById('raumbuchFile').value;
@@ -1499,11 +1584,16 @@
             const selectedCheckboxes = document.querySelectorAll('.ifc-file-checkbox:checked');
             const ifcFileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
 
+            // Get selected additional properties
+            const additionalPropertiesSelect = document.getElementById('additionalProperties');
+            const additionalProperties = Array.from(additionalPropertiesSelect.selectedOptions).map(opt => opt.value).filter(v => v);
+
             console.log('fillInventory() called');
             console.log('Token length:', token ? token.length : 0);
             console.log('Raumbuch File ID:', raumbuchFileId);
             console.log('IFC File IDs:', ifcFileIds);
             console.log('Pset Partial Name:', psetPartialName);
+            console.log('Additional Properties:', additionalProperties);
             console.log('Room Property Name:', roomPropertyName);
 
             if (!token || !raumbuchFileId || !targetFolder || ifcFileIds.length === 0) {
@@ -1525,7 +1615,8 @@
                     ifcFileIds: ifcFileIds,
                     psetPartialName: psetPartialName,
                     roomPropertyName: roomPropertyName,
-                    targetFolderId: targetFolder
+                    targetFolderId: targetFolder,
+                    additionalProperties: additionalProperties.length > 0 ? additionalProperties : null
                 };
 
                 console.log('Sending request body:', requestBody);
@@ -1625,12 +1716,17 @@
             const selectedCheckboxes = document.querySelectorAll('.ifc-file-checkbox:checked');
             const ifcFileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
 
+            // Get selected additional properties
+            const additionalPropertiesSelect = document.getElementById('additionalProperties');
+            const additionalProperties = Array.from(additionalPropertiesSelect.selectedOptions).map(opt => opt.value).filter(v => v);
+
             console.log('updateInventory() called');
             console.log('Token length:', token ? token.length : 0);
             console.log('Raumbuch File ID:', raumbuchFileId);
             console.log('IFC File IDs:', ifcFileIds);
             console.log('Pset Partial Name:', psetPartialName);
             console.log('Room Property Name:', roomPropertyName);
+            console.log('Additional Properties:', additionalProperties);
 
             if (!token || !raumbuchFileId || !targetFolder || ifcFileIds.length === 0) {
                 showResult('step5_2Result', 'error', '⚠ Bitte Token, Raumbuch-Datei, Zielordner und mindestens eine IFC-Datei auswählen');
@@ -1651,7 +1747,8 @@
                     ifcFileIds: ifcFileIds,
                     psetPartialName: psetPartialName,
                     roomPropertyName: roomPropertyName,
-                    targetFolderId: targetFolder
+                    targetFolderId: targetFolder,
+                    additionalProperties: additionalProperties.length > 0 ? additionalProperties : null
                 };
 
                 console.log('Sending request body:', requestBody);
