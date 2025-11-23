@@ -432,7 +432,9 @@ namespace RaumbuchService.Services
             string assignedTo,
             List<string> referenceLinks = null,
             string topicType = "Request",
-            string topicStatus = "New")
+            string topicStatus = "New",
+            string priority = null,
+            string dueDate = null)
         {
             if (string.IsNullOrWhiteSpace(projectId))
                 throw new ArgumentNullException(nameof(projectId));
@@ -464,6 +466,16 @@ namespace RaumbuchService.Services
             if (!string.IsNullOrWhiteSpace(assignedTo))
             {
                 payloadDict["assigned_to"] = assignedTo;
+            }
+            
+            if (!string.IsNullOrWhiteSpace(priority))
+            {
+                payloadDict["priority"] = priority;
+            }
+            
+            if (!string.IsNullOrWhiteSpace(dueDate))
+            {
+                payloadDict["due_date"] = dueDate;
             }
 
             // Note: reference_links are added separately via document_references endpoint
@@ -551,7 +563,7 @@ namespace RaumbuchService.Services
                 string txt = await response.Content.ReadAsStringAsync();
                 System.Diagnostics.Debug.WriteLine($"Document reference error: {txt}");
                 System.Diagnostics.Debug.WriteLine("========== AddBcfDocumentReferenceAsync END (Error) ==========");
-                throw new Exception($"Fehler beim Hinzufügen der Dokumentreferenz: {response.StatusCode}\n{txt}");
+                throw new Exception($"Fehler beim Hinzufï¿½gen der Dokumentreferenz: {response.StatusCode}\n{txt}");
             }
 
             string json = await response.Content.ReadAsStringAsync();

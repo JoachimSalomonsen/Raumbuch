@@ -36,6 +36,8 @@ namespace RaumbuchService.Models
         public string Description { get; set; }
         public string AssignedTo { get; set; } // Comma-separated email addresses
         public bool CreateMultipleTopics { get; set; } // If true, creates one topic per assignee
+        public string Priority { get; set; } // Priority level (e.g., "Low", "Medium", "High", "Critical")
+        public string DueDate { get; set; } // Due date in ISO 8601 format (e.g., "2025-12-01")
     }
 
     public class CreateBcfTopicResponse

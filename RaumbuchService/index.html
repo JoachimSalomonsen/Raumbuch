@@ -228,6 +228,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 </textarea>
                     </div>
 
+                    <div class="form-group">
+                        <label for="bcfPriority">Priorität:</label>
+                        <select id="bcfPriority" class="form-control">
+                            <option value="">-- Keine Priorität --</option>
+                            <option value="Low">Niedrig</option>
+                            <option value="Medium">Mittel</option>
+                            <option value="High">Hoch</option>
+                            <option value="Critical">Kritisch</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bcfDueDate">Fälligkeitsdatum:</label>
+                        <input type="date" id="bcfDueDate" class="form-control">
+                        <small>Wird automatisch auf heute gesetzt</small>
+                    </div>
+
                     <button class="btn btn-primary" onclick="createBcfTopic()">📋 BCF-Themen erstellen</button>
 
                     <div id="step2Result" class="result"></div>
@@ -1022,6 +1039,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const folderId = getTargetFolder();
             const title = document.getElementById('bcfTitle').value.trim();
             const description = document.getElementById('bcfDescription').value.trim();
+            const priority = document.getElementById('bcfPriority').value;
+            const dueDate = document.getElementById('bcfDueDate').value;
 
             // Get selected users
             const selectedUsers = getSelectedUsers();
@@ -1050,7 +1069,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         title: title,
                         description: description,
                         assignedTo: assignedTo,
-                        createMultipleTopics: false
+                        createMultipleTopics: false,
+                        priority: priority || null,
+                        dueDate: dueDate || null
                     })
                 });
 
@@ -1799,6 +1820,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
             }
         }
+
+        // Initialize date picker with today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const dueDateField = document.getElementById('bcfDueDate');
+            if (dueDateField) {
+                const today = new Date().toISOString().split('T')[0];
+                dueDateField.value = today;
+            }
+        });
 
     </script>
 </body>
