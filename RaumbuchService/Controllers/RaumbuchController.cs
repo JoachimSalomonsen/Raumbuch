@@ -558,21 +558,11 @@ namespace RaumbuchService.Controllers
                 System.Diagnostics.Debug.WriteLine("Reading SOLL data...");
                 // Read SOLL from Raumprogramm
                 var sollData = ReadSollFromExcel(raumprogrammPath);
-                System.Diagnostics.Debug.WriteLine($"Read {sollData.Count} SOLL categories from Raumprogramm");
-                foreach (var kvp in sollData)
-                {
-                    System.Diagnostics.Debug.WriteLine($"  {kvp.Key}: {kvp.Value} m²");
-                }
 
                 System.Diagnostics.Debug.WriteLine("Analyzing SOLL/IST...");
                 // Analyze SOLL/IST
                 var istData = newRoomData.Select(r => (r.RoomCategory, r.Area)).ToList();
                 var analysis = analyzer.Analyze(sollData, istData);
-                System.Diagnostics.Debug.WriteLine($"Analysis created for {analysis.Count} categories");
-                foreach (var ana in analysis)
-                {
-                    System.Diagnostics.Debug.WriteLine($"  {ana.RoomCategory}: SOLL={ana.SollArea} IST={ana.IstArea} %={ana.Percentage}");
-                }
 
                 System.Diagnostics.Debug.WriteLine("Updating Raumbuch Excel...");
                 // Update Raumbuch Excel (merge with existing data)
@@ -2110,14 +2100,6 @@ namespace RaumbuchService.Controllers
                         {
                             ws.Range(row, 1, row, 9).Style.Fill.BackgroundColor = XLColor.LightPink;
                         }
-                    }
-                    else
-                    {
-                        // Room category not found in Raumprogramm - leave columns 7-9 empty
-                        System.Diagnostics.Debug.WriteLine($"Warning: Room '{room.Name}' has category '{room.RoomCategory}' which is not in Raumprogramm");
-                        ws.Cell(row, 7).Value = "";
-                        ws.Cell(row, 8).Value = "";
-                        ws.Cell(row, 9).Value = "";
                     }
 
                     row++;

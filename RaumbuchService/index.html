@@ -1246,9 +1246,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     };
                     
                     let message = `✅ Raumbuch aktualisiert!<br>Datei: ${fileName}<br>`;
-                    message += `Räume hinzugefügt: ${data.roomsAdded || 0}<br>`;
-                    message += `Räume aktualisiert: ${data.roomsUpdated || 0}<br>`;
-                    message += `Räume unverändert: ${data.roomsUnchanged || 0}`;
+                    message += `Räume hinzugefügt: ${data.RoomsAdded || 0}<br>`;
+                    message += `Räume aktualisiert: ${data.RoomsUpdated || 0}<br>`;
+                    message += `Räume unverändert: ${data.RoomsUnchanged || 0}`;
                     
                     showResult('step3Result', 'success', message);
                 } else {
