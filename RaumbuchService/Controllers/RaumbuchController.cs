@@ -1042,10 +1042,10 @@ namespace RaumbuchService.Controllers
                         int row = 2;
                         foreach (var item in items)
                         {
-                            roomSheet.Cell(row, 2).Value = item.IfcFileName;  // B: IFC Datei
-                            roomSheet.Cell(row, 3).Value = item.Name;         // C: Objektname
-                            roomSheet.Cell(row, 4).Value = item.Description;  // D: Beschreibung
-                            roomSheet.Cell(row, 5).Value = item.GlobalId;     // E: GUID
+                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (no header)
+                            roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
+                            roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
+                            roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
                             row++;
                             totalItems++;
                         }
@@ -1353,7 +1353,7 @@ namespace RaumbuchService.Controllers
                             // Iterate from bottom to top to avoid index issues when deleting
                             for (int r = sheetLastRow; r >= sheetFirstRow + 1; r--) // Skip header row
                             {
-                                string ifcFileName = roomSheet.Cell(r, 2).GetString().Trim(); // Column B: IFC Datei
+                                string ifcFileName = roomSheet.Cell(r, 1).GetString().Trim(); // Column A: File name
                                 if (ifcFileNames.Contains(ifcFileName))
                                 {
                                     roomSheet.Row(r).Delete();
@@ -1374,10 +1374,10 @@ namespace RaumbuchService.Controllers
                         int row = firstEmptyRow;
                         foreach (var item in items)
                         {
-                            roomSheet.Cell(row, 2).Value = item.IfcFileName;  // B: IFC Datei
-                            roomSheet.Cell(row, 3).Value = item.Name;         // C: Objektname
-                            roomSheet.Cell(row, 4).Value = item.Description;  // D: Beschreibung
-                            roomSheet.Cell(row, 5).Value = item.GlobalId;     // E: GUID
+                            roomSheet.Cell(row, 1).Value = item.IfcFileName;  // A: File name (no header)
+                            roomSheet.Cell(row, 2).Value = item.Name;         // B: Objektname
+                            roomSheet.Cell(row, 3).Value = item.Description;  // C: Beschreibung
+                            roomSheet.Cell(row, 4).Value = item.GlobalId;     // D: GUID
                             row++;
                             itemsAdded++;
                         }
@@ -1647,20 +1647,19 @@ namespace RaumbuchService.Controllers
 
                     var roomSheet = wb.Worksheets.Add(sheetName);
 
-                    // A1: Hyperlink back to Raumbuch sheet
+                    // A1: Hyperlink back to Raumbuch sheet (no header in A1, just the link)
                     roomSheet.Cell(1, 1).Value = "Zum Raumbuch";
                     roomSheet.Cell(1, 1).Style.Font.FontColor = XLColor.Blue;
                     roomSheet.Cell(1, 1).Style.Font.Underline = XLFontUnderlineValues.Single;
                     roomSheet.Cell(1, 1).SetHyperlink(new XLHyperlink("Raumbuch!A1"));
 
-                    // B1, C1, D1, E1: Headers (added IFC Datei column)
-                    roomSheet.Cell(1, 2).Value = "IFC Datei";
-                    roomSheet.Cell(1, 3).Value = "Objektname";
-                    roomSheet.Cell(1, 4).Value = "Beschreibung";
-                    roomSheet.Cell(1, 5).Value = "GUID";
+                    // B1, C1, D1: Headers (A1 has no header, file names start at A2)
+                    roomSheet.Cell(1, 2).Value = "Objektname";
+                    roomSheet.Cell(1, 3).Value = "Beschreibung";
+                    roomSheet.Cell(1, 4).Value = "GUID";
 
                     // Style headers
-                    var headerRange = roomSheet.Range(1, 2, 1, 5);
+                    var headerRange = roomSheet.Range(1, 2, 1, 4);
                     headerRange.Style.Font.Bold = true;
                     headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
