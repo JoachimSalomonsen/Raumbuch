@@ -217,34 +217,57 @@ namespace RaumbuchService.Services
 
         /// <summary>
         /// Sanitizes project number/path for use in blob storage.
+        /// Removes invalid characters while preserving the directory structure.
         /// </summary>
         private string SanitizePath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
-                throw new ArgumentException("Path cannot be empty.");
+                throw new ArgumentException("Path cannot be empty.", nameof(path));
             }
 
-            // Remove invalid characters for blob paths
-            var invalidChars = Path.GetInvalidFileNameChars();
-            string sanitized = new string(path.Where(c => !invalidChars.Contains(c) && c != '/' && c != '\\').ToArray());
+            // Azure Blob Storage allows alphanumeric, hyphen, underscore, and period
+            // Remove characters that are invalid for Azure blob paths (keeping slashes for structure)
+            var invalidChars = new[] { '<', '>', ':', '"', '|', '?', '*', '\\' };
+            string sanitized = new string(path.Where(c => !invalidChars.Contains(c) && c != '\0').ToArray());
+            
+            // Replace any remaining problematic characters with underscores
+            sanitized = sanitized.Trim().Replace(' ', '_');
+            
+            // Validate result is not empty
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                throw new ArgumentException($"Path '{path}' contains only invalid characters.", nameof(path));
+            }
             
             return sanitized;
         }
 
         /// <summary>
         /// Sanitizes file name for use in blob storage.
+        /// Removes invalid characters and ensures a valid filename.
         /// </summary>
         private string SanitizeFileName(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
-                throw new ArgumentException("File name cannot be empty.");
+                throw new ArgumentException("File name cannot be empty.", nameof(fileName));
             }
 
-            // Remove invalid characters
-            var invalidChars = Path.GetInvalidFileNameChars();
-            string sanitized = new string(fileName.Where(c => !invalidChars.Contains(c)).ToArray());
+            // Remove characters that are invalid for Azure blob names
+            var invalidChars = new[] { '/', '\\', '<', '>', ':', '"', '|', '?', '*' };
+            string sanitized = new string(fileName.Where(c => !invalidChars.Contains(c) && c != '\0').ToArray());
+            
+            // Replace spaces with underscores and trim
+            sanitized = sanitized.Trim().Replace(' ', '_');
+            
+            // Validate result is not empty
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                // Fallback to a generated name based on timestamp
+                sanitized = $"config_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                System.Diagnostics.Debug.WriteLine($"Original filename '{fileName}' sanitized to fallback name '{sanitized}'");
+            }
             
             return sanitized;
         }
