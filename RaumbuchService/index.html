@@ -1248,15 +1248,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ Raumbuch aktualisiert!<br>Datei: ${fileName}<br>`;
                     message += `Räume hinzugefügt: ${data.roomsAdded || 0}<br>`;
                     message += `Räume aktualisiert: ${data.roomsUpdated || 0}<br>`;
-                    message += `Räume unverändert: ${data.roomsUnchanged || 0}<br>`;
-                    message += `<br><strong>Neue Analyse:</strong><br>`;
-                    
-                    if (data.analysis && data.analysis.length > 0) {
-                        data.analysis.forEach(a => {
-                            const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
-                            message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
-                        });
-                    }
+                    message += `Räume unverändert: ${data.roomsUnchanged || 0}`;
                     
                     showResult('step3Result', 'success', message);
                 } else {
