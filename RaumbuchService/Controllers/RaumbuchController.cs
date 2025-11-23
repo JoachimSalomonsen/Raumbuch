@@ -883,6 +883,7 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook())
             {
+                // ===== SHEET 1: RAUMBUCH (Room Data) =====
                 var ws = wb.Worksheets.Add("Raumbuch");
 
                 // Header
@@ -943,47 +944,52 @@ namespace RaumbuchService.Controllers
                     row++;
                 }
 
-                // Summary
-                row += 2;
-                ws.Cell(row, 1).Value = "Zusammenfassung";
-                ws.Cell(row, 1).Style.Font.Bold = true;
-                row++;
+                // Auto-fit columns
+                ws.Columns().AdjustToContents();
 
-                ws.Cell(row, 1).Value = "Raumkategorie";
-                ws.Cell(row, 2).Value = "SOLL Fläche (m²)";
-                ws.Cell(row, 3).Value = "IST Fläche (m²)";
-                ws.Cell(row, 4).Value = "Prozent (%)";
-                ws.Cell(row, 5).Value = "Status";
+                // ===== SHEET 2: ZUSAMMENFASSUNG (Summary) =====
+                var summaryWs = wb.Worksheets.Add("Zusammenfassung");
 
-                ws.Range(row, 1, row, 5).Style.Font.Bold = true;
-                ws.Range(row, 1, row, 5).Style.Fill.BackgroundColor = XLColor.LightGray;
+                // Header
+                summaryWs.Cell(1, 1).Value = "Raumkate";
+                summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
+                summaryWs.Cell(1, 3).Value = "IST Fläche";
+                summaryWs.Cell(1, 4).Value = "Prozent (%)";
+                summaryWs.Cell(1, 5).Value = "Status";
 
-                row++;
+                var summaryHeaderRange = summaryWs.Range(1, 1, 1, 5);
+                summaryHeaderRange.Style.Font.Bold = true;
+                summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
+                // Summary data
+                int summaryRow = 2;
                 foreach (var ana in analysis.OrderBy(a => a.RoomCategory))
                 {
-                    ws.Cell(row, 1).Value = ana.RoomCategory;
-                    ws.Cell(row, 2).Value = ana.SollArea;
-                    ws.Cell(row, 3).Value = ana.IstArea;
+                    summaryWs.Cell(summaryRow, 1).Value = ana.RoomCategory;
+                    summaryWs.Cell(summaryRow, 2).Value = ana.SollArea;
+                    summaryWs.Cell(summaryRow, 3).Value = ana.IstArea;
                     
                     if (double.IsNaN(ana.Percentage) || double.IsInfinity(ana.Percentage))
                     {
-                        ws.Cell(row, 4).Value = "-";
+                        summaryWs.Cell(summaryRow, 4).Value = "-";
                     }
                     else
                     {
-                        ws.Cell(row, 4).Value = ana.Percentage;
+                        summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    ws.Cell(row, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
 
                     if (ana.IsOverLimit)
                     {
-                        ws.Range(row, 1, row, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
+                        summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
                     }
 
-                    row++;
+                    summaryRow++;
                 }
+
+                // Auto-fit columns
+                summaryWs.Columns().AdjustToContents();
 
                 wb.SaveAs(outputPath);
             }
@@ -998,41 +1004,77 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook(excelPath))
             {
-                var ws = wb.Worksheet(1);
-                var range = ws.RangeUsed();
-                if (range == null) return result;
-
-                int firstRow = range.FirstRow().RowNumber();
-                int lastRow = range.LastRow().RowNumber();
-
-                int summaryStartRow = -1;
-                for (int r = firstRow; r <= lastRow; r++)
+                // Try to get Zusammenfassung sheet
+                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                
+                if (ws == null)
                 {
-                    if (string.Equals(ws.Cell(r, 1).GetString().Trim(), "Zusammenfassung", StringComparison.OrdinalIgnoreCase))
+                    // Fallback: Look for old format with summary in first sheet
+                    ws = wb.Worksheet(1);
+                    var range = ws.RangeUsed();
+                    if (range == null) return result;
+
+                    int firstRow = range.FirstRow().RowNumber();
+                    int lastRow = range.LastRow().RowNumber();
+
+                    int summaryStartRow = -1;
+                    for (int r = firstRow; r <= lastRow; r++)
                     {
-                        summaryStartRow = r + 2;
-                        break;
+                        if (string.Equals(ws.Cell(r, 1).GetString().Trim(), "Zusammenfassung", StringComparison.OrdinalIgnoreCase))
+                        {
+                            summaryStartRow = r + 2;
+                            break;
+                        }
+                    }
+
+                    if (summaryStartRow == -1) return result;
+
+                    for (int r = summaryStartRow; r <= lastRow; r++)
+                    {
+                        string category = ws.Cell(r, 1).GetString().Trim();
+                        if (string.IsNullOrWhiteSpace(category)) break;
+
+                        if (double.TryParse(ws.Cell(r, 2).GetString().Trim(), out double soll) &&
+                            double.TryParse(ws.Cell(r, 3).GetString().Trim(), out double ist) &&
+                            double.TryParse(ws.Cell(r, 4).GetString().Trim(), out double percent))
+                        {
+                            result.Add(new Services.RoomCategoryAnalysis
+                            {
+                                RoomCategory = category,
+                                SollArea = soll,
+                                IstArea = ist,
+                                Percentage = percent
+                            });
+                        }
                     }
                 }
-
-                if (summaryStartRow == -1) return result;
-
-                for (int r = summaryStartRow; r <= lastRow; r++)
+                else
                 {
-                    string category = ws.Cell(r, 1).GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(category)) break;
+                    // New format: Read from Zusammenfassung sheet
+                    var range = ws.RangeUsed();
+                    if (range == null) return result;
 
-                    if (double.TryParse(ws.Cell(r, 2).GetString().Trim(), out double soll) &&
-                        double.TryParse(ws.Cell(r, 3).GetString().Trim(), out double ist) &&
-                        double.TryParse(ws.Cell(r, 4).GetString().Trim(), out double percent))
+                    int firstRow = range.FirstRow().RowNumber();
+                    int lastRow = range.LastRow().RowNumber();
+
+                    // Data starts from row 2 (row 1 is header)
+                    for (int r = firstRow + 1; r <= lastRow; r++)
                     {
-                        result.Add(new Services.RoomCategoryAnalysis
+                        string category = ws.Cell(r, 1).GetString().Trim();
+                        if (string.IsNullOrWhiteSpace(category)) break;
+
+                        if (double.TryParse(ws.Cell(r, 2).GetString().Trim(), out double soll) &&
+                            double.TryParse(ws.Cell(r, 3).GetString().Trim(), out double ist) &&
+                            double.TryParse(ws.Cell(r, 4).GetString().Trim(), out double percent))
                         {
-                            RoomCategory = category,
-                            SollArea = soll,
-                            IstArea = ist,
-                            Percentage = percent
-                        });
+                            result.Add(new Services.RoomCategoryAnalysis
+                            {
+                                RoomCategory = category,
+                                SollArea = soll,
+                                IstArea = ist,
+                                Percentage = percent
+                            });
+                        }
                     }
                 }
             }
@@ -1049,20 +1091,21 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook(excelPath))
             {
-                var ws = wb.Worksheet(1);
+                // Try to get Raumbuch sheet, fallback to first sheet if not found
+                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch") ?? wb.Worksheet(1);
                 var range = ws.RangeUsed();
                 if (range == null) return result;
 
                 int firstRow = range.FirstRow().RowNumber();
                 int lastRow = range.LastRow().RowNumber();
 
+                // Data starts from row 2 (row 1 is header)
                 for (int r = firstRow + 1; r <= lastRow; r++)
                 {
                     string category = ws.Cell(r, 1).GetString().Trim();
                     string name = ws.Cell(r, 2).GetString().Trim();
 
                     if (string.IsNullOrWhiteSpace(name)) continue;
-                    if (name.Equals("Zusammenfassung", StringComparison.OrdinalIgnoreCase)) break;
 
                     double.TryParse(ws.Cell(r, 3).GetString().Trim(), out double area);
 
@@ -1096,23 +1139,19 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook(existingPath))
             {
-                var ws = wb.Worksheet(1);
+                // Get or create Raumbuch sheet
+                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch") ?? wb.Worksheet(1);
+                if (ws.Name != "Raumbuch")
+                {
+                    ws.Name = "Raumbuch";
+                }
 
                 // Clear old data (keep header)
                 var range = ws.RangeUsed();
                 if (range != null)
                 {
-                    int firstDataRow = range.FirstRow().RowNumber() + 1;
+                    int firstDataRow = 2;  // Data starts at row 2
                     int lastDataRow = range.LastRow().RowNumber();
-
-                    for (int r = firstDataRow; r <= lastDataRow; r++)
-                    {
-                        if (string.Equals(ws.Cell(r, 1).GetString().Trim(), "Zusammenfassung", StringComparison.OrdinalIgnoreCase))
-                        {
-                            lastDataRow = r - 1;
-                            break;
-                        }
-                    }
 
                     if (lastDataRow >= firstDataRow)
                     {
@@ -1182,47 +1221,71 @@ namespace RaumbuchService.Controllers
                     row++;
                 }
 
-                // Update summary
-                row += 2;
-                ws.Cell(row, 1).Value = "Zusammenfassung";
-                ws.Cell(row, 1).Style.Font.Bold = true;
-                row++;
+                // Auto-fit columns
+                ws.Columns().AdjustToContents();
 
-                ws.Cell(row, 1).Value = "Raumkategorie";
-                ws.Cell(row, 2).Value = "SOLL Fläche (m²)";
-                ws.Cell(row, 3).Value = "IST Fläche (m²)";
-                ws.Cell(row, 4).Value = "Prozent (%)";
-                ws.Cell(row, 5).Value = "Status";
+                // Update or create Zusammenfassung sheet
+                var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                
+                if (summaryWs == null)
+                {
+                    summaryWs = wb.Worksheets.Add("Zusammenfassung");
+                    
+                    // Header
+                    summaryWs.Cell(1, 1).Value = "Raumkate";
+                    summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
+                    summaryWs.Cell(1, 3).Value = "IST Fläche";
+                    summaryWs.Cell(1, 4).Value = "Prozent (%)";
+                    summaryWs.Cell(1, 5).Value = "Status";
 
-                ws.Range(row, 1, row, 5).Style.Font.Bold = true;
-                ws.Range(row, 1, row, 5).Style.Fill.BackgroundColor = XLColor.LightGray;
+                    var headerRange = summaryWs.Range(1, 1, 1, 5);
+                    headerRange.Style.Font.Bold = true;
+                    headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+                }
+                else
+                {
+                    // Clear existing summary data (keep header)
+                    var summaryRange = summaryWs.RangeUsed();
+                    if (summaryRange != null)
+                    {
+                        int firstDataRow = 2;
+                        int lastDataRow = summaryRange.LastRow().RowNumber();
+                        if (lastDataRow >= firstDataRow)
+                        {
+                            summaryWs.Rows(firstDataRow, lastDataRow).Delete();
+                        }
+                    }
+                }
 
-                row++;
-
+                // Write summary data
+                int summaryRow = 2;
                 foreach (var ana in analysis.OrderBy(a => a.RoomCategory))
                 {
-                    ws.Cell(row, 1).Value = ana.RoomCategory;
-                    ws.Cell(row, 2).Value = ana.SollArea;
-                    ws.Cell(row, 3).Value = ana.IstArea;
+                    summaryWs.Cell(summaryRow, 1).Value = ana.RoomCategory;
+                    summaryWs.Cell(summaryRow, 2).Value = ana.SollArea;
+                    summaryWs.Cell(summaryRow, 3).Value = ana.IstArea;
                     
                     if (double.IsNaN(ana.Percentage) || double.IsInfinity(ana.Percentage))
                     {
-                        ws.Cell(row, 4).Value = "-";
+                        summaryWs.Cell(summaryRow, 4).Value = "-";
                     }
                     else
                     {
-                        ws.Cell(row, 4).Value = ana.Percentage;
+                        summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    ws.Cell(row, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
 
                     if (ana.IsOverLimit)
                     {
-                        ws.Range(row, 1, row, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
+                        summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
                     }
 
-                    row++;
+                    summaryRow++;
                 }
+
+                // Auto-fit columns
+                summaryWs.Columns().AdjustToContents();
 
                 wb.SaveAs(outputPath);
             }
@@ -1254,20 +1317,21 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook(excelPath))
             {
-                var ws = wb.Worksheet(1);
+                // Try to get Raumbuch sheet, fallback to first sheet if not found
+                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch") ?? wb.Worksheet(1);
                 var range = ws.RangeUsed();
                 if (range == null) return result;
 
                 int firstRow = range.FirstRow().RowNumber();
                 int lastRow = range.LastRow().RowNumber();
 
+                // Data starts from row 2 (row 1 is header)
                 for (int r = firstRow + 1; r <= lastRow; r++)
                 {
                     string raumName = ws.Cell(r, 2).GetString().Trim();
                     string differenzStr = ws.Cell(r, 9).GetString().Trim();
 
                     if (string.IsNullOrWhiteSpace(raumName)) continue;
-                    if (raumName.Equals("Zusammenfassung", StringComparison.OrdinalIgnoreCase)) break;
 
                     if (!double.TryParse(differenzStr, System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double differenz))
@@ -1287,333 +1351,9 @@ namespace RaumbuchService.Controllers
         }
 
         // --------------------------------------------------------------------
-        //  7. INVENTORY OPERATIONS (STEP 5)
+        //  HELPER CLASSES
         // --------------------------------------------------------------------
 
-        /// <summary>
-        /// Creates room sheets in Raumbuch.xlsx - one sheet per room for inventory.
-        /// Each sheet has columns: Objektname, Beschreibung, GUID
-        /// Swiss German: Erstellt Raumlisten (ein Blatt pro Raum) in Raumbuch.xlsx
-        /// </summary>
-        [HttpPost]
-        [Route("create-room-sheets")]
-        public async Task<IHttpActionResult> CreateRoomSheets([FromBody] CreateRoomSheetsRequest request)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("========== CreateRoomSheets START ==========");
-
-                if (request == null ||
-                    string.IsNullOrWhiteSpace(request.AccessToken) ||
-                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
-                    string.IsNullOrWhiteSpace(request.TargetFolderId))
-                {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
-                }
-
-                var tcService = new TrimbleConnectService(request.AccessToken);
-
-                System.Diagnostics.Debug.WriteLine("Downloading Raumbuch...");
-                // Download existing Raumbuch
-                string raumbuchPath = await tcService.DownloadFileAsync(
-                    request.RaumbuchFileId,
-                    _tempFolder,
-                    "Raumbuch.xlsx"
-                );
-
-                System.Diagnostics.Debug.WriteLine("Creating room sheets...");
-                // Read room names from first sheet
-                var roomNames = new List<string>();
-                int sheetsCreated = 0;  // Declare outside using block
-                
-                using (var wb = new XLWorkbook(raumbuchPath))
-                {
-                    var mainSheet = wb.Worksheet(1);
-                    var range = mainSheet.RangeUsed();
-                    
-                    if (range != null)
-                    {
-                        int firstRow = range.FirstRow().RowNumber();
-                        int lastRow = range.LastRow().RowNumber();
-
-                        // Read room names from column B (Raum Name)
-                        for (int r = firstRow + 1; r <= lastRow; r++)
-                        {
-                            string roomName = mainSheet.Cell(r, 2).GetString().Trim();
-                            
-                            if (string.IsNullOrWhiteSpace(roomName))
-                                continue;
-                                
-                            if (roomName.Equals("Zusammenfassung", StringComparison.OrdinalIgnoreCase))
-                                break;
-
-                            roomNames.Add(roomName);
-                        }
-                    }
-
-                    System.Diagnostics.Debug.WriteLine($"Found {roomNames.Count} rooms");
-
-                    // Create sheet for each room
-                    foreach (var roomName in roomNames)
-                    {
-                        // Check if sheet already exists
-                        if (wb.Worksheets.Any(ws => ws.Name.Equals(roomName, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            System.Diagnostics.Debug.WriteLine($"  Sheet '{roomName}' already exists - skipping");
-                            continue;
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"  Creating sheet: {roomName}");
-
-                        // Create new worksheet
-                        var roomSheet = wb.Worksheets.Add(roomName);
-
-                        // Row 1: Link back to main sheet in A1
-                        roomSheet.Cell(1, 1).SetFormulaA1($"=HYPERLINK(\"#Raumbuch!A1\", \"Zum Raumbuch\")");
-                        roomSheet.Cell(1, 1).Style.Font.FontColor = XLColor.Blue;
-                        roomSheet.Cell(1, 1).Style.Font.Underline = XLFontUnderlineValues.Single;
-
-                        // Row 2: Add header row (columns A-D)
-                        roomSheet.Cell(2, 1).Value = "IFC Fil";  // Header for column A
-                        roomSheet.Cell(2, 2).Value = "Objektname";
-                        roomSheet.Cell(2, 3).Value = "Beschreibung";
-                        roomSheet.Cell(2, 4).Value = "GUID";
-
-                        var headerRange = roomSheet.Range(2, 1, 2, 4);
-                        headerRange.Style.Font.Bold = true;
-                        headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
-                        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                        headerRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-
-                        // Set column A width to 30
-                        roomSheet.Column(1).Width = 30;
-                        
-                        // Auto-fit other columns
-                        roomSheet.Columns(2, 4).AdjustToContents();
-                        
-                        sheetsCreated++;
-                    }
-
-                    System.Diagnostics.Debug.WriteLine($"Sheets created: {sheetsCreated}");
-
-                    // Update main sheet - convert room names in column B to hyperlinks with apostrophes
-                    int row = 2;
-                    foreach (var roomName in roomNames)
-                    {
-                        var cell = mainSheet.Cell(row, 2);
-                        // Add apostrophes around sheet name for Excel compatibility
-                        cell.SetFormulaA1($"=HYPERLINK(\"#'{roomName}'!A1\", \"{roomName}\")");
-                        cell.Style.Font.FontColor = XLColor.Blue;
-                        cell.Style.Font.Underline = XLFontUnderlineValues.Single;
-                        row++;
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("Saving workbook...");
-                    wb.SaveAs(raumbuchPath);
-                }
-
-                System.Diagnostics.Debug.WriteLine("Uploading updated Raumbuch...");
-                // Upload to Trimble Connect
-                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
-
-                // Cleanup
-                File.Delete(raumbuchPath);
-
-                System.Diagnostics.Debug.WriteLine("========== CreateRoomSheets END (Success) ==========");
-
-                return Ok(new CreateRoomSheetsResponse
-                {
-                    Success = true,
-                    Message = $"Raumlisten erfolgreich erstellt. {sheetsCreated} Blätter hinzugefügt.",
-                    RaumbuchFileId = fileId,
-                    RoomSheetsCreated = sheetsCreated,
-                    RoomNames = roomNames
-                });
-            }
-            catch (Exception ex)
-            {
-                return InternalServerError(new Exception($"Fehler beim Erstellen der Raumlisten: {ex.Message}", ex));
-            }
-        }
-
-        /// <summary>
-        /// Fills inventory data from IFC files into Raumbuch room sheets.
-        /// Swiss German: Füllt Inventardaten aus IFC-Dateien in Raumlisten ein.
-        /// </summary>
-        [HttpPost]
-        [Route("fill-inventory")]
-        public async Task<IHttpActionResult> FillInventory([FromBody] FillInventoryRequest request)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("========== FillInventory START ==========");
-
-                if (request == null ||
-                    string.IsNullOrWhiteSpace(request.AccessToken) ||
-                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
-                    request.IfcFileIds == null || request.IfcFileIds.Count == 0 ||
-                    string.IsNullOrWhiteSpace(request.PsetPartialName) ||
-                    string.IsNullOrWhiteSpace(request.RoomPropertyName) ||
-                    string.IsNullOrWhiteSpace(request.TargetFolderId))
-                {
-                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
-                }
-
-                var tcService = new TrimbleConnectService(request.AccessToken);
-                var ifcEditor = new IfcEditorService();
-                var warnings = new List<string>();
-
-                System.Diagnostics.Debug.WriteLine($"Downloading Raumbuch...");
-                // Download Raumbuch
-                string raumbuchPath = await tcService.DownloadFileAsync(
-                    request.RaumbuchFileId,
-                    _tempFolder,
-                    "Raumbuch.xlsx"
-                );
-
-                // Collect inventory from all IFC files
-                var allInventory = new Dictionary<string, List<Services.InventoryItem>>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var ifcFileId in request.IfcFileIds)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Processing IFC file: {ifcFileId}");
-
-                    // Get original filename from Trimble Connect
-                    string originalFileName = "Model.ifc";  // Default fallback
-                    try
-                    {
-                        originalFileName = await tcService.GetFileNameAsync(ifcFileId);
-                        System.Diagnostics.Debug.WriteLine($"  Original filename from TC: {originalFileName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"  Could not get filename from TC: {ex.Message}");
-                    }
-
-                    // Download IFC with temp name
-                    string ifcPath = await tcService.DownloadFileAsync(
-                        ifcFileId,
-                        _tempFolder,
-                        $"Model_{Guid.NewGuid()}.ifc"
-                    );
-
-                    // Read inventory (will use temp filename internally, but we'll override it)
-                    var inventory = ifcEditor.ReadInventoryByRoom(
-                        ifcPath,
-                        request.PsetPartialName,
-                        request.RoomPropertyName
-                    );
-
-                    System.Diagnostics.Debug.WriteLine($"  Found inventory for {inventory.Count} rooms");
-
-                    // Merge inventory into allInventory and set correct filename
-                    foreach (var kvp in inventory)
-                    {
-                        if (!allInventory.ContainsKey(kvp.Key))
-                        {
-                            allInventory[kvp.Key] = new List<Services.InventoryItem>();
-                        }
-
-                        // Override filename with original name from Trimble Connect
-                        foreach (var item in kvp.Value)
-                        {
-                            item.IfcFileName = originalFileName;
-                        }
-
-                        allInventory[kvp.Key].AddRange(kvp.Value);
-                    }
-
-                    // Cleanup
-                    File.Delete(ifcPath);
-                }
-
-                System.Diagnostics.Debug.WriteLine($"Total inventory collected for {allInventory.Count} rooms");
-
-                // Update Raumbuch with inventory
-                int roomsUpdated = 0;
-                int totalItems = 0;
-
-                using (var wb = new XLWorkbook(raumbuchPath))
-                {
-                    foreach (var kvp in allInventory)
-                    {
-                        string roomNumber = kvp.Key;
-                        var items = kvp.Value;
-
-                        System.Diagnostics.Debug.WriteLine($"  Updating room {roomNumber} with {items.Count} items");
-
-                        // Find worksheet for this room
-                        var roomSheet = wb.Worksheets.FirstOrDefault(ws => 
-                            ws.Name.Equals(roomNumber, StringComparison.OrdinalIgnoreCase));
-
-                        if (roomSheet == null)
-                        {
-                            warnings.Add($"Blatt für Raum '{roomNumber}' nicht gefunden - übersprungen");
-                            System.Diagnostics.Debug.WriteLine($"  WARNING: Sheet for room '{roomNumber}' not found!");
-                            continue;
-                        }
-
-                        // Write inventory items starting from row 3 (row 1 has link, row 2 has headers)
-                        int row = 3;
-                        foreach (var item in items)
-                        {
-                            roomSheet.Cell(row, 1).Value = item.IfcFileName ?? "";  // Column A: IFC filename (original)
-                            roomSheet.Cell(row, 2).Value = item.Name;
-                            roomSheet.Cell(row, 3).Value = item.Description;
-                            roomSheet.Cell(row, 4).Value = item.GlobalId;
-                            row++;
-                            totalItems++;
-                        }
-
-                        roomsUpdated++;
-                        System.Diagnostics.Debug.WriteLine($"  Successfully updated room '{roomNumber}' with {items.Count} items");
-
-                        // Auto-fit columns (except A which has fixed width)
-                        roomSheet.Columns(2, 4).AdjustToContents();
-                    }
-
-                    System.Diagnostics.Debug.WriteLine($"Saving workbook with {roomsUpdated} rooms updated and {totalItems} total items...");
-                    wb.SaveAs(raumbuchPath);
-                }
-
-                System.Diagnostics.Debug.WriteLine("Uploading updated Raumbuch...");
-                // Upload to Trimble Connect
-                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
-
-                // Cleanup
-                File.Delete(raumbuchPath);
-
-                System.Diagnostics.Debug.WriteLine($"========== FillInventory END (Success) - {roomsUpdated} rooms, {totalItems} items ==========");
-
-                string message = $"Inventar erfolgreich hinzugefügt. {roomsUpdated} Räume aktualisiert, {totalItems} Objekte hinzugefügt.";
-                if (warnings.Count > 0)
-                {
-                    message += $" {warnings.Count} Warnungen.";
-                }
-
-                return Ok(new FillInventoryResponse
-                {
-                    Success = true,
-                    Message = message,
-                    RaumbuchFileId = fileId,
-                    RoomsUpdated = roomsUpdated,
-                    TotalItems = totalItems,
-                    Warnings = warnings
-                });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("========== FillInventory EXCEPTION ==========");
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
-                return InternalServerError(new Exception($"Fehler beim Füllen des Inventars: {ex.Message}", ex));
-            }
-        }
-
-        // --------------------------------------------------------------------
-        //  HELPER METHODS
-        // --------------------------------------------------------------------
     }
 
     // --------------------------------------------------------------------
