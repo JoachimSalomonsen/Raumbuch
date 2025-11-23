@@ -1458,10 +1458,10 @@
                         let html = '';
                         data.files.forEach(file => {
                             html += `
-                                <div class="file-checkbox">
-                                    <input type="checkbox" id="ifc_${file.id}" value="${file.id}" class="ifc-file-checkbox">
-                                    <label for="ifc_${file.id}">${file.name}</label>
-                                </div>
+                                <label class="file-checkbox-label">
+                                    <input type="checkbox" id="ifc_${file.id}" value="${file.id}" class="ifc-file-checkbox file-checkbox">
+                                    <span>${file.name}</span>
+                                </label>
                             `;
                         });
                         ifcFilesList.innerHTML = html;
