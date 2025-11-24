@@ -364,6 +364,7 @@
     <Content Include="DESIGN_UPDATE.md" />
     <Content Include="COLOR_FIX_SUMMARY.md" />
     <Content Include="get_token.ps1" />
+    <Content Include="RaumbuchManager.json" />
     <None Include="Scripts\jquery-3.7.0.intellisense.js" />
     <Content Include="Scripts\jquery-3.7.0.js" />
     <Content Include="Scripts\jquery-3.7.0.min.js" />
