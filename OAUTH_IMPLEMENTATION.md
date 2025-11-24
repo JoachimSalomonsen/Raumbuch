@@ -82,10 +82,11 @@ This is required to store OAuth state parameters and tokens on the server side.
    - Backend validates state parameter (CSRF protection)
    - Backend exchanges authorization code for access token
    - Backend stores tokens in server session
-   - Backend redirects to main page with token in URL parameter
+   - Backend redirects to main page with success flag only
 
-4. **Frontend receives token**
-   - Frontend detects callback parameters
+4. **Frontend retrieves token**
+   - Frontend detects success callback parameter
+   - Frontend calls `/api/auth/token` to retrieve token securely
    - Frontend stores token in sessionStorage
    - Frontend updates UI to show logged-in state
    - User can now use all API features
@@ -96,6 +97,9 @@ This is required to store OAuth state parameters and tokens on the server side.
 - **Session Storage**: Tokens stored in sessionStorage (cleared on browser close)
 - **Server-Side Session**: Tokens also stored in server session
 - **HTTPS Required**: OAuth flow requires HTTPS in production
+- **No Tokens in URLs**: Access tokens never passed as URL parameters (prevents logging/sharing)
+- **Generic Error Codes**: Error messages use generic codes to avoid information leakage
+- **Connection Pooling**: Static HttpClient instance prevents socket exhaustion
 
 ## Deployment Notes
 
