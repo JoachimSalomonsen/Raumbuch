@@ -44,6 +44,7 @@ namespace RaumbuchService.Models
 
     /// <summary>
     /// SOLL/IST analysis per room category.
+    /// German Raumbuch standard status values: "OK", "Zu wenig", "Zu viel"
     /// </summary>
     public class RoomCategoryAnalysis
     {
@@ -51,6 +52,33 @@ namespace RaumbuchService.Models
         public double SollArea { get; set; }
         public double IstArea { get; set; }
         public double Percentage { get; set; }
-        public bool IsOverLimit => Percentage > 100;
+
+        /// <summary>
+        /// Returns true if IST is less than SOLL (too little area).
+        /// This is the condition that requires attention (red highlighting).
+        /// </summary>
+        public bool IsUnderLimit => Percentage < 100.0 && SollArea > 0;
+
+        /// <summary>
+        /// Returns true if IST exceeds SOLL (too much area).
+        /// </summary>
+        public bool IsOverLimit => Percentage > 100.0;
+
+        /// <summary>
+        /// Returns the German status string according to Raumbuch standard.
+        /// "OK" - IST equals SOLL (within tolerance)
+        /// "Zu wenig" - IST is less than SOLL (needs attention)
+        /// "Zu viel" - IST exceeds SOLL
+        /// </summary>
+        public string Status
+        {
+            get
+            {
+                if (SollArea <= 0 && IstArea <= 0) return "OK";
+                if (IsUnderLimit) return "Zu wenig";
+                if (IsOverLimit) return "Zu viel";
+                return "OK";
+            }
+        }
     }
 }

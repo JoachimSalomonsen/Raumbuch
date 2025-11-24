@@ -578,3 +578,264 @@ textarea {
         display: block;
     }
 
+/* ============================================================
+   ANALYSE TAB STYLES
+   ============================================================ */
+
+/* KPI Widget */
+.kpi-widget {
+    background: linear-gradient(135deg, var(--tc-dark-blue) 0%, var(--tc-primary-blue) 100%);
+    color: white;
+}
+
+.kpi-widget h2 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.kpi-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.kpi-item {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+}
+
+.kpi-label {
+    display: block;
+    font-size: 0.8em;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.kpi-value {
+    display: block;
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.kpi-status-ok {
+    border-left: 3px solid #2E8540;
+}
+
+.kpi-status-under {
+    border-left: 3px solid #D64545;
+}
+
+.kpi-status-over {
+    border-left: 3px solid #FFBF47;
+}
+
+/* Tolerance Controls */
+.tolerance-controls {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Filter Controls */
+.filter-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px !important;
+    width: auto !important;
+}
+
+.filter-btn.active {
+    background-color: var(--tc-primary-blue) !important;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.search-box input {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Analyse Table */
+.analyse-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--tc-border);
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.analyse-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.analyse-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--tc-bg-card);
+    z-index: 1;
+}
+
+.analyse-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--tc-border);
+    background-color: #f5f5f5;
+    cursor: pointer;
+    user-select: none;
+}
+
+.analyse-table th:hover {
+    background-color: #eee;
+}
+
+.analyse-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--tc-border);
+}
+
+.analyse-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.analyse-row-under {
+    background-color: #fff0f0 !important;
+}
+
+.analyse-row-under:hover {
+    background-color: #ffe0e0 !important;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-ok {
+    background-color: #dff3e6;
+    color: #2E8540;
+}
+
+.status-under {
+    background-color: #f8d7da;
+    color: #D64545;
+}
+
+.status-over {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar-bg {
+    flex: 1;
+    height: 16px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    min-width: 80px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #333;
+}
+
+.progress-bar-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    min-width: 40px;
+}
+
+/* Comment Input */
+.comment-input {
+    width: 100%;
+    max-width: 150px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--tc-primary-blue);
+}
+
+/* Responsive adjustments for Analyse tab */
+@media (max-width: 768px) {
+    .kpi-container {
+        flex-direction: column;
+    }
+    
+    .kpi-item {
+        min-width: auto;
+    }
+    
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box {
+        max-width: none;
+    }
+    
+    .analyse-table-container {
+        max-height: 300px;
+    }
+    
+    .analyse-table {
+        font-size: 0.8em;
+    }
+    
+    .analyse-table th,
+    .analyse-table td {
+        padding: 6px 4px;
+    }
+}
+

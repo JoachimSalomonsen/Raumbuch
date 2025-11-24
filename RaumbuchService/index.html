@@ -23,6 +23,11 @@
                 <span>Raumbuch</span>
             </div>
 
+            <div class="tc-tab" onclick="openTab('tab-analyse')">
+                <img src="img/material.png" class="tc-tab-icon" />
+                <span>Analyse</span>
+            </div>
+
             <div class="tc-tab" onclick="openTab('tab-ausstattung')">
                 <img src="img/material.png" class="tc-tab-icon" />
                 <span>Ausstattungsverwaltung</span>
@@ -164,6 +169,113 @@
                     <div id="step3Result" class="result"></div>
                 </section>
 
+
+            </div> <!-- END TAB 1 -->
+
+            <!-- ========================================================= -->
+            <!-- TAB 2 – ANALYSE (SOLL/IST + ZUSAMMENFASSUNG)              -->
+            <!-- ========================================================= -->
+            <div id="tab-analyse" class="tab-content">
+
+                <!-- KPI Summary Widget -->
+                <section class="card kpi-widget">
+                    <h2>📊 Übersicht</h2>
+                    <div class="kpi-container">
+                        <div class="kpi-item">
+                            <span class="kpi-label">SOLL Gesamt</span>
+                            <span class="kpi-value" id="kpiSollTotal">- m²</span>
+                        </div>
+                        <div class="kpi-item">
+                            <span class="kpi-label">IST Gesamt</span>
+                            <span class="kpi-value" id="kpiIstTotal">- m²</span>
+                        </div>
+                        <div class="kpi-item">
+                            <span class="kpi-label">Abweichung</span>
+                            <span class="kpi-value" id="kpiDeviation">- %</span>
+                        </div>
+                        <div class="kpi-item kpi-status-ok">
+                            <span class="kpi-label">OK</span>
+                            <span class="kpi-value" id="kpiOkCount">0</span>
+                        </div>
+                        <div class="kpi-item kpi-status-under">
+                            <span class="kpi-label">Zu wenig</span>
+                            <span class="kpi-value" id="kpiUnderCount">0</span>
+                        </div>
+                        <div class="kpi-item kpi-status-over">
+                            <span class="kpi-label">Zu viel</span>
+                            <span class="kpi-value" id="kpiOverCount">0</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tolerance Configuration -->
+                <section class="card">
+                    <h2>⚙️ Toleranz-Einstellungen</h2>
+                    <div class="tolerance-controls">
+                        <div class="form-group" style="display:inline-block; margin-right:20px;">
+                            <label for="toleranceMin">Minimum Toleranz (%):</label>
+                            <input type="number" id="toleranceMin" class="form-control" value="-10" min="-100" max="0" style="width:100px;">
+                        </div>
+                        <div class="form-group" style="display:inline-block; margin-right:20px;">
+                            <label for="toleranceMax">Maximum Toleranz (%):</label>
+                            <input type="number" id="toleranceMax" class="form-control" value="10" min="0" max="100" style="width:100px;">
+                        </div>
+                        <button class="btn btn-secondary" onclick="applyToleranceSettings()">Toleranz anwenden</button>
+                    </div>
+                </section>
+
+                <!-- Filter and Search Controls -->
+                <section class="card">
+                    <h2>🔍 Filter & Suche</h2>
+                    <div class="filter-controls">
+                        <div class="filter-buttons">
+                            <button class="btn btn-secondary filter-btn active" data-filter="all" onclick="filterAnalyseTable('all')">Alle</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="ok" onclick="filterAnalyseTable('ok')">✅ OK</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="under" onclick="filterAnalyseTable('under')">⚠️ Zu wenig</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="over" onclick="filterAnalyseTable('over')">📊 Zu viel</button>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="analyseSearch" class="form-control" placeholder="Suche nach Raumkategorie..." onkeyup="searchAnalyseTable()">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Zusammenfassung Table -->
+                <section class="card">
+                    <h2>📋 Zusammenfassung (SOLL/IST-Analyse)</h2>
+                    <p>Übersicht der Flächenanalyse nach Raumkategorie</p>
+                    
+                    <div class="analyse-table-container">
+                        <table class="analyse-table" id="analyseTable">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortAnalyseTable(0)">Raumkategorie ↕</th>
+                                    <th onclick="sortAnalyseTable(1)">SOLL (m²) ↕</th>
+                                    <th onclick="sortAnalyseTable(2)">IST (m²) ↕</th>
+                                    <th onclick="sortAnalyseTable(3)">Prozent (%) ↕</th>
+                                    <th>Visualisierung</th>
+                                    <th onclick="sortAnalyseTable(5)">Status ↕</th>
+                                    <th>Kommentar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyseTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align:center; color:#666;">
+                                        Keine Daten vorhanden. Bitte laden Sie eine Konfiguration oder erstellen Sie ein Raumbuch.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="loadAnalyseData()">📥 Daten laden</button>
+                        <button class="btn btn-primary" onclick="saveAnalyseChanges()">💾 Änderungen speichern</button>
+                    </div>
+                    <div id="analyseResult" class="result"></div>
+                </section>
+
+                <!-- Soll/Ist-Prüfung (moved from Raumbuch tab) -->
                 <section class="card">
                     <h2>Soll/Ist-Prüfung</h2>
                     <p>Die Differenz in der Fläche zwischen Raumprogramm (SOLL) und Raumbuch (IST) wird für jede Raumkategorie in Pset Raumbuch geschrieben.</p>
@@ -174,10 +286,10 @@
                     <div id="step4Result" class="result"></div>
                 </section>
 
+            </div> <!-- END TAB 2 (ANALYSE) -->
 
-            </div> <!-- END TAB 1 -->
             <!-- ========================================================= -->
-            <!-- TAB 2 – AUSSTATTUNGSVERWALTUNG (STEP 5)                   -->
+            <!-- TAB 3 – AUSSTATTUNGSVERWALTUNG (STEP 5)                   -->
             <!-- ========================================================= -->
             <div id="tab-ausstattung" class="tab-content">
 
@@ -495,7 +607,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             document.getElementById(tabId).classList.add('active');
 
             // activate tab button
-            const index = ['tab-konfig', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
+            const index = ['tab-konfig', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
             document.querySelectorAll('.tc-tab')[index].classList.add('active');
         }
 
@@ -510,7 +622,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 ifcModel: null,
                 raumbuch: null
             },
-            bcfAssignees: []
+            bcfAssignees: [],
+            // New: Summary data for Analyse tab
+            zusammenfassung: [],
+            toleranceProfiles: [
+                { name: 'Strenge Kontrolle (±5%)', min: -5, max: 5 },
+                { name: 'Normal (±10%)', min: -10, max: 10 },
+                { name: 'Frühe Projektphase (±20%)', min: -20, max: 20 }
+            ]
         };
 
         function getToken() {
@@ -1567,7 +1686,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ Raumbuch erstellt!<br>Datei: ${fileName}<br>⏳ Warte auf ID von Connect...<br><br><strong>Analyse:</strong><br>`;
                     if (data.analysis && data.analysis.length > 0) {
                         data.analysis.forEach(a => {
-                            const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
+                            // Use new status logic: OK, Zu wenig, Zu viel
+                            const status = a.status || (a.isUnderLimit ? '⚠️ Zu wenig' : (a.isOverLimit ? '📊 Zu viel' : '✅ OK'));
                             message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
                         });
                     }
@@ -1591,7 +1711,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         message = `⚠️ Raumbuch wurde erstellt, aber ID konnte nicht sofort abgerufen werden.<br>Datei: ${fileName}<br>Bitte klicken Sie auf "Dateien laden" um die Liste zu aktualisieren.<br><br><strong>Analyse:</strong><br>`;
                         if (data.analysis && data.analysis.length > 0) {
                             data.analysis.forEach(a => {
-                                const status = a.isOverLimit ? '⚠️ ÜBERSCHUSS' : '✅ OK';
+                                // Use new status logic: OK, Zu wenig, Zu viel
+                                const status = a.status || (a.isUnderLimit ? '⚠️ Zu wenig' : (a.isOverLimit ? '📊 Zu viel' : '✅ OK'));
                                 message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
                             });
                         }
@@ -2217,6 +2338,371 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             } catch (error) {
                 showResult('step5_2Result', 'error', `❌ Fehler: ${error.message}`);
             }
+        }
+
+        // ====================================================================
+        //  ANALYSE TAB FUNCTIONS
+        // ====================================================================
+
+        // Store current tolerance settings
+        let toleranceSettings = {
+            min: -10,
+            max: 10
+        };
+
+        // Store current analyse data
+        let analyseData = [];
+
+        /**
+         * Loads analyse data from Zusammenfassung (from loaded config or API)
+         */
+        async function loadAnalyseData() {
+            showResult('analyseResult', 'loading', '⏳ Lade Analysedaten...');
+
+            try {
+                const token = getToken();
+                const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
+
+                if (!token || !raumbuchFileId) {
+                    showResult('analyseResult', 'error', '⚠️ Bitte zuerst ein Raumbuch auswählen');
+                    return;
+                }
+
+                // Load data from the Raumbuch Excel file (Zusammenfassung sheet)
+                const response = await fetch(`${API_BASE}/get-zusammenfassung`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        raumbuchFileId: raumbuchFileId
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.zusammenfassung) {
+                        analyseData = data.zusammenfassung;
+                        currentConfig.zusammenfassung = data.zusammenfassung;
+                        renderAnalyseTable(data.zusammenfassung);
+                        updateKPIWidget(data.zusammenfassung);
+                        showResult('analyseResult', 'success', `✅ ${data.zusammenfassung.length} Kategorien geladen`);
+                    } else {
+                        showResult('analyseResult', 'warning', '⚠️ Keine Zusammenfassung gefunden');
+                    }
+                } else {
+                    // Try to use cached data from config
+                    if (currentConfig.zusammenfassung && currentConfig.zusammenfassung.length > 0) {
+                        analyseData = currentConfig.zusammenfassung;
+                        renderAnalyseTable(currentConfig.zusammenfassung);
+                        updateKPIWidget(currentConfig.zusammenfassung);
+                        showResult('analyseResult', 'success', `✅ ${currentConfig.zusammenfassung.length} Kategorien aus Konfiguration geladen`);
+                    } else {
+                        showResult('analyseResult', 'error', '❌ Fehler beim Laden der Daten');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading analyse data:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Renders the analyse table with the given data
+         */
+        function renderAnalyseTable(data) {
+            const tbody = document.getElementById('analyseTableBody');
+            if (!tbody) return;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                const percentage = item.percentage || item.Percentage || 0;
+                const sollArea = item.sollArea || item.SollArea || 0;
+                const istArea = item.istArea || item.IstArea || 0;
+                const category = item.roomCategory || item.RoomCategory || '-';
+                const comment = item.comment || item.Comment || '';
+                
+                // Determine status based on tolerance settings
+                const status = getStatus(percentage, sollArea, istArea);
+                const statusClass = getStatusClass(status);
+                const rowClass = status === 'Zu wenig' ? 'analyse-row-under' : '';
+                
+                // Create visual bar
+                const barHtml = createProgressBar(percentage);
+                
+                html += `
+                    <tr class="analyse-row ${rowClass}" data-status="${status.toLowerCase().replace(' ', '-')}" data-index="${index}">
+                        <td>${escapeHtml(category)}</td>
+                        <td>${sollArea.toFixed(2)}</td>
+                        <td>${istArea.toFixed(2)}</td>
+                        <td>${percentage.toFixed(1)}%</td>
+                        <td>${barHtml}</td>
+                        <td><span class="status-badge ${statusClass}">${status}</span></td>
+                        <td><input type="text" class="comment-input" value="${escapeHtml(comment)}" data-index="${index}" placeholder="Kommentar..."></td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        /**
+         * Determines the status based on percentage and tolerance settings
+         */
+        function getStatus(percentage, sollArea, istArea) {
+            if (sollArea <= 0 && istArea <= 0) return 'OK';
+            
+            const deviation = percentage - 100;
+            
+            if (deviation < toleranceSettings.min) {
+                return 'Zu wenig';
+            } else if (deviation > toleranceSettings.max) {
+                return 'Zu viel';
+            }
+            return 'OK';
+        }
+
+        /**
+         * Gets the CSS class for status badge
+         */
+        function getStatusClass(status) {
+            switch(status) {
+                case 'Zu wenig': return 'status-under';
+                case 'Zu viel': return 'status-over';
+                default: return 'status-ok';
+            }
+        }
+
+        /**
+         * Creates a visual progress bar for SOLL/IST comparison
+         */
+        function createProgressBar(percentage) {
+            const width = Math.min(Math.max(percentage, 0), 150); // Cap at 150%
+            const barWidth = (width / 150) * 100;
+            const markerPos = (100 / 150) * 100; // 100% marker position
+            
+            let barColor = '#2E8540'; // Green for OK
+            if (percentage < 100 - Math.abs(toleranceSettings.min)) {
+                barColor = '#D64545'; // Red for under
+            } else if (percentage > 100 + toleranceSettings.max) {
+                barColor = '#FFBF47'; // Yellow for over
+            }
+            
+            // Color intensity based on deviation
+            const deviation = Math.abs(percentage - 100);
+            const intensity = Math.min(deviation / 30, 1);
+            
+            return `
+                <div class="progress-bar-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width:${barWidth}%; background-color:${barColor}; opacity:${0.4 + intensity * 0.6};"></div>
+                        <div class="progress-bar-marker" style="left:${markerPos}%;"></div>
+                    </div>
+                    <span class="progress-bar-label">${percentage.toFixed(0)}%</span>
+                </div>
+            `;
+        }
+
+        /**
+         * Updates the KPI widget with summary data
+         */
+        function updateKPIWidget(data) {
+            if (!data || data.length === 0) return;
+
+            let totalSoll = 0;
+            let totalIst = 0;
+            let okCount = 0;
+            let underCount = 0;
+            let overCount = 0;
+
+            data.forEach(item => {
+                const soll = item.sollArea || item.SollArea || 0;
+                const ist = item.istArea || item.IstArea || 0;
+                const percentage = item.percentage || item.Percentage || 0;
+                
+                totalSoll += soll;
+                totalIst += ist;
+                
+                const status = getStatus(percentage, soll, ist);
+                if (status === 'OK') okCount++;
+                else if (status === 'Zu wenig') underCount++;
+                else if (status === 'Zu viel') overCount++;
+            });
+
+            const deviation = totalSoll > 0 ? ((totalIst / totalSoll) * 100 - 100).toFixed(1) : 0;
+
+            document.getElementById('kpiSollTotal').textContent = totalSoll.toFixed(2) + ' m²';
+            document.getElementById('kpiIstTotal').textContent = totalIst.toFixed(2) + ' m²';
+            document.getElementById('kpiDeviation').textContent = (deviation >= 0 ? '+' : '') + deviation + '%';
+            document.getElementById('kpiOkCount').textContent = okCount;
+            document.getElementById('kpiUnderCount').textContent = underCount;
+            document.getElementById('kpiOverCount').textContent = overCount;
+
+            // Color the deviation based on value
+            const deviationEl = document.getElementById('kpiDeviation');
+            if (deviation < toleranceSettings.min) {
+                deviationEl.style.color = '#D64545';
+            } else if (deviation > toleranceSettings.max) {
+                deviationEl.style.color = '#FFBF47';
+            } else {
+                deviationEl.style.color = '#2E8540';
+            }
+        }
+
+        /**
+         * Applies tolerance settings and re-renders the table
+         */
+        function applyToleranceSettings() {
+            toleranceSettings.min = parseFloat(document.getElementById('toleranceMin').value) || -10;
+            toleranceSettings.max = parseFloat(document.getElementById('toleranceMax').value) || 10;
+            
+            if (analyseData.length > 0) {
+                renderAnalyseTable(analyseData);
+                updateKPIWidget(analyseData);
+                showResult('analyseResult', 'success', '✅ Toleranz-Einstellungen angewendet');
+            }
+        }
+
+        /**
+         * Filters the analyse table by status
+         */
+        function filterAnalyseTable(filter) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.filter-btn[data-filter="${filter}"]`)?.classList.add('active');
+            
+            // Filter rows
+            const rows = document.querySelectorAll('.analyse-row');
+            rows.forEach(row => {
+                const status = row.dataset.status;
+                if (filter === 'all') {
+                    row.style.display = '';
+                } else if (filter === 'ok' && status === 'ok') {
+                    row.style.display = '';
+                } else if (filter === 'under' && status === 'zu-wenig') {
+                    row.style.display = '';
+                } else if (filter === 'over' && status === 'zu-viel') {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        /**
+         * Searches the analyse table
+         */
+        function searchAnalyseTable() {
+            const searchTerm = document.getElementById('analyseSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('.analyse-row');
+            
+            rows.forEach(row => {
+                const category = row.cells[0]?.textContent.toLowerCase() || '';
+                if (category.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        /**
+         * Sorts the analyse table by column
+         */
+        let sortDirection = {};
+        function sortAnalyseTable(columnIndex) {
+            const table = document.getElementById('analyseTable');
+            const tbody = document.getElementById('analyseTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr.analyse-row'));
+            
+            if (rows.length === 0) return;
+            
+            // Toggle sort direction
+            sortDirection[columnIndex] = !sortDirection[columnIndex];
+            const ascending = sortDirection[columnIndex];
+            
+            rows.sort((a, b) => {
+                let aVal = a.cells[columnIndex]?.textContent || '';
+                let bVal = b.cells[columnIndex]?.textContent || '';
+                
+                // Try to parse as numbers
+                const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+                const bNum = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return ascending ? aNum - bNum : bNum - aNum;
+                }
+                
+                return ascending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        /**
+         * Saves analyse changes (comments) to JSON config
+         */
+        async function saveAnalyseChanges() {
+            showResult('analyseResult', 'loading', '⏳ Speichere Änderungen...');
+            
+            try {
+                // Collect comments from input fields
+                const commentInputs = document.querySelectorAll('.comment-input');
+                commentInputs.forEach(input => {
+                    const index = parseInt(input.dataset.index);
+                    if (analyseData[index]) {
+                        analyseData[index].comment = input.value;
+                    }
+                });
+                
+                // Update config
+                currentConfig.zusammenfassung = analyseData;
+                
+                // Save config to Azure
+                const configName = document.getElementById('configName').value.trim();
+                if (!configName) {
+                    showResult('analyseResult', 'error', '⚠️ Bitte geben Sie einen Konfigurationsnamen ein');
+                    return;
+                }
+                
+                const response = await fetch(`${API_PROJECT}/config/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        configName: configName,
+                        configuration: currentConfig
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        showResult('analyseResult', 'success', '✅ Änderungen gespeichert');
+                    } else {
+                        showResult('analyseResult', 'error', `❌ ${data.message || 'Fehler beim Speichern'}`);
+                    }
+                } else {
+                    showResult('analyseResult', 'error', '❌ Fehler beim Speichern');
+                }
+            } catch (error) {
+                console.error('Error saving analyse changes:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Escapes HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Initialize date picker with today's date as default

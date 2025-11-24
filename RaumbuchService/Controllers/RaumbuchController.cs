@@ -623,6 +623,56 @@ namespace RaumbuchService.Controllers
             }
         }
 
+        // --------------------------------------------------------------------
+        //  GET ZUSAMMENFASSUNG (for Analyse tab)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Gets the Zusammenfassung (summary) data from Raumbuch Excel.
+        /// Swiss German: Holt die Zusammenfassung aus der Raumbuch-Datei.
+        /// </summary>
+        [HttpPost]
+        [Route("get-zusammenfassung")]
+        public async Task<IHttpActionResult> GetZusammenfassung([FromBody] GetZusammenfassungRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId))
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken und RaumbuchFileId sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+
+                // Download Raumbuch Excel
+                string raumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch.xlsx"
+                );
+
+                // Read Zusammenfassung from Excel
+                var zusammenfassung = ReadZusammenfassungFromExcel(raumbuchPath);
+
+                // Cleanup
+                File.Delete(raumbuchPath);
+
+                return Ok(new GetZusammenfassungResponse
+                {
+                    Success = true,
+                    Message = $"{zusammenfassung.Count} Kategorien geladen.",
+                    Zusammenfassung = zusammenfassung
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetZusammenfassung: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Laden der Zusammenfassung: {ex.Message}", ex));
+            }
+        }
+
         /// <summary>
         /// Writes Pset "Raumbuch" to IFC spaces based on Raumbuch Excel data.
         /// Swiss German: Schreibt Raumbuch Pset in IFC-Datei.
@@ -1630,6 +1680,67 @@ namespace RaumbuchService.Controllers
         }
 
         /// <summary>
+        /// Reads Zusammenfassung data from Raumbuch Excel.
+        /// Returns the summary sheet data as ZusammenfassungItem list.
+        /// </summary>
+        private List<ZusammenfassungItem> ReadZusammenfassungFromExcel(string excelPath)
+        {
+            var result = new List<ZusammenfassungItem>();
+
+            using (var wb = new XLWorkbook(excelPath))
+            {
+                // Try to get Zusammenfassung sheet
+                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                
+                if (ws == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Zusammenfassung sheet not found");
+                    return result;
+                }
+
+                var range = ws.RangeUsed();
+                if (range == null) return result;
+
+                int firstRow = range.FirstRow().RowNumber();
+                int lastRow = range.LastRow().RowNumber();
+
+                // Data starts from row 2 (row 1 is header)
+                for (int r = firstRow + 1; r <= lastRow; r++)
+                {
+                    string category = ws.Cell(r, 1).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(category)) continue;
+
+                    double.TryParse(ws.Cell(r, 2).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double sollArea);
+                    double.TryParse(ws.Cell(r, 3).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double istArea);
+                    double.TryParse(ws.Cell(r, 4).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double percentage);
+                    string status = ws.Cell(r, 5).GetString().Trim();
+                    
+                    // Check if there's a comment column (column 6)
+                    string comment = "";
+                    if (ws.Cell(r, 6) != null)
+                    {
+                        comment = ws.Cell(r, 6).GetString().Trim();
+                    }
+
+                    result.Add(new ZusammenfassungItem
+                    {
+                        RoomCategory = category,
+                        SollArea = sollArea,
+                        IstArea = istArea,
+                        Percentage = percentage,
+                        Status = status,
+                        Comment = comment
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Creates Raumbuch Excel file.
         /// </summary>
         private void CreateRaumbuchExcel(string outputPath, List<Services.RoomData> roomData, List<Services.RoomCategoryAnalysis> analysis)
@@ -1690,7 +1801,8 @@ namespace RaumbuchService.Controllers
                             ws.Cell(row, 9).Value = diff;
                         }
 
-                        if (ana.IsOverLimit)
+                        // New logic: Red for IST < SOLL (Zu wenig), no color for others
+                        if (ana.IsUnderLimit)
                         {
                             ws.Range(row, 1, row, 9).Style.Fill.BackgroundColor = XLColor.LightPink;
                         }
@@ -1733,9 +1845,11 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    // Use new German status values: OK, Zu wenig, Zu viel
+                    summaryWs.Cell(summaryRow, 5).Value = ana.Status;
 
-                    if (ana.IsOverLimit)
+                    // Red for "Zu wenig" (IST < SOLL)
+                    if (ana.IsUnderLimit)
                     {
                         summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
                     }
@@ -2100,7 +2214,8 @@ namespace RaumbuchService.Controllers
                             ws.Cell(row, 9).Value = diff;
                         }
 
-                        if (ana.IsOverLimit)
+                        // New logic: Red for IST < SOLL (Zu wenig), no color for others
+                        if (ana.IsUnderLimit)
                         {
                             ws.Range(row, 1, row, 9).Style.Fill.BackgroundColor = XLColor.LightPink;
                         }
@@ -2162,9 +2277,11 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    summaryWs.Cell(summaryRow, 5).Value = ana.IsOverLimit ? "ÜBERSCHUSS" : "OK";
+                    // Use new German status values: OK, Zu wenig, Zu viel
+                    summaryWs.Cell(summaryRow, 5).Value = ana.Status;
 
-                    if (ana.IsOverLimit)
+                    // Red for "Zu wenig" (IST < SOLL)
+                    if (ana.IsUnderLimit)
                     {
                         summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
                     }
