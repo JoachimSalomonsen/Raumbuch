@@ -77,7 +77,19 @@ namespace RaumbuchService.Services
                 throw new Exception("Configuration error: TRIMBLE_REDIRECT_URI is not set or is empty");
             }
 
-            System.Diagnostics.Debug.WriteLine($"Token exchange - TokenUrl: {tokenUrl}, ClientId: {clientId?.Substring(0, Math.Min(10, clientId.Length))}..., RedirectUri: {redirectUri}");
+            // Trim all values to remove any whitespace that might cause URI format issues
+            tokenUrl = tokenUrl?.Trim();
+            clientId = clientId?.Trim();
+            clientSecret = clientSecret?.Trim();
+            redirectUri = redirectUri?.Trim();
+
+            System.Diagnostics.Debug.WriteLine($"Token exchange - TokenUrl: '{tokenUrl}', ClientId: '{clientId?.Substring(0, Math.Min(10, clientId.Length))}...', RedirectUri: '{redirectUri}'");
+
+            // Validate tokenUrl is a valid URI
+            if (!Uri.IsWellFormedUriString(tokenUrl, UriKind.Absolute))
+            {
+                throw new Exception($"Configuration error: TRIMBLE_TOKEN_URL is not a valid URI: '{tokenUrl}'");
+            }
 
             var content = new FormUrlEncodedContent(new[]
             {
@@ -88,8 +100,21 @@ namespace RaumbuchService.Services
                 new KeyValuePair<string, string>("client_secret", clientSecret)
             });
 
-            var response = await _httpClient.PostAsync(tokenUrl, content);
+            System.Diagnostics.Debug.WriteLine($"About to POST to: {tokenUrl}");
+            
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.PostAsync(tokenUrl, content);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"POST to token URL failed: {ex.Message}");
+                throw new Exception($"Failed to connect to token URL '{tokenUrl}': {ex.Message}", ex);
+            }
+
             string json = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"Token exchange response: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
