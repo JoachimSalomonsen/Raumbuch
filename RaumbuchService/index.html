@@ -440,25 +440,47 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         // Check for OAuth callback parameters on page load
-        function checkOAuthCallback() {
+        async function checkOAuthCallback() {
             const urlParams = new URLSearchParams(window.location.search);
             
-            if (urlParams.has('auth_success') && urlParams.has('access_token')) {
-                const token = urlParams.get('access_token');
-                setToken(token);
-                
-                // Clear URL parameters
+            if (urlParams.has('auth_success')) {
+                // Clear URL parameters first
                 window.history.replaceState({}, document.title, window.location.pathname);
                 
-                alert('✓ Erfolgreich angemeldet!');
+                try {
+                    // Retrieve token from session via secure API call
+                    const response = await fetch('/api/auth/token', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.access_token) {
+                        setToken(data.access_token);
+                        alert('✓ Erfolgreich angemeldet!');
+                    } else {
+                        alert('Fehler beim Abrufen des Tokens: ' + (data.message || 'Unbekannter Fehler'));
+                    }
+                } catch (error) {
+                    console.error('Error retrieving token:', error);
+                    alert('Fehler beim Abrufen des Tokens: ' + error.message);
+                }
             } else if (urlParams.has('auth_error')) {
                 const error = urlParams.get('auth_error');
-                const description = urlParams.get('auth_error_description') || 'Unbekannter Fehler';
                 
                 // Clear URL parameters
                 window.history.replaceState({}, document.title, window.location.pathname);
                 
-                alert('Authentifizierungsfehler: ' + error + '\n' + description);
+                // Generic error messages for security
+                let message = 'Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
+                if (error === 'validation_failed') {
+                    message = 'Sicherheitsvalidierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
+                }
+                
+                alert('Fehler: ' + message);
             }
         }
 

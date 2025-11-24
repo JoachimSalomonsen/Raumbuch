@@ -12,7 +12,8 @@ namespace RaumbuchService.Services
     /// </summary>
     public class TrimbleAuthService
     {
-        private readonly HttpClient _httpClient = new HttpClient();
+        // Static HttpClient to avoid socket exhaustion
+        private static readonly HttpClient _httpClient = new HttpClient();
 
         /// <summary>
         /// Generates the OAuth authorization URL for redirecting user to Trimble login.

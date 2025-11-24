@@ -78,20 +78,23 @@ namespace RaumbuchService.Controllers
                 // Check for errors from OAuth provider
                 if (!string.IsNullOrWhiteSpace(error))
                 {
-                    return Redirect($"/index.html?auth_error={Uri.EscapeDataString(error)}&auth_error_description={Uri.EscapeDataString(errorDescription ?? "Unknown error")}");
+                    System.Diagnostics.Debug.WriteLine($"OAuth error: {error} - {errorDescription}");
+                    return Redirect("/index.html?auth_error=oauth_failed");
                 }
 
                 // Validate state parameter (CSRF protection)
                 string storedState = HttpContext.Current.Session["oauth_state"] as string;
                 if (string.IsNullOrWhiteSpace(storedState) || state != storedState)
                 {
-                    return Redirect("/index.html?auth_error=invalid_state&auth_error_description=State%20validation%20failed");
+                    System.Diagnostics.Debug.WriteLine("State validation failed");
+                    return Redirect("/index.html?auth_error=validation_failed");
                 }
 
                 // Validate code parameter
                 if (string.IsNullOrWhiteSpace(code))
                 {
-                    return Redirect("/index.html?auth_error=no_code&auth_error_description=Authorization%20code%20not%20received");
+                    System.Diagnostics.Debug.WriteLine("Authorization code not received");
+                    return Redirect("/index.html?auth_error=auth_failed");
                 }
 
                 // Get the redirect URI used in the authorization request
@@ -109,13 +112,14 @@ namespace RaumbuchService.Controllers
                 HttpContext.Current.Session.Remove("oauth_state");
                 HttpContext.Current.Session.Remove("oauth_redirect_uri");
 
-                // Redirect to main application with success message
-                return Redirect($"/index.html?auth_success=true&access_token={Uri.EscapeDataString(tokenResponse.access_token)}");
+                // Redirect to main application with success flag only (no token in URL for security)
+                return Redirect("/index.html?auth_success=true");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"OAuth callback error: {ex.Message}");
-                return Redirect($"/index.html?auth_error=token_exchange_failed&auth_error_description={Uri.EscapeDataString(ex.Message)}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return Redirect("/index.html?auth_error=auth_failed");
             }
         }
 
