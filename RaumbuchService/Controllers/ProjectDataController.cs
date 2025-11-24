@@ -302,33 +302,278 @@ namespace RaumbuchService.Controllers
         // --------------------------------------------------------------------
 
         /// <summary>
-        /// Saves project configuration as JSON file.
-        /// Returns the configuration as JSON for download.
+        /// Saves project configuration to Azure Blob Storage.
+        /// Falls back to returning JSON for download if Azure is not configured.
         /// </summary>
         [HttpPost]
         [Route("config/save")]
-        public IHttpActionResult SaveConfiguration([FromBody] ProjectConfiguration config)
+        public async Task<IHttpActionResult> SaveConfiguration([FromBody] SaveConfigRequest request)
         {
             try
             {
-                if (config == null || string.IsNullOrWhiteSpace(config.ProjectId))
+                System.Diagnostics.Debug.WriteLine("SaveConfiguration called");
+                
+                if (request == null || request.Configuration == null || 
+                    string.IsNullOrWhiteSpace(request.Configuration.ProjectId))
                 {
-                    return BadRequest("Ungültige Konfiguration.");
+                    System.Diagnostics.Debug.WriteLine("Invalid configuration request");
+                    return BadRequest("Ungueltige Konfiguration.");
                 }
 
-                config.LastUpdated = DateTime.UtcNow;
+                if (string.IsNullOrWhiteSpace(request.ConfigName))
+                {
+                    System.Diagnostics.Debug.WriteLine("Config name is missing");
+                    return BadRequest("Konfigurationsname ist erforderlich.");
+                }
 
-                // Return as JSON for client-side download
-                return Ok(new SaveConfigResponse
+                System.Diagnostics.Debug.WriteLine($"Saving config: {request.ConfigName} for project: {request.Configuration.ProjectId}");
+                
+                request.Configuration.LastUpdated = DateTime.UtcNow;
+
+                var azureStorage = new AzureStorageService();
+                
+                // If Azure Storage is configured, save to blob storage
+                if (azureStorage.IsAvailable())
+                {
+                    System.Diagnostics.Debug.WriteLine("Azure Storage is available, attempting to save...");
+                    
+                    string jsonContent = JsonConvert.SerializeObject(request.Configuration, Formatting.Indented);
+                    await azureStorage.SaveConfigurationAsync(
+                        request.Configuration.ProjectId, 
+                        request.ConfigName, 
+                        jsonContent);
+
+                    System.Diagnostics.Debug.WriteLine("Configuration saved successfully to Azure");
+                    
+                    return Ok(new SaveConfigResponse
+                    {
+                        Success = true,
+                        Message = $"Konfiguration '{request.ConfigName}' wurde in Azure gespeichert.",
+                        Configuration = request.Configuration,
+                        SavedToAzure = true
+                    });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Azure Storage not configured, using fallback mode");
+                    
+                    // Fallback: Return as JSON for client-side download
+                    return Ok(new SaveConfigResponse
+                    {
+                        Success = true,
+                        Message = "Konfiguration bereit zum Download (Azure Storage nicht konfiguriert).",
+                        Configuration = request.Configuration,
+                        SavedToAzure = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving configuration: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim Speichern: {ex.Message}" + 
+                                  (ex.InnerException != null ? $" ({ex.InnerException.Message})" : "")
+                    }
+                );
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  LIST CONFIGURATIONS (Azure Storage)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Lists all configurations for a project from Azure Blob Storage.
+        /// </summary>
+        [HttpPost]
+        [Route("config/list")]
+        public async Task<IHttpActionResult> ListConfigurations([FromBody] ListConfigRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.ProjectId))
+                {
+                    return BadRequest("ProjectId ist erforderlich.");
+                }
+
+                var azureStorage = new AzureStorageService();
+                
+                if (!azureStorage.IsAvailable())
+                {
+                    return Ok(new ListConfigResponse
+                    {
+                        Success = true,
+                        Configurations = new List<ConfigInfo>(),
+                        Message = "Azure Storage nicht konfiguriert - lokaler Modus."
+                    });
+                }
+
+                var configurations = await azureStorage.ListConfigurationsAsync(request.ProjectId);
+
+                return Ok(new ListConfigResponse
                 {
                     Success = true,
-                    Message = "Konfiguration bereit zum Download.",
-                    Configuration = config
+                    Configurations = configurations.Select(c => new ConfigInfo
+                    {
+                        Name = c.Name,
+                        LastModified = c.LastModified,
+                        Size = c.Size
+                    }).ToList(),
+                    Message = $"{configurations.Count} Konfiguration(en) gefunden."
                 });
             }
             catch (Exception ex)
             {
-                return InternalServerError(new Exception($"Fehler beim Speichern der Konfiguration: {ex.Message}", ex));
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim Laden der Konfigurationsliste: {ex.Message}" 
+                    }
+                );
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  LOAD CONFIGURATION (Azure Storage)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Loads a configuration from Azure Blob Storage.
+        /// </summary>
+        [HttpPost]
+        [Route("config/load")]
+        public async Task<IHttpActionResult> LoadConfiguration([FromBody] LoadConfigRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.ProjectId) || 
+                    string.IsNullOrWhiteSpace(request?.ConfigName))
+                {
+                    return BadRequest("ProjectId und ConfigName sind erforderlich.");
+                }
+
+                var azureStorage = new AzureStorageService();
+                
+                if (!azureStorage.IsAvailable())
+                {
+                    return BadRequest("Azure Storage nicht konfiguriert.");
+                }
+
+                string jsonContent = await azureStorage.LoadConfigurationAsync(
+                    request.ProjectId, 
+                    request.ConfigName);
+
+                var configuration = JsonConvert.DeserializeObject<ProjectConfiguration>(jsonContent);
+
+                return Ok(new LoadConfigResponse
+                {
+                    Success = true,
+                    Configuration = configuration,
+                    Message = $"Konfiguration '{request.ConfigName}' geladen."
+                });
+            }
+            catch (FileNotFoundException ex)
+            {
+                return Content(
+                    System.Net.HttpStatusCode.NotFound,
+                    new { 
+                        success = false, 
+                        message = ex.Message 
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim Laden der Konfiguration: {ex.Message}" 
+                    }
+                );
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  DELETE CONFIGURATION (Azure Storage)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Deletes a configuration from Azure Blob Storage.
+        /// </summary>
+        [HttpPost]
+        [Route("config/delete")]
+        public async Task<IHttpActionResult> DeleteConfiguration([FromBody] LoadConfigRequest request)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("DeleteConfiguration called");
+                
+                if (string.IsNullOrWhiteSpace(request?.ProjectId) || 
+                    string.IsNullOrWhiteSpace(request?.ConfigName))
+                {
+                    System.Diagnostics.Debug.WriteLine("ProjectId or ConfigName is missing");
+                    return BadRequest("ProjectId und ConfigName sind erforderlich.");
+                }
+
+                var azureStorage = new AzureStorageService();
+                
+                if (!azureStorage.IsAvailable())
+                {
+                    return BadRequest("Azure Storage nicht konfiguriert.");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Deleting config: {request.ConfigName} for project: {request.ProjectId}");
+                
+                bool deleted = await azureStorage.DeleteConfigurationAsync(
+                    request.ProjectId, 
+                    request.ConfigName);
+
+                if (deleted)
+                {
+                    System.Diagnostics.Debug.WriteLine("Configuration deleted successfully");
+                    
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Konfiguration '{request.ConfigName}' wurde gelÃ¶scht."
+                    });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Configuration not found");
+                    
+                    return Content(
+                        System.Net.HttpStatusCode.NotFound,
+                        new { 
+                            success = false, 
+                            message = $"Konfiguration '{request.ConfigName}' wurde nicht gefunden." 
+                        }
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting configuration: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim LÃ¶schen: {ex.Message}"
+                    }
+                );
             }
         }
 
@@ -372,7 +617,7 @@ namespace RaumbuchService.Controllers
                 return Ok(new ValidateConfigResponse
                 {
                     Success = true,
-                    Message = "Konfiguration ist gültig."
+                    Message = "Konfiguration ist gï¿½ltig."
                 });
             }
             catch (Exception ex)
@@ -459,11 +704,50 @@ namespace RaumbuchService.Controllers
         public string DisplayName { get; set; }
     }
 
+    public class SaveConfigRequest
+    {
+        public string ConfigName { get; set; }
+        public ProjectConfiguration Configuration { get; set; }
+    }
+
     public class SaveConfigResponse
     {
         public bool Success { get; set; }
         public string Message { get; set; }
         public ProjectConfiguration Configuration { get; set; }
+        public bool SavedToAzure { get; set; }
+    }
+
+    public class ListConfigRequest
+    {
+        public string ProjectId { get; set; }
+    }
+
+    public class ListConfigResponse
+    {
+        public bool Success { get; set; }
+        public List<ConfigInfo> Configurations { get; set; }
+        public string Message { get; set; }
+    }
+
+    public class ConfigInfo
+    {
+        public string Name { get; set; }
+        public DateTime? LastModified { get; set; }
+        public long Size { get; set; }
+    }
+
+    public class LoadConfigRequest
+    {
+        public string ProjectId { get; set; }
+        public string ConfigName { get; set; }
+    }
+
+    public class LoadConfigResponse
+    {
+        public bool Success { get; set; }
+        public ProjectConfiguration Configuration { get; set; }
+        public string Message { get; set; }
     }
 
     public class ValidateConfigResponse

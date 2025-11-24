@@ -389,3 +389,22 @@ Bei Fragen kontaktiere:
 ## ?? Lizenz
 
 Internes Projekt
+
+---
+
+## ☁️ Azure Deployment
+
+The application is deployed to **Azure App Service** and uses **Azure Blob Storage** for configuration management:
+
+- **App Service**: `Raumbuch` (Sweden Central)
+- **Storage Account**: `raumbuchstorage` (Norway East)
+- **Resource Group**: `Connect_Extensions`
+- **Access URL**: `https://raumbuch.azurewebsites.net/`
+
+### Key Features in Azure:
+- ✅ **Configuration Storage**: JSON configurations saved to Azure Blob Storage
+- ✅ **Project Organization**: Configurations organized by project number
+- ✅ **Web-Based Access**: No local installation required
+- ✅ **Automatic Fallback**: Works locally without Azure Storage configured
+
+📖 **See [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md) for complete deployment and configuration instructions.**
