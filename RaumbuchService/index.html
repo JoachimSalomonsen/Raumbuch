@@ -489,6 +489,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 }
             } else if (urlParams.has('auth_error')) {
                 const error = urlParams.get('auth_error');
+                const errorType = urlParams.get('error_type');
+                const errorMsg = urlParams.get('error_msg');
                 
                 // Clear URL parameters
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -496,15 +498,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 // Clear stored state
                 sessionStorage.removeItem('oauth_state');
                 
-                // Generic error messages for security
+                // Show detailed error for debugging
                 let message = 'Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
                 if (error === 'validation_failed') {
                     message = 'Sicherheitsvalidierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
                 } else if (error === 'session_unavailable') {
                     message = 'Sitzung nicht verfügbar. Bitte aktivieren Sie Cookies und versuchen Sie es erneut.';
+                } else if (error === 'true' && errorType && errorMsg) {
+                    // Detailed error from exception
+                    message = `Fehler (${errorType}): ${errorMsg}`;
                 }
                 
                 alert('Fehler: ' + message);
+                console.error('OAuth error:', { error, errorType, errorMsg });
             }
         }
 

@@ -153,21 +153,6 @@ namespace RaumbuchService.Controllers
                     System.Diagnostics.Trace.WriteLine($"[OAuth] Using configured redirect URI: {redirectUri}");
                 }
 
-                // Validate redirect URI before using it
-                if (string.IsNullOrWhiteSpace(redirectUri))
-                {
-                    System.Diagnostics.Trace.WriteLine("[OAuth ERROR] Redirect URI is null or empty");
-                    return Content(
-                        System.Net.HttpStatusCode.InternalServerError,
-                        new
-                        {
-                            success = false,
-                            message = "Configuration error: TRIMBLE_REDIRECT_URI is not set",
-                            details = "Please set TRIMBLE_REDIRECT_URI in Azure App Settings"
-                        }
-                    );
-                }
-
                 System.Diagnostics.Trace.WriteLine($"[OAuth] About to exchange code for tokens. Code length: {code?.Length}, RedirectUri: {redirectUri}");
 
                 // Exchange code for tokens
@@ -206,16 +191,10 @@ namespace RaumbuchService.Controllers
                 }
                 catch { /* Ignore if event log write fails */ }
                 
-                // Return detailed error for debugging (remove in production)
-                return Content(
-                    System.Net.HttpStatusCode.InternalServerError,
-                    new
-                    {
-                        success = false,
-                        message = $"OAuth callback failed: {ex.Message}",
-                        details = ex.InnerException?.Message
-                    }
-                );
+                // Redirect to main application with error details
+                string errorType = Uri.EscapeDataString(ex.GetType().Name);
+                string errorMessage = Uri.EscapeDataString(ex.Message);
+                return Redirect($"/index.html?auth_error=true&error_type={errorType}&error_msg={errorMessage}");
             }
         }
 
