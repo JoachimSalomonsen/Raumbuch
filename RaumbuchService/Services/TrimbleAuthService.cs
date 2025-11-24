@@ -84,11 +84,24 @@ namespace RaumbuchService.Services
             redirectUri = redirectUri?.Trim();
 
             System.Diagnostics.Debug.WriteLine($"Token exchange - TokenUrl: '{tokenUrl}', ClientId: '{clientId?.Substring(0, Math.Min(10, clientId.Length))}...', RedirectUri: '{redirectUri}'");
+            System.Diagnostics.Debug.WriteLine($"TokenUrl length: {tokenUrl?.Length}, Contains null char: {tokenUrl?.Contains('\0')}");
 
             // Validate tokenUrl is a valid URI
             if (!Uri.IsWellFormedUriString(tokenUrl, UriKind.Absolute))
             {
-                throw new Exception($"Configuration error: TRIMBLE_TOKEN_URL is not a valid URI: '{tokenUrl}'");
+                throw new Exception($"Configuration error: TRIMBLE_TOKEN_URL is not a valid URI: '{tokenUrl}' (length: {tokenUrl?.Length})");
+            }
+
+            // Create URI object explicitly to catch any issues early
+            Uri tokenUri;
+            try
+            {
+                tokenUri = new Uri(tokenUrl);
+                System.Diagnostics.Debug.WriteLine($"Successfully created URI object: {tokenUri.AbsoluteUri}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to create URI from TRIMBLE_TOKEN_URL '{tokenUrl}': {ex.Message}", ex);
             }
 
             var content = new FormUrlEncodedContent(new[]
@@ -100,17 +113,21 @@ namespace RaumbuchService.Services
                 new KeyValuePair<string, string>("client_secret", clientSecret)
             });
 
-            System.Diagnostics.Debug.WriteLine($"About to POST to: {tokenUrl}");
+            System.Diagnostics.Debug.WriteLine($"About to POST to: {tokenUri.AbsoluteUri}");
             
             HttpResponseMessage response;
             try
             {
-                response = await _httpClient.PostAsync(tokenUrl, content);
+                response = await _httpClient.PostAsync(tokenUri, content);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"POST to token URL failed: {ex.Message}");
-                throw new Exception($"Failed to connect to token URL '{tokenUrl}': {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"POST to token URL failed: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
+                throw new Exception($"Failed to POST to token URL '{tokenUri.AbsoluteUri}': {ex.GetType().Name} - {ex.Message}", ex);
             }
 
             string json = await response.Content.ReadAsStringAsync();
