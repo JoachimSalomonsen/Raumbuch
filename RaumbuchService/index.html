@@ -48,15 +48,23 @@
                 <section class="card">
                     <h2>Konfiguration</h2>
 
+                    <!-- Authentication is managed by Trimble Connect Extension API -->
+                    <!-- Manual token input field (commented out - authentication handled by extension API) -->
+                    <!--
                     <div class="form-group">
                         <label for="accessToken">Access Token:</label>
                         <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
                     </div>
+                    -->
 
+                    <!-- Project ID retrieved from Trimble Connect context -->
+                    <!-- Manual project ID input field (commented out - project ID retrieved from extension context) -->
+                    <!--
                     <div class="form-group">
                         <label for="projectId">Project ID:</label>
                         <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
                     </div>
+                    -->
 
                     <div class="form-group">
                         <label for="configName">Konfigurationsname:</label>
@@ -310,6 +318,122 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         // Display the current API endpoint in footer
         document.getElementById('apiEndpoint').textContent = `API: ${window.location.origin}`;
 
+        // ====================================================================
+        // TRIMBLE CONNECT EXTENSION API INTEGRATION
+        // ====================================================================
+        
+        // Store authentication and context from Trimble Connect
+        let trimbleConnect = {
+            accessToken: null,
+            projectId: null,
+            isEmbedded: false,
+            consentStatus: 'pending' // pending, granted, denied
+        };
+
+        // Check if running inside Trimble Connect as an extension
+        function isInsideTrimbleConnect() {
+            try {
+                return window.parent !== window && 
+                       window.parent.TrimbleConnectWorkspace !== undefined &&
+                       window.parent.TrimbleConnectWorkspace !== null;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Initialize Trimble Connect Extension API
+        function initializeTrimbleConnectExtension() {
+            trimbleConnect.isEmbedded = isInsideTrimbleConnect();
+            
+            if (trimbleConnect.isEmbedded) {
+                console.log('Running inside Trimble Connect - initializing extension API');
+                
+                try {
+                    const workspace = window.parent.TrimbleConnectWorkspace;
+                    
+                    // Request permission to use access token
+                    workspace.extension.requestPermission()
+                        .then(result => {
+                            console.log('Extension permission result:', result);
+                            
+                            if (result === 'granted') {
+                                trimbleConnect.consentStatus = 'granted';
+                                console.log('Permission granted - waiting for accessToken event');
+                            } else if (result === 'denied') {
+                                trimbleConnect.consentStatus = 'denied';
+                                console.error('Permission denied by user');
+                                showResult('connectionResult', 'error', '❌ Zugriff verweigert. Bitte erlauben Sie den Zugriff in den Extension-Einstellungen.');
+                            } else if (result === 'pending') {
+                                trimbleConnect.consentStatus = 'pending';
+                                console.log('Permission pending - user needs to grant consent');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error requesting permission:', error);
+                            showResult('connectionResult', 'error', '❌ Fehler beim Anfordern der Berechtigung: ' + error.message);
+                        });
+                    
+                    // Listen for accessToken event (fired when token is available/refreshed)
+                    workspace.extension.addEventListener('accessToken', (event) => {
+                        console.log('Received accessToken event from Trimble Connect');
+                        
+                        if (event && event.detail && event.detail.token) {
+                            trimbleConnect.accessToken = event.detail.token;
+                            trimbleConnect.consentStatus = 'granted';
+                            console.log('Access token received and stored');
+                            
+                            // Automatically load project data when token is received
+                            if (trimbleConnect.projectId) {
+                                console.log('Auto-loading project data with token and project ID');
+                                loadProjectData().catch(error => {
+                                    console.error('Error auto-loading project data:', error);
+                                    showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
+                                });
+                            }
+                        } else {
+                            console.error('Invalid accessToken event - missing token');
+                        }
+                    });
+                    
+                    // Get project context (project ID)
+                    workspace.getContext()
+                        .then(context => {
+                            console.log('Trimble Connect context:', context);
+                            if (context && context.project && context.project.id) {
+                                trimbleConnect.projectId = context.project.id;
+                                console.log('Project ID retrieved from context:', trimbleConnect.projectId);
+                                
+                                // If we already have the token, auto-load project data
+                                if (trimbleConnect.accessToken) {
+                                    console.log('Auto-loading project data with both token and project ID');
+                                    loadProjectData().catch(error => {
+                                        console.error('Error auto-loading project data:', error);
+                                        showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
+                                    });
+                                }
+                            } else {
+                                console.warn('No project context available from Trimble Connect');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error getting Trimble Connect context:', error);
+                            showResult('connectionResult', 'error', '⚠ Fehler beim Abrufen des Projekt-Kontexts von Trimble Connect.');
+                        });
+                        
+                } catch (error) {
+                    console.error('Error initializing Trimble Connect Extension API:', error);
+                    showResult('connectionResult', 'error', '❌ Fehler beim Initialisieren der Trimble Connect Extension API: ' + error.message);
+                }
+            } else {
+                console.log('Not running inside Trimble Connect - using manual token/project ID input');
+                // For local development/testing, fallback to manual input fields would be used
+                // (currently commented out in HTML)
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', initializeTrimbleConnectExtension);
+
         function openTab(tabId) {
             // hide all tabs
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -340,11 +464,33 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         };
 
         function getToken() {
-            return document.getElementById('accessToken').value.trim();
+            // Use Trimble Connect extension token if available
+            if (trimbleConnect.isEmbedded && trimbleConnect.accessToken) {
+                return trimbleConnect.accessToken;
+            }
+            
+            // Fallback to manual input field (for local development)
+            const tokenField = document.getElementById('accessToken');
+            if (tokenField) {
+                return tokenField.value.trim();
+            }
+            
+            return '';
         }
 
         function getProjectId() {
-            return document.getElementById('projectId').value.trim();
+            // Use Trimble Connect project ID if available
+            if (trimbleConnect.isEmbedded && trimbleConnect.projectId) {
+                return trimbleConnect.projectId;
+            }
+            
+            // Fallback to manual input field (for local development)
+            const projectField = document.getElementById('projectId');
+            if (projectField) {
+                return projectField.value.trim();
+            }
+            
+            return '';
         }
 
         function getTargetFolder() {
@@ -906,8 +1052,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         function applyConfiguration(config) {
             currentConfig = config;
 
-            // Fill Project ID and Name
-            document.getElementById('projectId').value = config.projectId || '';
+            // Fill Project ID and Name (only if fields exist - they may be hidden in extension mode)
+            const projectIdField = document.getElementById('projectId');
+            if (projectIdField) {
+                projectIdField.value = config.projectId || '';
+            }
             document.getElementById('configName').value = config.projectName || '';
 
             // Fill Target Folder (display name in readonly field if not in dropdown yet)
