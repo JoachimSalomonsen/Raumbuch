@@ -72,8 +72,8 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetLoginUrl: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Error in GetLoginUrl: {ex.GetType().Name} - {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Stack trace: {ex.StackTrace}");
                 
                 return Content(
                     System.Net.HttpStatusCode.InternalServerError,
@@ -99,7 +99,7 @@ namespace RaumbuchService.Controllers
                 // Check if session is available
                 if (HttpContext.Current?.Session == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("Session is null in callback");
+                    System.Diagnostics.Trace.WriteLine("[OAuth] Session is null in callback");
                     return Redirect("/index.html?auth_error=session_unavailable");
                 }
 
@@ -109,18 +109,18 @@ namespace RaumbuchService.Controllers
                 string error = request.QueryString["error"];
                 string errorDescription = request.QueryString["error_description"];
 
-                System.Diagnostics.Debug.WriteLine($"Callback received - Code present: {!string.IsNullOrWhiteSpace(code)}, State: {state}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth] Callback received - Code present: {!string.IsNullOrWhiteSpace(code)}, State: {state}");
 
                 // Check for errors from OAuth provider
                 if (!string.IsNullOrWhiteSpace(error))
                 {
-                    System.Diagnostics.Debug.WriteLine($"OAuth error: {error} - {errorDescription}");
+                    System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] OAuth provider error: {error} - {errorDescription}");
                     return Redirect("/index.html?auth_error=oauth_failed");
                 }
 
                 // Validate state parameter (CSRF protection)
                 string storedState = HttpContext.Current.Session["oauth_state"] as string;
-                System.Diagnostics.Debug.WriteLine($"State validation - Stored: {storedState}, Received: {state}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth] State validation - Stored: {storedState}, Received: {state}");
                 
                 // If state is not in session (popup window issue), we'll validate it differently
                 // by exchanging the code and letting the frontend handle state validation
@@ -128,14 +128,14 @@ namespace RaumbuchService.Controllers
                 
                 if (!stateValid)
                 {
-                    System.Diagnostics.Debug.WriteLine($"State validation skipped - will be validated by frontend. Stored state is null: {string.IsNullOrWhiteSpace(storedState)}");
+                    System.Diagnostics.Trace.WriteLine($"[OAuth] State validation skipped - will be validated by frontend. Stored state is null: {string.IsNullOrWhiteSpace(storedState)}");
                     // Don't fail here - pass state to frontend for validation
                 }
 
                 // Validate code parameter
                 if (string.IsNullOrWhiteSpace(code))
                 {
-                    System.Diagnostics.Debug.WriteLine("Authorization code not received");
+                    System.Diagnostics.Trace.WriteLine("[OAuth ERROR] Authorization code not received");
                     return Redirect("/index.html?auth_error=auth_failed");
                 }
 
@@ -144,13 +144,13 @@ namespace RaumbuchService.Controllers
                 if (string.IsNullOrWhiteSpace(redirectUri))
                 {
                     redirectUri = RaumbuchService.Config.TrimbleConfig.RedirectUri;
-                    System.Diagnostics.Debug.WriteLine($"Using configured redirect URI: {redirectUri}");
+                    System.Diagnostics.Trace.WriteLine($"[OAuth] Using configured redirect URI: {redirectUri}");
                 }
 
                 // Validate redirect URI before using it
                 if (string.IsNullOrWhiteSpace(redirectUri))
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: Redirect URI is null or empty");
+                    System.Diagnostics.Trace.WriteLine("[OAuth ERROR] Redirect URI is null or empty");
                     return Content(
                         System.Net.HttpStatusCode.InternalServerError,
                         new
@@ -162,7 +162,7 @@ namespace RaumbuchService.Controllers
                     );
                 }
 
-                System.Diagnostics.Debug.WriteLine($"About to exchange code for tokens. Code length: {code?.Length}, RedirectUri: {redirectUri}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth] About to exchange code for tokens. Code length: {code?.Length}, RedirectUri: {redirectUri}");
 
                 // Exchange code for tokens
                 var tokenResponse = await _authService.ExchangeCodeForTokensAsync(code, redirectUri);
@@ -181,11 +181,11 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"OAuth callback error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] OAuth callback error: {ex.GetType().Name} - {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Stack trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
                 }
                 
                 // Return detailed error for debugging (remove in production)
