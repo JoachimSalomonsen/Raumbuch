@@ -385,6 +385,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const data = await response.json();
 
                 if (data.success && data.authUrl) {
+                    // Store state in sessionStorage for validation when callback returns
+                    if (data.state) {
+                        sessionStorage.setItem('oauth_state', data.state);
+                    }
+                    
                     // Open Trimble login in a popup window
                     const width = 600;
                     const height = 700;
@@ -444,6 +449,20 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const urlParams = new URLSearchParams(window.location.search);
             
             if (urlParams.has('auth_success')) {
+                // Validate state parameter if present
+                const receivedState = urlParams.get('state');
+                const storedState = sessionStorage.getItem('oauth_state');
+                
+                if (receivedState && storedState && receivedState !== storedState) {
+                    console.error('State validation failed:', receivedState, '!==', storedState);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    alert('Sicherheitsvalidierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+                    return;
+                }
+                
+                // Clear stored state
+                sessionStorage.removeItem('oauth_state');
+                
                 // Clear URL parameters first
                 window.history.replaceState({}, document.title, window.location.pathname);
                 
@@ -474,10 +493,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 // Clear URL parameters
                 window.history.replaceState({}, document.title, window.location.pathname);
                 
+                // Clear stored state
+                sessionStorage.removeItem('oauth_state');
+                
                 // Generic error messages for security
                 let message = 'Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
                 if (error === 'validation_failed') {
                     message = 'Sicherheitsvalidierung fehlgeschlagen. Bitte versuchen Sie es erneut.';
+                } else if (error === 'session_unavailable') {
+                    message = 'Sitzung nicht verfügbar. Bitte aktivieren Sie Cookies und versuchen Sie es erneut.';
                 }
                 
                 alert('Fehler: ' + message);

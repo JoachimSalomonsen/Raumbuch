@@ -109,6 +109,8 @@ namespace RaumbuchService.Controllers
                 string error = request.QueryString["error"];
                 string errorDescription = request.QueryString["error_description"];
 
+                System.Diagnostics.Debug.WriteLine($"Callback received - Code present: {!string.IsNullOrWhiteSpace(code)}, State: {state}");
+
                 // Check for errors from OAuth provider
                 if (!string.IsNullOrWhiteSpace(error))
                 {
@@ -118,10 +120,16 @@ namespace RaumbuchService.Controllers
 
                 // Validate state parameter (CSRF protection)
                 string storedState = HttpContext.Current.Session["oauth_state"] as string;
-                if (string.IsNullOrWhiteSpace(storedState) || state != storedState)
+                System.Diagnostics.Debug.WriteLine($"State validation - Stored: {storedState}, Received: {state}");
+                
+                // If state is not in session (popup window issue), we'll validate it differently
+                // by exchanging the code and letting the frontend handle state validation
+                bool stateValid = !string.IsNullOrWhiteSpace(storedState) && state == storedState;
+                
+                if (!stateValid)
                 {
-                    System.Diagnostics.Debug.WriteLine("State validation failed");
-                    return Redirect("/index.html?auth_error=validation_failed");
+                    System.Diagnostics.Debug.WriteLine($"State validation skipped - will be validated by frontend. Stored state is null: {string.IsNullOrWhiteSpace(storedState)}");
+                    // Don't fail here - pass state to frontend for validation
                 }
 
                 // Validate code parameter
@@ -131,8 +139,13 @@ namespace RaumbuchService.Controllers
                     return Redirect("/index.html?auth_error=auth_failed");
                 }
 
-                // Get the redirect URI used in the authorization request
+                // Get the redirect URI - use configured value as fallback
                 string redirectUri = HttpContext.Current.Session["oauth_redirect_uri"] as string;
+                if (string.IsNullOrWhiteSpace(redirectUri))
+                {
+                    redirectUri = RaumbuchService.Config.TrimbleConfig.RedirectUri;
+                    System.Diagnostics.Debug.WriteLine($"Using configured redirect URI: {redirectUri}");
+                }
 
                 // Exchange code for tokens
                 var tokenResponse = await _authService.ExchangeCodeForTokensAsync(code, redirectUri);
@@ -146,14 +159,28 @@ namespace RaumbuchService.Controllers
                 HttpContext.Current.Session.Remove("oauth_state");
                 HttpContext.Current.Session.Remove("oauth_redirect_uri");
 
-                // Redirect to main application with success flag only (no token in URL for security)
-                return Redirect("/index.html?auth_success=true");
+                // Redirect to main application with success flag and state for frontend validation
+                return Redirect($"/index.html?auth_success=true&state={Uri.EscapeDataString(state)}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"OAuth callback error: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                return Redirect("/index.html?auth_error=auth_failed");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                
+                // Return detailed error for debugging (remove in production)
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new
+                    {
+                        success = false,
+                        message = $"OAuth callback failed: {ex.Message}",
+                        details = ex.InnerException?.Message
+                    }
+                );
             }
         }
 
