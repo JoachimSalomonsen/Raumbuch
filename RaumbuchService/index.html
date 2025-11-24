@@ -52,13 +52,9 @@
                                 <option value="">-- Laden Sie Projektdaten um Konfigurationen zu sehen --</option>
                             </select>
                             <button class="btn btn-secondary" onclick="loadConfigFromAzure()">📥 Laden</button>
+                            <button class="btn btn-danger" onclick="deleteConfigFromAzure()">🗑️ Löschen</button>
                         </div>
                         <small>Konfigurationen werden in Azure Blob Storage gespeichert</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Oder lokale Datei hochladen:</label>
-                        <input type="file" id="loadConfigFile" accept=".json" onchange="loadConfigFromFile()" style="display:inline-block; width:auto;">
                     </div>
 
                     <div class="form-group">
@@ -469,7 +465,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 await loadSavedConfigurations(projectId);
             } catch (error) {
                 console.error('Error in loadProjectData:', error);
-                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+                showResult('connectionResult', 'error', '❌ Fehler bei der Authentifizierung mit Trimble Connect');
             }
         }
 
@@ -838,26 +834,54 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
         }
 
-        function loadConfigFromFile() {
-            const fileInput = document.getElementById('loadConfigFile');
-            const file = fileInput.files[0];
+        async function deleteConfigFromAzure() {
+            const configName = document.getElementById('savedConfigs').value;
+            const projectId = getProjectId();
 
-            if (!file) {
+            if (!configName) {
+                alert('⚠ Bitte wählen Sie eine Konfiguration aus!');
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const config = JSON.parse(e.target.result);
-                    applyConfiguration(config);
-                    showResult('connectionResult', 'success', `✅ Konfiguration "${config.projectName}" geladen!`);
-                } catch (error) {
-                    console.error('Error loading config:', error);
-                    showResult('connectionResult', 'error', `❌ Ungültige Konfigurationsdatei: ${error.message}`);
+            if (!projectId) {
+                alert('⚠ Project ID nicht gefunden!');
+                return;
+            }
+
+            // Confirm deletion
+            if (!confirm(`Möchten Sie die Konfiguration "${configName}" wirklich löschen?`)) {
+                return;
+            }
+
+            try {
+                showResult('connectionResult', 'info', '🔄 Lösche Konfiguration...');
+
+                const response = await fetch(`${API_PROJECT}/config/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectId: projectId,
+                        configName: configName
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
-            };
-            reader.readAsText(file);
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showResult('connectionResult', 'success', `✅ ${data.message}`);
+                    // Reload the configurations list
+                    await loadSavedConfigurations(projectId);
+                } else {
+                    throw new Error(data.message || 'Fehler beim Löschen');
+                }
+            } catch (error) {
+                console.error('Error deleting config from Azure:', error);
+                showResult('connectionResult', 'error', `❌ Fehler beim Löschen: ${error.message}`);
+            }
         }
 
         function applyConfiguration(config) {

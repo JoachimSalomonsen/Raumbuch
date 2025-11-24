@@ -505,6 +505,79 @@ namespace RaumbuchService.Controllers
         }
 
         // --------------------------------------------------------------------
+        //  DELETE CONFIGURATION (Azure Storage)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Deletes a configuration from Azure Blob Storage.
+        /// </summary>
+        [HttpPost]
+        [Route("config/delete")]
+        public async Task<IHttpActionResult> DeleteConfiguration([FromBody] LoadConfigRequest request)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("DeleteConfiguration called");
+                
+                if (string.IsNullOrWhiteSpace(request?.ProjectId) || 
+                    string.IsNullOrWhiteSpace(request?.ConfigName))
+                {
+                    System.Diagnostics.Debug.WriteLine("ProjectId or ConfigName is missing");
+                    return BadRequest("ProjectId und ConfigName sind erforderlich.");
+                }
+
+                var azureStorage = new AzureStorageService();
+                
+                if (!azureStorage.IsAvailable())
+                {
+                    return BadRequest("Azure Storage nicht konfiguriert.");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Deleting config: {request.ConfigName} for project: {request.ProjectId}");
+                
+                bool deleted = await azureStorage.DeleteConfigurationAsync(
+                    request.ProjectId, 
+                    request.ConfigName);
+
+                if (deleted)
+                {
+                    System.Diagnostics.Debug.WriteLine("Configuration deleted successfully");
+                    
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Konfiguration '{request.ConfigName}' wurde gelöscht."
+                    });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Configuration not found");
+                    
+                    return Content(
+                        System.Net.HttpStatusCode.NotFound,
+                        new { 
+                            success = false, 
+                            message = $"Konfiguration '{request.ConfigName}' wurde nicht gefunden." 
+                        }
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting configuration: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim Löschen: {ex.Message}"
+                    }
+                );
+            }
+        }
+
+        // --------------------------------------------------------------------
         //  LOAD CONFIGURATION (Validation)
         // --------------------------------------------------------------------
 
