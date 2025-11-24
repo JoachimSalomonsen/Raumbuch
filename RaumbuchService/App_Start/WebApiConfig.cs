@@ -14,9 +14,14 @@ namespace RaumbuchService
             // Force JSON responses (remove XML formatter)
             config.Formatters.Remove(config.Formatters.XmlFormatter);
             
+            // Configure JSON serialization settings
+            var jsonSettings = config.Formatters.JsonFormatter.SerializerSettings;
+            
             // Make JSON output readable in browser
-            config.Formatters.JsonFormatter.SerializerSettings.Formatting = 
-                Newtonsoft.Json.Formatting.Indented;
+            jsonSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
+            
+            // Use camelCase for property names (JavaScript convention)
+            jsonSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
 
             // Web API routes
             config.MapHttpAttributeRoutes();
