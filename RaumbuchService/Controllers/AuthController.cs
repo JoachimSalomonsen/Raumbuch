@@ -94,12 +94,17 @@ namespace RaumbuchService.Controllers
         [Route("callback")]
         public async Task<IHttpActionResult> HandleCallback()
         {
+            // Write to both Trace and HttpContext.Trace
+            System.Diagnostics.Trace.WriteLine("[OAuth] === CALLBACK METHOD STARTED ===");
+            HttpContext.Current?.Trace.Write("[OAuth]", "=== CALLBACK METHOD STARTED ===");
+            
             try
             {
                 // Check if session is available
                 if (HttpContext.Current?.Session == null)
                 {
                     System.Diagnostics.Trace.WriteLine("[OAuth] Session is null in callback");
+                    HttpContext.Current?.Trace.Write("[OAuth ERROR]", "Session is null in callback");
                     return Redirect("/index.html?auth_error=session_unavailable");
                 }
 
@@ -110,6 +115,7 @@ namespace RaumbuchService.Controllers
                 string errorDescription = request.QueryString["error_description"];
 
                 System.Diagnostics.Trace.WriteLine($"[OAuth] Callback received - Code present: {!string.IsNullOrWhiteSpace(code)}, State: {state}");
+                HttpContext.Current?.Trace.Write("[OAuth]", $"Callback received - Code present: {!string.IsNullOrWhiteSpace(code)}, State: {state}");
 
                 // Check for errors from OAuth provider
                 if (!string.IsNullOrWhiteSpace(error))
@@ -181,12 +187,24 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] OAuth callback error: {ex.GetType().Name} - {ex.Message}");
+                string errorMsg = $"[OAuth ERROR] OAuth callback error: {ex.GetType().Name} - {ex.Message}";
+                System.Diagnostics.Trace.WriteLine(errorMsg);
                 System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Stack trace: {ex.StackTrace}");
+                HttpContext.Current?.Trace.Write("[OAuth ERROR]", $"OAuth callback error: {ex.GetType().Name} - {ex.Message}");
+                HttpContext.Current?.Trace.Write("[OAuth ERROR]", $"Stack trace: {ex.StackTrace}");
+                
                 if (ex.InnerException != null)
                 {
                     System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+                    HttpContext.Current?.Trace.Write("[OAuth ERROR]", $"Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
                 }
+                
+                // Also try writing to event log as last resort
+                try
+                {
+                    System.Diagnostics.EventLog.WriteEntry("Application", errorMsg, System.Diagnostics.EventLogEntryType.Error);
+                }
+                catch { /* Ignore if event log write fails */ }
                 
                 // Return detailed error for debugging (remove in production)
                 return Content(
