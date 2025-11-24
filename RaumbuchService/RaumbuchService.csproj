@@ -276,6 +276,7 @@
     <Compile Include="Areas\HelpPage\SampleGeneration\TextSample.cs" />
     <Compile Include="Areas\HelpPage\XmlDocumentationProvider.cs" />
     <Compile Include="Config\TrimbleConfig.cs" />
+    <Compile Include="Controllers\AuthController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ProjectDataController.cs" />
     <Compile Include="Controllers\RaumbuchController.cs" />
@@ -303,6 +304,7 @@
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\IfcEditorService.cs" />
     <Compile Include="Services\RaumbuchAnalyzer.cs" />
+    <Compile Include="Services\TrimbleAuthService.cs" />
     <Compile Include="Services\TrimbleConnectService.cs" />
   </ItemGroup>
   <ItemGroup>
