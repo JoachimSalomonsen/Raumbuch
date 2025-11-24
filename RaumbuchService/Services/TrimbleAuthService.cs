@@ -83,13 +83,15 @@ namespace RaumbuchService.Services
             clientSecret = clientSecret?.Trim();
             redirectUri = redirectUri?.Trim();
 
-            System.Diagnostics.Debug.WriteLine($"Token exchange - TokenUrl: '{tokenUrl}', ClientId: '{clientId?.Substring(0, Math.Min(10, clientId.Length))}...', RedirectUri: '{redirectUri}'");
-            System.Diagnostics.Debug.WriteLine($"TokenUrl length: {tokenUrl?.Length}, Contains null char: {tokenUrl?.Contains('\0')}");
+            System.Diagnostics.Trace.WriteLine($"[OAuth] Token exchange - TokenUrl: '{tokenUrl}', ClientId: '{clientId?.Substring(0, Math.Min(10, clientId.Length))}...', RedirectUri: '{redirectUri}'");
+            System.Diagnostics.Trace.WriteLine($"[OAuth] TokenUrl length: {tokenUrl?.Length}, Contains null char: {tokenUrl?.Contains('\0')}");
 
             // Validate tokenUrl is a valid URI
             if (!Uri.IsWellFormedUriString(tokenUrl, UriKind.Absolute))
             {
-                throw new Exception($"Configuration error: TRIMBLE_TOKEN_URL is not a valid URI: '{tokenUrl}' (length: {tokenUrl?.Length})");
+                string errorMsg = $"Configuration error: TRIMBLE_TOKEN_URL is not a valid URI: '{tokenUrl}' (length: {tokenUrl?.Length})";
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] {errorMsg}");
+                throw new Exception(errorMsg);
             }
 
             // Create URI object explicitly to catch any issues early
@@ -97,11 +99,17 @@ namespace RaumbuchService.Services
             try
             {
                 tokenUri = new Uri(tokenUrl);
-                System.Diagnostics.Debug.WriteLine($"Successfully created URI object: {tokenUri.AbsoluteUri}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth] Successfully created URI object: {tokenUri.AbsoluteUri}");
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to create URI from TRIMBLE_TOKEN_URL '{tokenUrl}': {ex.Message}", ex);
+                string errorMsg = $"Failed to create URI from TRIMBLE_TOKEN_URL '{tokenUrl}': {ex.GetType().Name} - {ex.Message}";
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] {errorMsg}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+                }
+                throw new Exception(errorMsg, ex);
             }
 
             var content = new FormUrlEncodedContent(new[]
@@ -113,7 +121,7 @@ namespace RaumbuchService.Services
                 new KeyValuePair<string, string>("client_secret", clientSecret)
             });
 
-            System.Diagnostics.Debug.WriteLine($"About to POST to: {tokenUri.AbsoluteUri}");
+            System.Diagnostics.Trace.WriteLine($"[OAuth] About to POST to: {tokenUri.AbsoluteUri}");
             
             HttpResponseMessage response;
             try
@@ -122,16 +130,16 @@ namespace RaumbuchService.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"POST to token URL failed: {ex.GetType().Name}: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] POST to token URL failed: {ex.GetType().Name}: {ex.Message}");
                 if (ex.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    System.Diagnostics.Trace.WriteLine($"[OAuth ERROR] POST Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 }
                 throw new Exception($"Failed to POST to token URL '{tokenUri.AbsoluteUri}': {ex.GetType().Name} - {ex.Message}", ex);
             }
 
             string json = await response.Content.ReadAsStringAsync();
-            System.Diagnostics.Debug.WriteLine($"Token exchange response: {response.StatusCode}");
+            System.Diagnostics.Trace.WriteLine($"[OAuth] Token exchange response: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
