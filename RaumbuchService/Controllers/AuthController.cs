@@ -147,6 +147,23 @@ namespace RaumbuchService.Controllers
                     System.Diagnostics.Debug.WriteLine($"Using configured redirect URI: {redirectUri}");
                 }
 
+                // Validate redirect URI before using it
+                if (string.IsNullOrWhiteSpace(redirectUri))
+                {
+                    System.Diagnostics.Debug.WriteLine("ERROR: Redirect URI is null or empty");
+                    return Content(
+                        System.Net.HttpStatusCode.InternalServerError,
+                        new
+                        {
+                            success = false,
+                            message = "Configuration error: TRIMBLE_REDIRECT_URI is not set",
+                            details = "Please set TRIMBLE_REDIRECT_URI in Azure App Settings"
+                        }
+                    );
+                }
+
+                System.Diagnostics.Debug.WriteLine($"About to exchange code for tokens. Code length: {code?.Length}, RedirectUri: {redirectUri}");
+
                 // Exchange code for tokens
                 var tokenResponse = await _authService.ExchangeCodeForTokensAsync(code, redirectUri);
 

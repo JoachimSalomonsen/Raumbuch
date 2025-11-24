@@ -52,16 +52,43 @@ namespace RaumbuchService.Services
                 redirectUri = TrimbleConfig.RedirectUri;
             }
 
+            // Validate all required configuration values
+            string tokenUrl = TrimbleConfig.TokenUrl;
+            string clientId = TrimbleConfig.ClientId;
+            string clientSecret = TrimbleConfig.ClientSecret;
+
+            if (string.IsNullOrWhiteSpace(tokenUrl))
+            {
+                throw new Exception("Configuration error: TRIMBLE_TOKEN_URL is not set or is empty");
+            }
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                throw new Exception("Configuration error: TRIMBLE_CLIENT_ID is not set or is empty");
+            }
+
+            if (string.IsNullOrWhiteSpace(clientSecret))
+            {
+                throw new Exception("Configuration error: TRIMBLE_CLIENT_SECRET is not set or is empty");
+            }
+
+            if (string.IsNullOrWhiteSpace(redirectUri))
+            {
+                throw new Exception("Configuration error: TRIMBLE_REDIRECT_URI is not set or is empty");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Token exchange - TokenUrl: {tokenUrl}, ClientId: {clientId?.Substring(0, Math.Min(10, clientId.Length))}..., RedirectUri: {redirectUri}");
+
             var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "authorization_code"),
                 new KeyValuePair<string, string>("code", code),
                 new KeyValuePair<string, string>("redirect_uri", redirectUri),
-                new KeyValuePair<string, string>("client_id", TrimbleConfig.ClientId),
-                new KeyValuePair<string, string>("client_secret", TrimbleConfig.ClientSecret)
+                new KeyValuePair<string, string>("client_id", clientId),
+                new KeyValuePair<string, string>("client_secret", clientSecret)
             });
 
-            var response = await _httpClient.PostAsync(TrimbleConfig.TokenUrl, content);
+            var response = await _httpClient.PostAsync(tokenUrl, content);
             string json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
