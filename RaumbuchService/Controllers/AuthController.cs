@@ -24,6 +24,31 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                // Check if session is available
+                if (HttpContext.Current == null)
+                {
+                    return Content(
+                        System.Net.HttpStatusCode.InternalServerError,
+                        new
+                        {
+                            success = false,
+                            message = "HTTP context is not available"
+                        }
+                    );
+                }
+
+                if (HttpContext.Current.Session == null)
+                {
+                    return Content(
+                        System.Net.HttpStatusCode.InternalServerError,
+                        new
+                        {
+                            success = false,
+                            message = "Session state is not enabled. Please ensure sessionState is configured in Web.config"
+                        }
+                    );
+                }
+
                 // Generate random state for CSRF protection
                 string state = Guid.NewGuid().ToString("N");
 
@@ -48,6 +73,9 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Error in GetLoginUrl: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
                 return Content(
                     System.Net.HttpStatusCode.InternalServerError,
                     new
@@ -69,6 +97,13 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                // Check if session is available
+                if (HttpContext.Current?.Session == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Session is null in callback");
+                    return Redirect("/index.html?auth_error=session_unavailable");
+                }
+
                 var request = HttpContext.Current.Request;
                 string code = request.QueryString["code"];
                 string state = request.QueryString["state"];
@@ -132,6 +167,16 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                // Check if session is available
+                if (HttpContext.Current?.Session == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Session state is not enabled. Please ensure sessionState is configured in Web.config"
+                    });
+                }
+
                 string accessToken = HttpContext.Current.Session["access_token"] as string;
                 var expiresAt = HttpContext.Current.Session["token_expires_at"] as DateTime?;
 
@@ -173,6 +218,16 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                // Check if session is available
+                if (HttpContext.Current?.Session == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Session state is not enabled. Please ensure sessionState is configured in Web.config"
+                    });
+                }
+
                 string refreshToken = HttpContext.Current.Session["refresh_token"] as string;
 
                 if (string.IsNullOrWhiteSpace(refreshToken))
@@ -224,11 +279,15 @@ namespace RaumbuchService.Controllers
         {
             try
             {
-                HttpContext.Current.Session.Remove("access_token");
-                HttpContext.Current.Session.Remove("refresh_token");
-                HttpContext.Current.Session.Remove("token_expires_at");
-                HttpContext.Current.Session.Remove("oauth_state");
-                HttpContext.Current.Session.Remove("oauth_redirect_uri");
+                // Check if session is available
+                if (HttpContext.Current?.Session != null)
+                {
+                    HttpContext.Current.Session.Remove("access_token");
+                    HttpContext.Current.Session.Remove("refresh_token");
+                    HttpContext.Current.Session.Remove("token_expires_at");
+                    HttpContext.Current.Session.Remove("oauth_state");
+                    HttpContext.Current.Session.Remove("oauth_redirect_uri");
+                }
 
                 return Ok(new
                 {

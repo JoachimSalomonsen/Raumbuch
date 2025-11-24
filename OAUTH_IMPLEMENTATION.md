@@ -67,6 +67,12 @@ Session state is enabled in Web.config:
 
 This is required to store OAuth state parameters and tokens on the server side.
 
+**Important for Azure App Service:**
+- Azure App Service requires ARR Affinity (Application Request Routing) to be enabled for InProc session state to work properly
+- ARR Affinity ensures requests from the same client are routed to the same server instance
+- This is typically enabled by default, but verify in Azure Portal: Configuration → General Settings → ARR affinity = On
+- Alternatively, use a distributed session provider like Azure Redis Cache for production deployments
+
 ## OAuth Flow
 
 1. **User clicks "Mit Trimble anmelden"**
