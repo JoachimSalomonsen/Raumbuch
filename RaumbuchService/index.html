@@ -325,7 +325,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         // Check if running inside Trimble Connect as an extension
         function isInsideTrimbleConnect() {
             try {
-                return window.parent !== window && window.parent.TrimbleConnectWorkspace;
+                return window.parent !== window && 
+                       window.parent.TrimbleConnectWorkspace !== undefined &&
+                       window.parent.TrimbleConnectWorkspace !== null;
             } catch (e) {
                 return false;
             }
@@ -366,16 +368,22 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     // Listen for accessToken event (fired when token is available/refreshed)
                     workspace.extension.addEventListener('accessToken', (event) => {
                         console.log('Received accessToken event from Trimble Connect');
-                        trimbleConnect.accessToken = event.detail.token;
-                        trimbleConnect.consentStatus = 'granted';
-                        console.log('Access token received and stored');
                         
-                        // Automatically load project data when token is received
-                        if (trimbleConnect.projectId) {
-                            console.log('Auto-loading project data with token and project ID');
-                            loadProjectData().catch(error => {
-                                console.error('Error auto-loading project data:', error);
-                            });
+                        if (event && event.detail && event.detail.token) {
+                            trimbleConnect.accessToken = event.detail.token;
+                            trimbleConnect.consentStatus = 'granted';
+                            console.log('Access token received and stored');
+                            
+                            // Automatically load project data when token is received
+                            if (trimbleConnect.projectId) {
+                                console.log('Auto-loading project data with token and project ID');
+                                loadProjectData().catch(error => {
+                                    console.error('Error auto-loading project data:', error);
+                                    showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
+                                });
+                            }
+                        } else {
+                            console.error('Invalid accessToken event - missing token');
                         }
                     });
                     
@@ -392,12 +400,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                                     console.log('Auto-loading project data with both token and project ID');
                                     loadProjectData().catch(error => {
                                         console.error('Error auto-loading project data:', error);
+                                        showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
                                     });
                                 }
+                            } else {
+                                console.warn('No project context available from Trimble Connect');
                             }
                         })
                         .catch(error => {
                             console.error('Error getting Trimble Connect context:', error);
+                            showResult('connectionResult', 'error', '⚠ Fehler beim Abrufen des Projekt-Kontexts von Trimble Connect.');
                         });
                         
                 } catch (error) {
