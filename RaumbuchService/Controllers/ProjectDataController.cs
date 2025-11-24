@@ -311,17 +311,23 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("SaveConfiguration called");
+                
                 if (request == null || request.Configuration == null || 
                     string.IsNullOrWhiteSpace(request.Configuration.ProjectId))
                 {
+                    System.Diagnostics.Debug.WriteLine("Invalid configuration request");
                     return BadRequest("Ungueltige Konfiguration.");
                 }
 
                 if (string.IsNullOrWhiteSpace(request.ConfigName))
                 {
+                    System.Diagnostics.Debug.WriteLine("Config name is missing");
                     return BadRequest("Konfigurationsname ist erforderlich.");
                 }
 
+                System.Diagnostics.Debug.WriteLine($"Saving config: {request.ConfigName} for project: {request.Configuration.ProjectId}");
+                
                 request.Configuration.LastUpdated = DateTime.UtcNow;
 
                 var azureStorage = new AzureStorageService();
@@ -329,12 +335,16 @@ namespace RaumbuchService.Controllers
                 // If Azure Storage is configured, save to blob storage
                 if (azureStorage.IsAvailable())
                 {
+                    System.Diagnostics.Debug.WriteLine("Azure Storage is available, attempting to save...");
+                    
                     string jsonContent = JsonConvert.SerializeObject(request.Configuration, Formatting.Indented);
                     await azureStorage.SaveConfigurationAsync(
                         request.Configuration.ProjectId, 
                         request.ConfigName, 
                         jsonContent);
 
+                    System.Diagnostics.Debug.WriteLine("Configuration saved successfully to Azure");
+                    
                     return Ok(new SaveConfigResponse
                     {
                         Success = true,
@@ -345,6 +355,8 @@ namespace RaumbuchService.Controllers
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine("Azure Storage not configured, using fallback mode");
+                    
                     // Fallback: Return as JSON for client-side download
                     return Ok(new SaveConfigResponse
                     {
@@ -357,7 +369,21 @@ namespace RaumbuchService.Controllers
             }
             catch (Exception ex)
             {
-                return InternalServerError(new Exception($"Fehler beim Speichern der Konfiguration: {ex.Message}", ex));
+                System.Diagnostics.Debug.WriteLine($"Error saving configuration: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                
+                return Content(
+                    System.Net.HttpStatusCode.InternalServerError,
+                    new { 
+                        success = false, 
+                        message = $"Fehler beim Speichern: {ex.Message}" + 
+                                  (ex.InnerException != null ? $" ({ex.InnerException.Message})" : "")
+                    }
+                );
             }
         }
 

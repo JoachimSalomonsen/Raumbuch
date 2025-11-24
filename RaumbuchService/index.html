@@ -749,9 +749,17 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     })
                 });
 
-                const data = await response.json();
+                // Check if response is OK first
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', response.status, errorText);
+                    throw new Error(`Server error (${response.status}): ${errorText.substring(0, 200)}`);
+                }
 
-                if (response.ok && data.success) {
+                const data = await response.json();
+                console.log('Save config response:', data);
+
+                if (data.success) {
                     if (data.savedToAzure) {
                         showResult('connectionResult', 'success', `✅ ${data.message}`);
                         // Reload the configurations list
@@ -768,7 +776,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         showResult('connectionResult', 'success', `✅ Konfiguration "${configName}.json" heruntergeladen (lokaler Modus)!`);
                     }
                 } else {
-                    throw new Error(data.message || 'Fehler beim Speichern');
+                    throw new Error(data.message || 'Fehler beim Speichern (keine Fehlermeldung vom Server)');
                 }
             } catch (error) {
                 console.error('Error saving config:', error);
