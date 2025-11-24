@@ -19,5 +19,14 @@ namespace RaumbuchService
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
         }
+
+        // Enable session state for Web API
+        protected void Application_PostAuthorizeRequest()
+        {
+            if (HttpContext.Current != null)
+            {
+                HttpContext.Current.SetSessionStateBehavior(System.Web.SessionState.SessionStateBehavior.Required);
+            }
+        }
     }
 }

@@ -59,18 +59,37 @@ This implementation adds OAuth 2.0 authentication to the Raumbuch application, r
 
 ### Session State
 
-Session state is enabled in Web.config:
+Session state is enabled for Web API in Web.config and Global.asax.cs:
 
+**Web.config:**
 ```xml
+<!-- In system.web -->
 <sessionState mode="InProc" timeout="60" />
+
+<!-- In system.webServer -->
+<modules>
+  <remove name="Session" />
+  <add name="Session" type="System.Web.SessionState.SessionStateModule" />
+</modules>
 ```
 
-This is required to store OAuth state parameters and tokens on the server side.
+**Global.asax.cs:**
+```csharp
+protected void Application_PostAuthorizeRequest()
+{
+    if (HttpContext.Current != null)
+    {
+        HttpContext.Current.SetSessionStateBehavior(SessionStateBehavior.Required);
+    }
+}
+```
+
+This is required to enable session state for Web API controllers, which don't have it enabled by default.
 
 **Important for Azure App Service:**
 - Azure App Service requires ARR Affinity (Application Request Routing) to be enabled for InProc session state to work properly
 - ARR Affinity ensures requests from the same client are routed to the same server instance
-- This is typically enabled by default, but verify in Azure Portal: Configuration → General Settings → ARR affinity = On
+- Verify in Azure Portal: Configuration → General Settings → ARR affinity = On
 - Alternatively, use a distributed session provider like Azure Redis Cache for production deployments
 
 ## OAuth Flow
