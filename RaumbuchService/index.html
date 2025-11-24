@@ -379,7 +379,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         // Initialize Trimble Connect Extension API
         function initializeTrimbleConnectExtension() {
             // Check if Workspace API is being initialized (app.js will handle authentication)
-            if (window.WorkspaceAPI) {
+            // Check for both old WorkspaceAPI and new TrimbleConnectWorkspace
+            if (window.WorkspaceAPI || window.TrimbleConnectWorkspace) {
                 console.log('Workspace API detected - waiting for app.js to initialize');
                 trimbleConnect.isEmbedded = true;
                 trimbleConnect.isWorkspaceApp = true;
@@ -513,8 +514,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         };
 
         function getToken() {
-            // Use Trimble Connect extension token if available
-            if (trimbleConnect.isEmbedded && trimbleConnect.accessToken) {
+            // Use Trimble Connect token if available (from Workspace API or Extension API)
+            if ((trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) && trimbleConnect.accessToken) {
                 return trimbleConnect.accessToken;
             }
             
@@ -528,8 +529,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         function getProjectId() {
-            // Use Trimble Connect project ID if available
-            if (trimbleConnect.isEmbedded && trimbleConnect.projectId) {
+            // Use Trimble Connect project ID if available (from Workspace API or Extension API)
+            if ((trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) && trimbleConnect.projectId) {
                 return trimbleConnect.projectId;
             }
             
@@ -747,7 +748,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             console.log('Folder ID:', folderId);
 
             if (!token || !folderId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token and Zielordner auswählen');
+                if (!token) {
+                    showResult('connectionResult', 'error', '⚠ Authentifizierung läuft... Bitte warten Sie, bis Trimble Connect die Verbindung hergestellt hat.');
+                } else {
+                    showResult('connectionResult', 'error', '⚠ Bitte wählen Sie zuerst einen Zielordner aus');
+                }
                 console.error('Missing token or folderId');
                 return;
             }
@@ -945,7 +950,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
 
             if (!projectId) {
-                alert('⚠ Bitte geben Sie eine Project ID ein!');
+                alert('⚠ Warte auf Projekt-ID von Trimble Connect. Bitte versuchen Sie es in wenigen Sekunden erneut.');
                 return;
             }
 
