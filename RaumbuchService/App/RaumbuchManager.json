@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "name": "Raumbuch Manager",
+  "version": "2.0.0",
+  "description": "Raumbuch management tool",
+  "author": "Buildingpoint Schweiz AG",
+  "icon": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
+
+  "extension_points": {
+    "file_explorer": [
+      {
+        "id": "raumbuch_panel",
+        "title": "Raumbuch",
+        "icon": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
+        "url": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/index.html",
+        "description": "Erstelle und bearbeite Raumprogramm und Raumbuch"
+      }
+    ]
+  }
+}
