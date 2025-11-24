@@ -104,6 +104,20 @@ Based on your CSV export:
    - Enter a configuration name and click **💾 Konfiguration speichern**
    - Verify it appears in the dropdown after saving
 
+### Verify iframe Embedding Configuration
+
+The application is configured to be embedded in Trimble Connect iframes. To verify the configuration:
+
+1. Open the application URL in a browser
+2. Open DevTools (F12) → Network tab
+3. Reload the page
+4. Check the response headers for the main document:
+   - ✅ **NO** `X-Frame-Options` header should be present
+   - ✅ `Content-Security-Policy` should contain: `frame-ancestors 'self' https://web.connect.trimble.com https://*.connect.trimble.com`
+   - ✅ `Access-Control-Allow-Origin` should be: `https://web.connect.trimble.com`
+
+For detailed information about iframe embedding configuration, see [TRIMBLE_IFRAME_EMBEDDING.md](TRIMBLE_IFRAME_EMBEDDING.md).
+
 ## Step 5: Test Azure Storage Integration
 
 ### Test Saving a Configuration:
