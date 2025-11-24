@@ -319,7 +319,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         document.getElementById('apiEndpoint').textContent = `API: ${window.location.origin}`;
 
         // ====================================================================
-        // TRIMBLE CONNECT EXTENSION API INTEGRATION
+        // TRIMBLE CONNECT WORKSPACE & EXTENSION API INTEGRATION
         // ====================================================================
         
         // Store authentication and context from Trimble Connect
@@ -327,7 +327,22 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             accessToken: null,
             projectId: null,
             isEmbedded: false,
+            isWorkspaceApp: false, // New flag for Workspace API
             consentStatus: 'pending' // pending, granted, denied
+        };
+
+        // Helper functions to expose to app.js for Workspace API integration
+        window.setWorkspaceToken = function(token) {
+            console.log('Setting workspace token from app.js');
+            trimbleConnect.accessToken = token;
+            trimbleConnect.isWorkspaceApp = true;
+            trimbleConnect.consentStatus = 'granted';
+        };
+
+        window.setWorkspaceProjectId = function(projectId) {
+            console.log('Setting workspace project ID from app.js:', projectId);
+            trimbleConnect.projectId = projectId;
+            trimbleConnect.isWorkspaceApp = true;
         };
 
         // Check if running inside Trimble Connect as an extension
@@ -343,10 +358,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         // Initialize Trimble Connect Extension API
         function initializeTrimbleConnectExtension() {
+            // Check if Workspace API is being initialized (app.js will handle authentication)
+            if (window.WorkspaceAPI) {
+                console.log('Workspace API detected - waiting for app.js to initialize');
+                trimbleConnect.isEmbedded = true;
+                trimbleConnect.isWorkspaceApp = true;
+                // app.js will call setWorkspaceToken and setWorkspaceProjectId
+                return;
+            }
+            
             trimbleConnect.isEmbedded = isInsideTrimbleConnect();
             
             if (trimbleConnect.isEmbedded) {
-                console.log('Running inside Trimble Connect - initializing extension API');
+                console.log('Running inside Trimble Connect - initializing legacy extension API');
                 
                 try {
                     const workspace = window.parent.TrimbleConnectWorkspace;
@@ -425,14 +449,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     showResult('connectionResult', 'error', '❌ Fehler beim Initialisieren der Trimble Connect Extension API: ' + error.message);
                 }
             } else {
-                console.log('Not running inside Trimble Connect - using manual token/project ID input');
+                console.log('Not running inside Trimble Connect - standalone mode');
                 // For local development/testing, fallback to manual input fields would be used
                 // (currently commented out in HTML)
             }
         }
 
-        // Initialize on page load
-        window.addEventListener('DOMContentLoaded', initializeTrimbleConnectExtension);
+        // Initialize on page load - but after app.js has had a chance to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTrimbleConnectExtension);
+        } else {
+            // DOM already loaded, wait a bit for app.js to initialize
+            setTimeout(initializeTrimbleConnectExtension, 100);
+        }
 
         function openTab(tabId) {
             // hide all tabs
