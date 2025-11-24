@@ -6,10 +6,8 @@
     <title>Raumbuch Manager - Lokal</title>
     <link rel="stylesheet" href="Content/Site.css">
     <!-- Trimble Workspace API -->
-    <script type="module">
-        import * as WorkspaceAPI from "https://components.connect.trimble.com/trimble-connect-workspace-api/v1/workspace-api.js";
-        window.WorkspaceAPI = WorkspaceAPI;
-    </script>
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="Scripts/app.js"></script>
 </head>
 
 
@@ -2196,6 +2194,5 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         });
 
     </script>
-    <script type="module" src="Scripts/app.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ async function init() {
 
     // --- Try to connect to Trimble Workspace API ---
     try {
-        API = await window.WorkspaceAPI.connect(
+        API = await window.TrimbleConnectWorkspace.connect(
             window.parent,
             workspaceEventHandler,
             30000
@@ -24,13 +24,8 @@ async function init() {
     // --- Build Trimble Connect menu ---
     await API.ui.setMenu({
         title: "Raumbuch",
-        icon: "Img/book.png",
+        icon: "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
         command: "menu_main",
-        subMenus: [
-            { title: "Raumbuch", icon: "Img/book.png", command: "menu_raumbuch" },
-            { title: "Ausstattung", icon: "Img/material.png", command: "menu_ausstattung" },
-            { title: "Nachricht", icon: "Img/mail.png", command: "menu_nachricht" }
-        ]
     });
 
     await API.ui.setActiveMenuItem("menu_raumbuch");
