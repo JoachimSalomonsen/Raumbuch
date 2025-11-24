@@ -57,12 +57,12 @@ namespace RaumbuchService.Models
         /// Returns true if IST is less than SOLL (too little area).
         /// This is the condition that requires attention (red highlighting).
         /// </summary>
-        public bool IsUnderLimit => Percentage < 100.0 && SollArea > 0;
+        public bool IsUnderLimit => !double.IsNaN(Percentage) && Percentage >= 0 && Percentage < 100.0 && SollArea > 0;
 
         /// <summary>
         /// Returns true if IST exceeds SOLL (too much area).
         /// </summary>
-        public bool IsOverLimit => Percentage > 100.0;
+        public bool IsOverLimit => !double.IsNaN(Percentage) && Percentage > 100.0;
 
         /// <summary>
         /// Returns the German status string according to Raumbuch standard.
@@ -74,6 +74,7 @@ namespace RaumbuchService.Models
         {
             get
             {
+                if (double.IsNaN(Percentage)) return "OK";
                 if (SollArea <= 0 && IstArea <= 0) return "OK";
                 if (IsUnderLimit) return "Zu wenig";
                 if (IsOverLimit) return "Zu viel";

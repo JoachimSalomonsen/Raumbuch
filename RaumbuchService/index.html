@@ -2454,6 +2454,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Determines the status based on percentage and tolerance settings
          */
         function getStatus(percentage, sollArea, istArea) {
+            // Handle null/undefined/NaN cases
+            if (percentage == null || isNaN(percentage)) return 'OK';
             if (sollArea <= 0 && istArea <= 0) return 'OK';
             
             const deviation = percentage - 100;
@@ -2477,13 +2479,20 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
         }
 
+        // Constants for progress bar visualization
+        const PROGRESS_BAR_MAX_PERCENT = 150;
+        const DEVIATION_INTENSITY_DIVISOR = 30;
+
         /**
          * Creates a visual progress bar for SOLL/IST comparison
          */
         function createProgressBar(percentage) {
-            const width = Math.min(Math.max(percentage, 0), 150); // Cap at 150%
-            const barWidth = (width / 150) * 100;
-            const markerPos = (100 / 150) * 100; // 100% marker position
+            // Handle null/undefined/NaN cases
+            if (percentage == null || isNaN(percentage)) percentage = 0;
+            
+            const width = Math.min(Math.max(percentage, 0), PROGRESS_BAR_MAX_PERCENT);
+            const barWidth = (width / PROGRESS_BAR_MAX_PERCENT) * 100;
+            const markerPos = (100 / PROGRESS_BAR_MAX_PERCENT) * 100; // 100% marker position
             
             let barColor = '#2E8540'; // Green for OK
             if (percentage < 100 - Math.abs(toleranceSettings.min)) {
@@ -2494,7 +2503,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             
             // Color intensity based on deviation
             const deviation = Math.abs(percentage - 100);
-            const intensity = Math.min(deviation / 30, 1);
+            const intensity = Math.min(deviation / DEVIATION_INTENSITY_DIVISOR, 1);
             
             return `
                 <div class="progress-bar-container">
@@ -2601,7 +2610,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const rows = document.querySelectorAll('.analyse-row');
             
             rows.forEach(row => {
-                const category = row.cells[0]?.textContent.toLowerCase() || '';
+                const category = (row.cells && row.cells[0] && row.cells[0].textContent) ? row.cells[0].textContent.toLowerCase() : '';
                 if (category.includes(searchTerm)) {
                     row.style.display = '';
                 } else {
@@ -2626,8 +2635,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const ascending = sortDirection[columnIndex];
             
             rows.sort((a, b) => {
-                let aVal = a.cells[columnIndex]?.textContent || '';
-                let bVal = b.cells[columnIndex]?.textContent || '';
+                let aVal = (a.cells && a.cells[columnIndex] && a.cells[columnIndex].textContent) ? a.cells[columnIndex].textContent : '';
+                let bVal = (b.cells && b.cells[columnIndex] && b.cells[columnIndex].textContent) ? b.cells[columnIndex].textContent : '';
                 
                 // Try to parse as numbers
                 const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));

@@ -1679,6 +1679,14 @@ namespace RaumbuchService.Controllers
             return result;
         }
 
+        // Column indices for Zusammenfassung sheet
+        private const int ZUSAMMENFASSUNG_COL_CATEGORY = 1;
+        private const int ZUSAMMENFASSUNG_COL_SOLL = 2;
+        private const int ZUSAMMENFASSUNG_COL_IST = 3;
+        private const int ZUSAMMENFASSUNG_COL_PERCENT = 4;
+        private const int ZUSAMMENFASSUNG_COL_STATUS = 5;
+        private const int ZUSAMMENFASSUNG_COL_COMMENT = 6;
+
         /// <summary>
         /// Reads Zusammenfassung data from Raumbuch Excel.
         /// Returns the summary sheet data as ZusammenfassungItem list.
@@ -1707,22 +1715,22 @@ namespace RaumbuchService.Controllers
                 // Data starts from row 2 (row 1 is header)
                 for (int r = firstRow + 1; r <= lastRow; r++)
                 {
-                    string category = ws.Cell(r, 1).GetString().Trim();
+                    string category = ws.Cell(r, ZUSAMMENFASSUNG_COL_CATEGORY).GetString().Trim();
                     if (string.IsNullOrWhiteSpace(category)) continue;
 
-                    double.TryParse(ws.Cell(r, 2).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_SOLL).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double sollArea);
-                    double.TryParse(ws.Cell(r, 3).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_IST).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double istArea);
-                    double.TryParse(ws.Cell(r, 4).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_PERCENT).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double percentage);
-                    string status = ws.Cell(r, 5).GetString().Trim();
+                    string status = ws.Cell(r, ZUSAMMENFASSUNG_COL_STATUS).GetString().Trim();
                     
-                    // Check if there's a comment column (column 6)
+                    // Check if there's a comment column
                     string comment = "";
-                    if (ws.Cell(r, 6) != null)
+                    if (ws.Cell(r, ZUSAMMENFASSUNG_COL_COMMENT) != null)
                     {
-                        comment = ws.Cell(r, 6).GetString().Trim();
+                        comment = ws.Cell(r, ZUSAMMENFASSUNG_COL_COMMENT).GetString().Trim();
                     }
 
                     result.Add(new ZusammenfassungItem
