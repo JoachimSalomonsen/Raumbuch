@@ -99,7 +99,7 @@
                             <!-- Import template moved here -->
                             <button class="btn btn-primary" onclick="importTemplate()">📥 Raumprogramm erstellen</button>
                         </div>
-                                                
+
                     </div>
 
                     <!-- RAUMPROGRAMM -->
@@ -141,6 +141,16 @@
 
                     <div id="step1Result" class="result"></div>
                     <div id="step3Result" class="result"></div>
+                </section>
+
+                <section class="card">
+                    <h2>Soll/Ist-Prüfung</h2>
+                    <p>Die Differenz in der Fläche zwischen Raumprogramm (SOLL) und Raumbuch (IST) wird für jede Raumkategorie in Pset Raumbuch geschrieben.</p>
+
+                    <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
+                    <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
+                    <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
+                    <div id="step4Result" class="result"></div>
                 </section>
 
 
@@ -272,7 +282,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
 
         <footer>
-            <p>Raumbuch Manager v2.0 - Lokale Version mit Konfigurationsverwaltung</p>
+            <p>Raumbuch Manager v2.0 - Buildingpoint Schweiz AG</p>
             <p id="apiEndpoint"></p>
         </footer>
     </div>
