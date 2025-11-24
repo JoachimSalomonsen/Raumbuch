@@ -55,6 +55,8 @@ Based on your CSV export:
 | `TRIMBLE_SCOPE` | `openid CST-PowerBI` | OAuth scopes |
 | `TRIMBLE_REDIRECT_URI` | `https://raumbuch.azurewebsites.net/callback/` | OAuth redirect URI (adjust if needed) |
 
+**Important Note**: Do NOT edit Web.config directly for production settings. The Web.config file contains default values for local development only. Azure App Settings (Environment Variables) override Web.config values when deployed. This keeps credentials secure and allows different values for different environments without code changes.
+
 5. Click **Save** at the top
 6. Click **Continue** when prompted to restart the app
 

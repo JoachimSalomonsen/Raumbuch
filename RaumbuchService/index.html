@@ -273,13 +273,17 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         <footer>
             <p>Raumbuch Manager v2.0 - Lokale Version mit Konfigurationsverwaltung</p>
-            <p>API: https://localhost:44305</p>
+            <p id="apiEndpoint"></p>
         </footer>
     </div>
 
     <script>
-        const API_BASE = 'https://localhost:44305/api/raumbuch';
-        const API_PROJECT = 'https://localhost:44305/api/project';
+        // Use relative URLs to work in both local development and Azure deployment
+        const API_BASE = '/api/raumbuch';
+        const API_PROJECT = '/api/project';
+        
+        // Display the current API endpoint in footer
+        document.getElementById('apiEndpoint').textContent = `API: ${window.location.origin}`;
 
         function openTab(tabId) {
             // hide all tabs
