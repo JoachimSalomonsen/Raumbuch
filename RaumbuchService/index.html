@@ -335,13 +335,35 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             trimbleConnect.accessToken = token;
             trimbleConnect.isWorkspaceApp = true;
             trimbleConnect.consentStatus = 'granted';
+            
+            // Try to auto-load configs if we also have project ID
+            tryAutoLoadConfigs();
         };
 
         window.setWorkspaceProjectId = function(projectId) {
             console.log('Setting workspace project ID from app.js:', projectId);
             trimbleConnect.projectId = projectId;
             trimbleConnect.isWorkspaceApp = true;
+            
+            // Try to auto-load configs if we also have token
+            tryAutoLoadConfigs();
         };
+        
+        // Auto-load saved configurations when both token and projectId are available
+        async function tryAutoLoadConfigs() {
+            const token = getToken();
+            const projectId = getProjectId();
+            
+            if (token && projectId) {
+                console.log('Auto-loading saved configurations for project:', projectId);
+                try {
+                    await loadSavedConfigurations(projectId);
+                    showResult('connectionResult', 'success', '✅ Konfigurationen geladen. Klicken Sie "Projektdaten laden" für weitere Daten.');
+                } catch (error) {
+                    console.error('Error auto-loading configurations:', error);
+                }
+            }
+        }
 
         // Check if running inside Trimble Connect as an extension
         function isInsideTrimbleConnect() {
@@ -543,8 +565,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const token = getToken();
             const projectId = getProjectId();
 
+            // Skip validation if we're waiting for credentials from Workspace/Extension API
             if (!token || !projectId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                // If we have neither token nor project ID, show a loading message instead of error
+                // The app is likely still initializing via Workspace API
+                if (trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) {
+                    console.log('Waiting for Workspace API to provide token and project ID...');
+                    showResult('connectionResult', 'loading', '⏳ Warte auf Authentifizierung...');
+                } else {
+                    showResult('connectionResult', 'error', '⚠ Bitte authentifizieren Sie sich über Trimble Connect');
+                }
                 return;
             }
 
@@ -843,7 +873,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const projectId = getProjectId();
 
             if (!token || !projectId) {
-                showResult('step2Result', 'error', '⚠ Bitte Token und Project ID eingeben');
+                showResult('step2Result', 'error', '⚠ Bitte warten Sie auf die Authentifizierung über Trimble Connect');
                 return;
             }
 
@@ -1295,7 +1325,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const projectId = getProjectId();
 
             if (!token || !projectId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                showResult('connectionResult', 'error', '⚠ Bitte warten Sie auf die Authentifizierung über Trimble Connect');
                 return;
             }
 
