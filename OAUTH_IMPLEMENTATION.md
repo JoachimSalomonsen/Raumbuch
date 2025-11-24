@@ -55,7 +55,12 @@ This implementation adds OAuth 2.0 authentication to the Raumbuch application, r
 <add key="TRIMBLE_REDIRECT_URI" value="http://localhost:5005/callback/" />
 ```
 
-**Note**: The `TRIMBLE_REDIRECT_URI` in the config is a fallback value. The actual redirect URI used is dynamically constructed based on the server's URL (e.g., `https://yourdomain.com/api/auth/callback`).
+**Important**: The `TRIMBLE_REDIRECT_URI` must **exactly match** the redirect URI registered in your Trimble Connect application.
+
+**For Azure Deployment:**
+- Set `TRIMBLE_REDIRECT_URI` to your Azure URL: `https://yourdomain.azurewebsites.net/api/auth/callback`
+- Register this same URL in your Trimble Connect app configuration
+- The redirect URI is case-sensitive and must match exactly (including trailing slashes)
 
 ### Session State
 

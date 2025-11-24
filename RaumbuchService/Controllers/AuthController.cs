@@ -52,10 +52,9 @@ namespace RaumbuchService.Controllers
                 // Generate random state for CSRF protection
                 string state = Guid.NewGuid().ToString("N");
 
-                // Get the base URL from the request to construct redirect URI
-                var request = HttpContext.Current.Request;
-                string baseUrl = $"{request.Url.Scheme}://{request.Url.Authority}";
-                string redirectUri = $"{baseUrl}/api/auth/callback";
+                // Use the configured redirect URI from TrimbleConfig
+                // This must match exactly what's registered in Trimble Connect app
+                string redirectUri = RaumbuchService.Config.TrimbleConfig.RedirectUri;
 
                 // Generate authorization URL
                 string authUrl = _authService.GetAuthorizationUrl(state, redirectUri);
