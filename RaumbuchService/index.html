@@ -30,8 +30,17 @@
                     <h2>Konfiguration</h2>
 
                     <div class="form-group">
-                        <label for="accessToken">Access Token:</label>
-                        <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
+                        <label>Authentifizierung:</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn btn-primary" onclick="loginWithTrimble()" id="loginButton">
+                                🔐 Mit Trimble anmelden
+                            </button>
+                            <button class="btn btn-secondary" onclick="logoutFromTrimble()" id="logoutButton" style="display:none;">
+                                🚪 Abmelden
+                            </button>
+                            <span id="authStatus" style="color: #666;"></span>
+                        </div>
+                        <small id="authHelp">Klicken Sie auf "Mit Trimble anmelden" um sich zu authentifizieren</small>
                     </div>
 
                     <div class="form-group">
@@ -320,9 +329,149 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             bcfAssignees: []
         };
 
+        // ==========================================
+        // OAuth Authentication Functions
+        // ==========================================
+        
         function getToken() {
-            return document.getElementById('accessToken').value.trim();
+            // Get token from sessionStorage (set after OAuth login)
+            let token = sessionStorage.getItem('access_token');
+            if (!token) {
+                console.warn('No access token found in session storage');
+            }
+            return token || '';
         }
+
+        function setToken(token) {
+            if (token) {
+                sessionStorage.setItem('access_token', token);
+                updateAuthStatus(true);
+            } else {
+                sessionStorage.removeItem('access_token');
+                updateAuthStatus(false);
+            }
+        }
+
+        function updateAuthStatus(isLoggedIn) {
+            const loginButton = document.getElementById('loginButton');
+            const logoutButton = document.getElementById('logoutButton');
+            const authStatus = document.getElementById('authStatus');
+            const authHelp = document.getElementById('authHelp');
+
+            if (isLoggedIn) {
+                loginButton.style.display = 'none';
+                logoutButton.style.display = 'inline-block';
+                authStatus.textContent = '✓ Angemeldet';
+                authStatus.style.color = '#2E8540';
+                authHelp.textContent = 'Sie sind authentifiziert und können die API verwenden';
+            } else {
+                loginButton.style.display = 'inline-block';
+                logoutButton.style.display = 'none';
+                authStatus.textContent = '';
+                authHelp.textContent = 'Klicken Sie auf "Mit Trimble anmelden" um sich zu authentifizieren';
+            }
+        }
+
+        async function loginWithTrimble() {
+            try {
+                // Get the login URL from the backend
+                const response = await fetch('/api/auth/login', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.authUrl) {
+                    // Open Trimble login in a popup window
+                    const width = 600;
+                    const height = 700;
+                    const left = (screen.width - width) / 2;
+                    const top = (screen.height - height) / 2;
+                    
+                    const popup = window.open(
+                        data.authUrl,
+                        'TrimbleLogin',
+                        `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no`
+                    );
+
+                    if (!popup) {
+                        alert('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
+                        return;
+                    }
+
+                    // Show waiting message
+                    document.getElementById('authStatus').textContent = 'Warten auf Anmeldung...';
+                    document.getElementById('authStatus').style.color = '#FFBF47';
+                } else {
+                    alert('Fehler beim Generieren der Login-URL: ' + (data.message || 'Unbekannter Fehler'));
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Fehler beim Starten des Logins: ' + error.message);
+            }
+        }
+
+        async function logoutFromTrimble() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    setToken(null);
+                    alert('Sie wurden erfolgreich abgemeldet.');
+                } else {
+                    alert('Fehler beim Abmelden: ' + (data.message || 'Unbekannter Fehler'));
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Clear local token even if backend fails
+                setToken(null);
+                alert('Abgemeldet (lokale Sitzung gelöscht)');
+            }
+        }
+
+        // Check for OAuth callback parameters on page load
+        function checkOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.has('auth_success') && urlParams.has('access_token')) {
+                const token = urlParams.get('access_token');
+                setToken(token);
+                
+                // Clear URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                alert('✓ Erfolgreich angemeldet!');
+            } else if (urlParams.has('auth_error')) {
+                const error = urlParams.get('auth_error');
+                const description = urlParams.get('auth_error_description') || 'Unbekannter Fehler';
+                
+                // Clear URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                alert('Authentifizierungsfehler: ' + error + '\n' + description);
+            }
+        }
+
+        // Check authentication status on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            checkOAuthCallback();
+            const token = getToken();
+            updateAuthStatus(!!token);
+        });
+
+        // ==========================================
+        // End OAuth Authentication Functions
+        // ==========================================
 
         function getProjectId() {
             return document.getElementById('projectId').value.trim();
