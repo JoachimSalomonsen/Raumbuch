@@ -5,16 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raumbuch Manager - Lokal</title>
     <link rel="stylesheet" href="Content/Site.css">
+    <!-- Trimble Workspace API -->
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="Scripts/app.js"></script>
 </head>
+
+
+
 <body>
     <div class="container">
         <!-- =============================== -->
         <!-- TOP TAB NAVIGATION (Trimble Connect style) -->
         <!-- =============================== -->
         <nav class="tc-tabs">
-            <div class="tc-tab active" onclick="openTab('tab-konfig')">Raumbuch</div>
-            <div class="tc-tab" onclick="openTab('tab-ausstattung')">Ausstattungsverwaltung</div>
-            <div class="tc-tab" onclick="openTab('tab-bcf')">Nachricht</div>
+            <div class="tc-tab active" onclick="openTab('tab-konfig')">
+                <img src="img/book.png" class="tc-tab-icon" />
+                <span>Raumbuch</span>
+            </div>
+
+            <div class="tc-tab" onclick="openTab('tab-ausstattung')">
+                <img src="img/material.png" class="tc-tab-icon" />
+                <span>Ausstattungsverwaltung</span>
+            </div>
+
+            <div class="tc-tab" onclick="openTab('tab-bcf')">
+                <img src="img/mail.png" class="tc-tab-icon" />
+                <span>Nachricht</span>
+            </div>
         </nav>
 
         <main>
@@ -29,15 +46,23 @@
                 <section class="card">
                     <h2>Konfiguration</h2>
 
+                    <!-- Authentication is managed by Trimble Connect Extension API -->
+                    <!-- Manual token input field (commented out - authentication handled by extension API) -->
+                    <!--
                     <div class="form-group">
                         <label for="accessToken">Access Token:</label>
                         <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
                     </div>
+                    -->
 
+                    <!-- Project ID retrieved from Trimble Connect context -->
+                    <!-- Manual project ID input field (commented out - project ID retrieved from extension context) -->
+                    <!--
                     <div class="form-group">
                         <label for="projectId">Project ID:</label>
                         <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
                     </div>
+                    -->
 
                     <div class="form-group">
                         <label for="configName">Konfigurationsname:</label>
@@ -157,7 +182,7 @@
             <div id="tab-ausstattung" class="tab-content">
 
                 <section class="card">
-                   
+
                     <!-- Subsection: Room sheets -->
                     <div class="subsection">
                         <h2>Raumblätter erstellen</h2>
@@ -287,9 +312,177 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         // Use relative URLs to work in both local development and Azure deployment
         const API_BASE = '/api/raumbuch';
         const API_PROJECT = '/api/project';
-        
+
         // Display the current API endpoint in footer
         document.getElementById('apiEndpoint').textContent = `API: ${window.location.origin}`;
+
+        // ====================================================================
+        // TRIMBLE CONNECT WORKSPACE & EXTENSION API INTEGRATION
+        // ====================================================================
+        
+        // Store authentication and context from Trimble Connect
+        let trimbleConnect = {
+            accessToken: null,
+            projectId: null,
+            isEmbedded: false,
+            isWorkspaceApp: false, // New flag for Workspace API
+            consentStatus: 'pending' // pending, granted, denied
+        };
+
+        // Helper functions to expose to app.js for Workspace API integration
+        window.setWorkspaceToken = function(token) {
+            console.log('Setting workspace token from app.js');
+            trimbleConnect.accessToken = token;
+            trimbleConnect.isWorkspaceApp = true;
+            trimbleConnect.consentStatus = 'granted';
+            
+            // Try to auto-load configs if we also have project ID
+            tryAutoLoadConfigs();
+        };
+
+        window.setWorkspaceProjectId = function(projectId) {
+            console.log('Setting workspace project ID from app.js:', projectId);
+            trimbleConnect.projectId = projectId;
+            trimbleConnect.isWorkspaceApp = true;
+            
+            // Try to auto-load configs if we also have token
+            tryAutoLoadConfigs();
+        };
+        
+        // Auto-load saved configurations when both token and projectId are available
+        async function tryAutoLoadConfigs() {
+            const token = getToken();
+            const projectId = getProjectId();
+            
+            if (token && projectId) {
+                console.log('Auto-loading saved configurations for project:', projectId);
+                try {
+                    await loadSavedConfigurations(projectId);
+                    showResult('connectionResult', 'success', '✅ Konfigurationen geladen. Klicken Sie "Projektdaten laden" für weitere Daten.');
+                } catch (error) {
+                    console.error('Error auto-loading configurations:', error);
+                }
+            }
+        }
+
+        // Check if running inside Trimble Connect as an extension
+        function isInsideTrimbleConnect() {
+            try {
+                return window.parent !== window && 
+                       window.parent.TrimbleConnectWorkspace !== undefined &&
+                       window.parent.TrimbleConnectWorkspace !== null;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Initialize Trimble Connect Extension API
+        function initializeTrimbleConnectExtension() {
+            // Check if Workspace API is being initialized (app.js will handle authentication)
+            // Check for both old WorkspaceAPI and new TrimbleConnectWorkspace
+            if (window.WorkspaceAPI || window.TrimbleConnectWorkspace) {
+                console.log('Workspace API detected - waiting for app.js to initialize');
+                trimbleConnect.isEmbedded = true;
+                trimbleConnect.isWorkspaceApp = true;
+                // app.js will call setWorkspaceToken and setWorkspaceProjectId
+                return;
+            }
+            
+            trimbleConnect.isEmbedded = isInsideTrimbleConnect();
+            
+            if (trimbleConnect.isEmbedded) {
+                console.log('Running inside Trimble Connect - initializing legacy extension API');
+                
+                try {
+                    const workspace = window.parent.TrimbleConnectWorkspace;
+                    
+                    // Request permission to use access token
+                    workspace.extension.requestPermission()
+                        .then(result => {
+                            console.log('Extension permission result:', result);
+                            
+                            if (result === 'granted') {
+                                trimbleConnect.consentStatus = 'granted';
+                                console.log('Permission granted - waiting for accessToken event');
+                            } else if (result === 'denied') {
+                                trimbleConnect.consentStatus = 'denied';
+                                console.error('Permission denied by user');
+                                showResult('connectionResult', 'error', '❌ Zugriff verweigert. Bitte erlauben Sie den Zugriff in den Extension-Einstellungen.');
+                            } else if (result === 'pending') {
+                                trimbleConnect.consentStatus = 'pending';
+                                console.log('Permission pending - user needs to grant consent');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error requesting permission:', error);
+                            showResult('connectionResult', 'error', '❌ Fehler beim Anfordern der Berechtigung: ' + error.message);
+                        });
+                    
+                    // Listen for accessToken event (fired when token is available/refreshed)
+                    workspace.extension.addEventListener('accessToken', (event) => {
+                        console.log('Received accessToken event from Trimble Connect');
+                        
+                        if (event && event.detail && event.detail.token) {
+                            trimbleConnect.accessToken = event.detail.token;
+                            trimbleConnect.consentStatus = 'granted';
+                            console.log('Access token received and stored');
+                            
+                            // Automatically load project data when token is received
+                            if (trimbleConnect.projectId) {
+                                console.log('Auto-loading project data with token and project ID');
+                                loadProjectData().catch(error => {
+                                    console.error('Error auto-loading project data:', error);
+                                    showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
+                                });
+                            }
+                        } else {
+                            console.error('Invalid accessToken event - missing token');
+                        }
+                    });
+                    
+                    // Get project context (project ID)
+                    workspace.getContext()
+                        .then(context => {
+                            console.log('Trimble Connect context:', context);
+                            if (context && context.project && context.project.id) {
+                                trimbleConnect.projectId = context.project.id;
+                                console.log('Project ID retrieved from context:', trimbleConnect.projectId);
+                                
+                                // If we already have the token, auto-load project data
+                                if (trimbleConnect.accessToken) {
+                                    console.log('Auto-loading project data with both token and project ID');
+                                    loadProjectData().catch(error => {
+                                        console.error('Error auto-loading project data:', error);
+                                        showResult('connectionResult', 'error', '⚠ Fehler beim automatischen Laden der Projektdaten. Bitte versuchen Sie "Projektdaten laden".');
+                                    });
+                                }
+                            } else {
+                                console.warn('No project context available from Trimble Connect');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error getting Trimble Connect context:', error);
+                            showResult('connectionResult', 'error', '⚠ Fehler beim Abrufen des Projekt-Kontexts von Trimble Connect.');
+                        });
+                        
+                } catch (error) {
+                    console.error('Error initializing Trimble Connect Extension API:', error);
+                    showResult('connectionResult', 'error', '❌ Fehler beim Initialisieren der Trimble Connect Extension API: ' + error.message);
+                }
+            } else {
+                console.log('Not running inside Trimble Connect - standalone mode');
+                // For local development/testing, fallback to manual input fields would be used
+                // (currently commented out in HTML)
+            }
+        }
+
+        // Initialize on page load - but after app.js has had a chance to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTrimbleConnectExtension);
+        } else {
+            // DOM already loaded, wait a bit for app.js to initialize
+            setTimeout(initializeTrimbleConnectExtension, 100);
+        }
 
         function openTab(tabId) {
             // hide all tabs
@@ -321,11 +514,33 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         };
 
         function getToken() {
-            return document.getElementById('accessToken').value.trim();
+            // Use Trimble Connect token if available (from Workspace API or Extension API)
+            if ((trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) && trimbleConnect.accessToken) {
+                return trimbleConnect.accessToken;
+            }
+            
+            // Fallback to manual input field (for local development)
+            const tokenField = document.getElementById('accessToken');
+            if (tokenField) {
+                return tokenField.value.trim();
+            }
+            
+            return '';
         }
 
         function getProjectId() {
-            return document.getElementById('projectId').value.trim();
+            // Use Trimble Connect project ID if available (from Workspace API or Extension API)
+            if ((trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) && trimbleConnect.projectId) {
+                return trimbleConnect.projectId;
+            }
+            
+            // Fallback to manual input field (for local development)
+            const projectField = document.getElementById('projectId');
+            if (projectField) {
+                return projectField.value.trim();
+            }
+            
+            return '';
         }
 
         function getTargetFolder() {
@@ -351,8 +566,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const token = getToken();
             const projectId = getProjectId();
 
+            // Skip validation if we're waiting for credentials from Workspace/Extension API
             if (!token || !projectId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                // If we have neither token nor project ID, show a loading message instead of error
+                // The app is likely still initializing via Workspace API
+                if (trimbleConnect.isEmbedded || trimbleConnect.isWorkspaceApp) {
+                    console.log('Waiting for Workspace API to provide token and project ID...');
+                    showResult('connectionResult', 'loading', '⏳ Warte auf Authentifizierung...');
+                } else {
+                    showResult('connectionResult', 'error', '⚠ Bitte authentifizieren Sie sich über Trimble Connect');
+                }
                 return;
             }
 
@@ -380,20 +603,20 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
                 if (foldersResponse.ok && foldersData.success) {
                     const select = document.getElementById('targetFolder');
-                    
+
                     if (!foldersData.folders || !Array.isArray(foldersData.folders)) {
                         showResult('connectionResult', 'error', '❌ Keine Ordner-Daten in Antwort');
                         return;
                     }
 
                     select.innerHTML = '<option value="">-- Ordner auswählen --</option>';
-                    
+
                     // Also populate inventory folder dropdown
                     const inventoryFolderSelect = document.getElementById('inventoryFolder');
                     if (inventoryFolderSelect) {
                         inventoryFolderSelect.innerHTML = '<option value="">-- Ordner auswählen --</option>';
                     }
-                    
+
                     if (foldersData.folders.length === 0) {
                         showResult('connectionResult', 'error', '⚠ Keine Ordner gefunden');
                         return;
@@ -406,7 +629,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         option.dataset.name = folder.name || '';
                         option.dataset.path = folder.path || '';
                         select.appendChild(option);
-                        
+
                         // Add to inventory folder dropdown
                         if (inventoryFolderSelect) {
                             const inventoryOption = document.createElement('option');
@@ -439,7 +662,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (usersResponse.ok && usersData.success) {
                     const select = document.getElementById('bcfAssignees');
                     select.innerHTML = '';
-                    
+
                     if (!usersData.users || !Array.isArray(usersData.users)) {
                         showResult('connectionResult', 'warning', `✅ ${foldersData.folders.length} Ordner geladen, aber keine Benutzer gefunden`);
                         return;
@@ -525,7 +748,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             console.log('Folder ID:', folderId);
 
             if (!token || !folderId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token and Zielordner auswählen');
+                if (!token) {
+                    showResult('connectionResult', 'error', '⚠ Authentifizierung läuft... Bitte warten Sie, bis Trimble Connect die Verbindung hergestellt hat.');
+                } else {
+                    showResult('connectionResult', 'error', '⚠ Bitte wählen Sie zuerst einen Zielordner aus');
+                }
                 console.error('Missing token or folderId');
                 return;
             }
@@ -538,8 +765,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const excelResponse = await fetch(`${API_PROJECT}/files`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        accessToken: token, 
+                    body: JSON.stringify({
+                        accessToken: token,
                         folderId: folderId,
                         fileExtensions: ['xlsx']
                     })
@@ -553,21 +780,21 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     // Populate template dropdown
                     const templateSelect = document.getElementById('templateFile');
                     templateSelect.innerHTML = '<option value="">-- Vorlage auswählen --</option>';
-                    
+
                     // Populate raumprogramm dropdown (Step 3)
                     const raumprogrammSelect = document.getElementById('raumprogrammFile');
                     raumprogrammSelect.innerHTML = '<option value="">-- Raumprogramm auswählen --</option>';
-                    
+
                     // Populate raumbuch dropdown (Step 4)
                     const raumbuchSelect = document.getElementById('raumbuchFile');
                     raumbuchSelect.innerHTML = '<option value="">-- Raumbuch auswählen --</option>';
-                    
+
                     console.log('Excel files found:', excelData.files?.length || 0);
-                    
+
                     if (excelData.files && excelData.files.length > 0) {
                         excelData.files.forEach(file => {
                             console.log('Adding Excel file:', file.name);
-                            
+
                             // Add to template dropdown
                             const templateOption = document.createElement('option');
                             templateOption.value = file.id;
@@ -575,7 +802,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             templateOption.dataset.name = file.name;
                             templateOption.dataset.versionId = file.versionId;
                             templateSelect.appendChild(templateOption);
-                            
+
                             // Add to raumprogramm dropdown
                             const raumprogrammOption = document.createElement('option');
                             raumprogrammOption.value = file.id;
@@ -583,7 +810,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             raumprogrammOption.dataset.name = file.name;
                             raumprogrammOption.dataset.versionId = file.versionId;
                             raumprogrammSelect.appendChild(raumprogrammOption);
-                            
+
                             // Add to raumbuch dropdown (used by both Step 3 update and Step 4 pset operations)
                             const raumbuchOption = document.createElement('option');
                             raumbuchOption.value = file.id;
@@ -602,8 +829,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const ifcResponse = await fetch(`${API_PROJECT}/files`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        accessToken: token, 
+                    body: JSON.stringify({
+                        accessToken: token,
                         folderId: folderId,
                         fileExtensions: ['ifc']
                     })
@@ -615,11 +842,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
                 if (ifcResponse.ok && ifcData.success) {
                     const ifcSelect = document.getElementById('ifcFile');
-                    
+
                     ifcSelect.innerHTML = '<option value="">-- IFC auswählen --</option>';
-                    
+
                     console.log('IFC files found:', ifcData.files?.length || 0);
-                    
+
                     if (ifcData.files && ifcData.files.length > 0) {
                         ifcData.files.forEach(file => {
                             console.log('Adding IFC file:', file.name);
@@ -636,7 +863,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
                 const excelCount = excelData.files?.length || 0;
                 const ifcCount = ifcData.files?.length || 0;
-                
+
                 console.log('Total files:', excelCount, 'Excel,', ifcCount, 'IFC');
                 showResult('connectionResult', 'success', `✅ Dateien geladen! ${excelCount} Excel, ${ifcCount} IFC`);
             } catch (error) {
@@ -651,7 +878,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const projectId = getProjectId();
 
             if (!token || !projectId) {
-                showResult('step2Result', 'error', '⚠ Bitte Token und Project ID eingeben');
+                showResult('step2Result', 'error', '⚠ Bitte warten Sie auf die Authentifizierung über Trimble Connect');
                 return;
             }
 
@@ -681,7 +908,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && (data.success || data.Success)) {
                     const select = document.getElementById('bcfAssignees');
                     select.innerHTML = '';
-                    
+
                     const users = data.users || data.Users;
                     if (!users || !Array.isArray(users)) {
                         showResult('step2Result', 'error', '⚠ Keine Benutzer-Daten in Antwort');
@@ -689,7 +916,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     }
 
                     console.log('Number of users:', users.length);
-                    
+
                     users.forEach(user => {
                         console.log('Adding user:', user.email, user.displayName);
                         const option = document.createElement('option');
@@ -716,14 +943,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         async function saveConfig() {
             const configName = document.getElementById('configName').value.trim();
             const projectId = getProjectId();
-            
+
             if (!configName) {
                 alert('⚠ Bitte geben Sie einen Konfigurations-Namen ein!');
                 return;
             }
 
             if (!projectId) {
-                alert('⚠ Bitte geben Sie eine Project ID ein!');
+                alert('⚠ Warte auf Projekt-ID von Trimble Connect. Bitte versuchen Sie es in wenigen Sekunden erneut.');
                 return;
             }
 
@@ -772,7 +999,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         await loadSavedConfigurations(projectId);
                     } else {
                         // Azure not configured, download as file
-                        const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+                        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -887,8 +1114,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         function applyConfiguration(config) {
             currentConfig = config;
 
-            // Fill Project ID and Name
-            document.getElementById('projectId').value = config.projectId || '';
+            // Fill Project ID and Name (only if fields exist - they may be hidden in extension mode)
+            const projectIdField = document.getElementById('projectId');
+            if (projectIdField) {
+                projectIdField.value = config.projectId || '';
+            }
             document.getElementById('configName').value = config.projectName || '';
 
             // Fill Target Folder (display name in readonly field if not in dropdown yet)
@@ -977,7 +1207,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         function setSelectValue(selectId, value, name) {
             const select = document.getElementById(selectId);
             let found = false;
-            
+
             // Try to find existing option
             for (let i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === value) {
@@ -986,7 +1216,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     return;
                 }
             }
-            
+
             // If not found, add as option
             if (!found && value && name) {
                 const option = document.createElement('option');
@@ -1015,16 +1245,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 console.log(`Poll attempt ${attempt}/${maxAttempts}`);
-//                
+                //
                 // Wait before querying
                 await new Promise(resolve => setTimeout(resolve, delayMs));
-                
+
                 try {
                     const response = await fetch(`${API_PROJECT}/files`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            accessToken: token, 
+                        body: JSON.stringify({
+                            accessToken: token,
                             folderId: folderId,
                             fileExtensions: ['xlsx']
                         })
@@ -1036,14 +1266,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     }
 
                     const data = await response.json();
-                    
+
                     if ((data.success || data.Success) && (data.files || data.Files)) {
                         // Find the file by name (case-insensitive)
                         const files = data.files || data.Files;
-                        const foundFile = files.find(f => 
+                        const foundFile = files.find(f =>
                             (f.name || f.Name).toLowerCase() === fileName.toLowerCase()
                         );
-                        
+
                         if (foundFile && (foundFile.id || foundFile.Id)) {
                             const fileId = foundFile.id || foundFile.Id;
                             const fileName = foundFile.name || foundFile.Name;
@@ -1051,13 +1281,13 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             return foundFile;
                         }
                     }
-                    
+
                     console.log(`File '${fileName}' not found yet. Will retry...`);
                 } catch (error) {
                     console.error(`Error during poll attempt ${attempt}:`, error);
                 }
             }
-            
+
             console.warn(`File '${fileName}' not found after ${maxAttempts} attempts.`);
             return null;
         }
@@ -1067,7 +1297,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         function updateDropdownWithFile(selectId, file) {
             const select = document.getElementById(selectId);
-            
+
             // Check if file already exists in dropdown
             let optionExists = false;
             for (let i = 0; i < select.options.length; i++) {
@@ -1077,7 +1307,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     break;
                 }
             }
-            
+
             // If not exists, add it
             if (!optionExists) {
                 const option = document.createElement('option');
@@ -1087,7 +1317,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 select.appendChild(option);
                 select.value = file.id;
             }
-            
+
             console.log(`Updated dropdown ${selectId} with file: ${file.name}`);
         }
 
@@ -1100,7 +1330,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const projectId = getProjectId();
 
             if (!token || !projectId) {
-                showResult('connectionResult', 'error', '⚠ Bitte Token und Project ID eingeben');
+                showResult('connectionResult', 'error', '⚠ Bitte warten Sie auf die Authentifizierung über Trimble Connect');
                 return;
             }
 
@@ -1168,34 +1398,34 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok) {
                     const fileName = data.raumprogrammFileName || 'Raumprogramm.xlsx';
                     const fileId = data.raumprogrammFileId || 'N/A';
-                    
+
                     console.log('Raumprogramm created successfully:', fileName, fileId);
-                    
+
                     // Save to config
                     currentConfig.files.raumprogramm = {
                         id: fileId,
                         name: fileName
                     };
-                    
+
                     console.log('Updated currentConfig.files.raumprogramm:', currentConfig.files.raumprogramm);
-                    
+
                     showResult('step1Result', 'loading', `✅ Raumprogramm erstellt!<br>⏳ Warte auf ID von Connect...`);
-                    
+
                     // Poll for the file to get the actual Connect ID
                     const foundFile = await pollForFile(fileName);
-                    
+
                     if (foundFile) {
                         // Update config with correct ID
                         currentConfig.files.raumprogramm.id = foundFile.id;
-                        
+
                         // Update dropdown in Step 3
                         updateDropdownWithFile('raumprogrammFile', foundFile);
-                        
-                        showResult('step1Result', 'success', 
+
+                        showResult('step1Result', 'success',
                             `✅ Erfolgreich!<br>Datei: ${fileName}<br>ID: ${foundFile.id}<br>✅ Raumprogramm wurde zur Dropdown-Liste hinzugefügt!`);
                     } else {
                         // File not found after polling, use backend ID
-                        showResult('step1Result', 'warning', 
+                        showResult('step1Result', 'warning',
                             `⚠️ Raumprogramm wurde erstellt, aber ID konnte nicht sofort abgerufen werden.<br>Datei: ${fileName}<br>Bitte klicken Sie auf "Dateien laden" um die Liste zu aktualisieren.`);
                     }
                 } else {
@@ -1255,13 +1485,13 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
                 if (response.ok) {
                     let resultHtml = `✅ BCF Topic erfolgreich erstellt!<br>Topic GUID: ${data.topicGuid || 'N/A'}`;
-                    
+
                     if (data.documentReferenceGuid) {
                         resultHtml += `<br>Dokumentreferenz GUID: ${data.documentReferenceGuid}`;
                     }
-					
-					resultHtml += `<br><br>⚠️ Bitte prüfen Sie die Benutzerzuweisungen und Berechtigungen in Trimble Connect.`;
-                    
+
+                    resultHtml += `<br><br>⚠️ Bitte prüfen Sie die Benutzerzuweisungen und Berechtigungen in Trimble Connect.`;
+
                     showResult('step2Result', 'success', resultHtml);
                 } else {
                     const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
@@ -1294,7 +1524,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (!ifcFileId) missingFields.push('IFC File');
                 if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
                 if (!targetFolder) missingFields.push('Target Folder');
-                
+
                 showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
                 return;
             }
@@ -1325,15 +1555,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok) {
                     const fileName = data.raumbuchFileName || 'Raumbuch.xlsx';
                     const fileId = data.raumbuchFileId || 'N/A';
-                    
+
                     console.log('Raumbuch created successfully:', fileName, fileId);
-                    
+
                     // Save to config
                     currentConfig.files.raumbuch = {
                         id: fileId,
                         name: fileName
                     };
-                    
+
                     let message = `✅ Raumbuch erstellt!<br>Datei: ${fileName}<br>⏳ Warte auf ID von Connect...<br><br><strong>Analyse:</strong><br>`;
                     if (data.analysis && data.analysis.length > 0) {
                         data.analysis.forEach(a => {
@@ -1341,19 +1571,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             message += `- ${a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
                         });
                     }
-                    
+
                     showResult('step3Result', 'loading', message);
-                    
+
                     // Poll for the file to get the actual Connect ID
                     const foundFile = await pollForFile(fileName);
-                    
+
                     if (foundFile) {
                         // Update config with correct ID
                         currentConfig.files.raumbuch.id = foundFile.id;
-                        
+
                         // Update dropdown (used by both Step 3 update and Step 4 pset operations)
                         updateDropdownWithFile('raumbuchFile', foundFile);
-                        
+
                         message = `✅ Raumbuch erfolgreich erstellt!<br>Datei: ${fileName}<br>ID: ${foundFile.id}<br>✅ Raumbuch wurde zur Dropdown-Liste hinzugefügt!`;
                         showResult('step3Result', 'success', message);
                     } else {
@@ -1401,7 +1631,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
                 if (!existingRaumbuchFileId) missingFields.push('Raumbuch File (siehe Schritt 4)');
                 if (!targetFolder) missingFields.push('Target Folder');
-                
+
                 showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
                 return;
             }
@@ -1433,20 +1663,20 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok) {
                     const fileName = data.raumbuchFileName || 'Raumbuch.xlsx';
                     const fileId = data.raumbuchFileId || 'N/A';
-                    
+
                     console.log('Raumbuch updated successfully:', fileName, fileId);
-                    
+
                     // Save to config
                     currentConfig.files.raumbuch = {
                         id: fileId,
                         name: fileName
                     };
-                    
+
                     let message = `✅ Raumbuch aktualisiert!<br>Datei: ${fileName}<br>`;
                     message += `Räume hinzugefügt: ${data.RoomsAdded || 0}<br>`;
                     message += `Räume aktualisiert: ${data.RoomsUpdated || 0}<br>`;
                     message += `Räume unverändert: ${data.RoomsUnchanged || 0}`;
-                    
+
                     showResult('step3Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
@@ -1489,14 +1719,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ ${data.Message || data.message || 'Pset erfolgreich geschrieben!'}<br>`;
                     message += `Räume aktualisiert: ${data.RoomsUpdated || data.roomsUpdated || 0}<br>`;
                     message += `Räume übersprungen: ${data.RoomsSkipped || data.roomsSkipped || 0}`;
-                    
+
                     if (data.Warnings && data.Warnings.length > 0) {
                         message += '<br><br><strong>Warnungen:</strong><br>';
                         data.Warnings.forEach(w => {
                             message += `- ${w}<br>`;
                         });
                     }
-                    
+
                     showResult('step4Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
@@ -1538,7 +1768,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ ${data.Message || data.message || 'Pset erfolgreich aktualisiert!'}<br>`;
                     message += `Räume aktualisiert: ${data.RoomsUpdated || data.roomsUpdated || 0}<br>`;
                     message += `Räume übersprungen: ${data.RoomsSkipped || data.roomsSkipped || 0}`;
-                    
+
                     showResult('step4Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
@@ -1581,7 +1811,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok) {
                     let message = `✅ ${data.Message || data.message || 'Pset erfolgreich gelöscht!'}<br>`;
                     message += `Psets entfernt: ${data.PsetsRemoved || data.psetsRemoved || 0}`;
-                    
+
                     showResult('step4Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.exceptionMessage || data.Message || `HTTP ${response.status}`;
@@ -1631,7 +1861,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && (data.success || data.Success)) {
                     let message = `✅ ${data.message || data.Message}<br>`;
                     message += `Raumlisten erstellt: ${data.roomSheetsCreated || data.RoomSheetsCreated || 0}`;
-                    
+
                     showResult('step5_1Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
@@ -1661,8 +1891,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const response = await fetch(`${API_PROJECT}/files`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        accessToken: token, 
+                    body: JSON.stringify({
+                        accessToken: token,
                         folderId: inventoryFolderId,
                         fileExtensions: ['ifc']
                     })
@@ -1674,7 +1904,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
                 if (response.ok && (data.success || data.Success)) {
                     const ifcFilesList = document.getElementById('ifcFilesList');
-                    
+
                     const files = data.files || data.Files;
                     if (files && files.length > 0) {
                         // Create checkboxes for each IFC file
@@ -1683,11 +1913,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             const fileId = file.id || file.Id;
                             const fileName = file.name || file.Name;
                             html += `
-                                <label class="file-checkbox-label">
-                                    <input type="checkbox" id="ifc_${fileId}" value="${fileId}" class="ifc-file-checkbox file-checkbox">
-                                    <span>${fileName}</span>
-                                </label>
-                            `;
+                                    <label class="file-checkbox-label">
+                                        <input type="checkbox" id="ifc_${fileId}" value="${fileId}" class="ifc-file-checkbox file-checkbox">
+                                        <span>${fileName}</span>
+                                    </label>
+                                `;
                         });
                         ifcFilesList.innerHTML = html;
                         showResult('step5_2Result', 'success', `✅ ${files.length} IFC-Datei(en) gefunden`);
@@ -1837,7 +2067,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ ${data.message || data.Message}<br>`;
                     message += `Räume aktualisiert: ${data.roomsUpdated || data.RoomsUpdated || 0}<br>`;
                     message += `Objekte hinzugefügt: ${data.totalItems || data.TotalItems || 0}`;
-                    
+
                     const warnings = data.warnings || data.Warnings;
                     if (warnings && warnings.length > 0) {
                         message += '<br><br><strong>Warnungen:</strong><br>';
@@ -1845,7 +2075,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             message += `⚠ ${w}<br>`;
                         });
                     }
-                    
+
                     showResult('step5_2Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
@@ -1896,7 +2126,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     let message = `✅ ${data.message || data.Message}<br>`;
                     message += `${data.sheetsDeleted || data.SheetsDeleted || 0} Raumblätter gelöscht<br>`;
                     message += `${data.hyperlinksRemoved || data.HyperlinksRemoved || 0} Hyperlinks entfernt`;
-                    
+
                     showResult('step5_1Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
@@ -1970,7 +2200,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     message += `Räume aktualisiert: ${data.roomsUpdated || data.RoomsUpdated || 0}<br>`;
                     message += `Objekte gelöscht: ${data.itemsDeleted || data.ItemsDeleted || 0}<br>`;
                     message += `Objekte hinzugefügt: ${data.itemsAdded || data.ItemsAdded || 0}`;
-                    
+
                     const warnings = data.warnings || data.Warnings;
                     if (warnings && warnings.length > 0) {
                         message += '<br><br><strong>Warnungen:</strong><br>';
@@ -1978,7 +2208,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             message += `⚠ ${w}<br>`;
                         });
                     }
-                    
+
                     showResult('step5_2Result', 'success', message);
                 } else {
                     const errorMsg = data.message || data.Message || data.exceptionMessage || `HTTP ${response.status}`;
@@ -1990,7 +2220,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         // Initialize date picker with today's date as default
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const dueDateField = document.getElementById('bcfDueDate');
             if (dueDateField) {
                 const today = new Date().toISOString().split('T')[0];

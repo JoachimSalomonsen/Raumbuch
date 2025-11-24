@@ -1,0 +1,8 @@
+{
+  "title": "Raumbuch",
+  "icon": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
+  "url": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/index.html",
+  "description": "Erstelle und bearbeite Raumprogramm und Raumbuch",
+  "configCommand": "open_config",
+  "enabled": true
+}

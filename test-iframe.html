@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raumbuch - iframe Embedding Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .test-section {
+            margin: 30px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #0066cc;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .code {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Raumbuch - iframe Embedding Test</h1>
+        
+        <div class="info-box">
+            <h3>ℹ️ About This Test</h3>
+            <p>This page tests whether the Raumbuch application can be embedded in an iframe, as required for Trimble Connect integration.</p>
+            <p><strong>Purpose:</strong> Verify that the Web.config changes allow iframe embedding while maintaining security.</p>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Expected Configuration</h2>
+            <p>The application should have the following headers configured:</p>
+            <ul>
+                <li>❌ <strong>No X-Frame-Options</strong> header (must be removed)</li>
+                <li>✅ <strong>Content-Security-Policy</strong> with frame-ancestors:
+                    <div class="code">frame-ancestors 'self' https://web.connect.trimble.com https://*.connect.trimble.com</div>
+                </li>
+                <li>✅ <strong>Access-Control-Allow-Origin</strong>: https://web.connect.trimble.com</li>
+                <li>✅ <strong>Access-Control-Allow-Methods</strong>: GET, POST, PUT, DELETE, OPTIONS</li>
+                <li>✅ <strong>Access-Control-Allow-Headers</strong>: Content-Type, Authorization, X-Requested-With</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 How to Verify</h2>
+            <ol>
+                <li><strong>Check Response Headers:</strong>
+                    <ul>
+                        <li>Open your application URL: <code>https://raumbuch.azurewebsites.net/</code></li>
+                        <li>Open DevTools (F12) → Network tab</li>
+                        <li>Reload the page</li>
+                        <li>Click on the main document request</li>
+                        <li>Check the Response Headers section</li>
+                    </ul>
+                </li>
+                <li><strong>Test iframe Embedding:</strong>
+                    <ul>
+                        <li>Deploy this test page to a web server</li>
+                        <li>Open it in a browser</li>
+                        <li>If the iframe below loads successfully, embedding is working</li>
+                        <li>If you see an error, check the browser console for CSP or X-Frame-Options violations</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 iframe Embedding Test</h2>
+            <div class="info-box">
+                <p><strong>Note:</strong> This test will only work after deploying the updated Web.config to Azure App Service.</p>
+                <p>The iframe should load the Raumbuch application below. If you see a blank frame or error message, check:</p>
+                <ul>
+                    <li>Web.config has been deployed correctly</li>
+                    <li>Azure App Service has restarted</li>
+                    <li>Browser console for error messages</li>
+                </ul>
+            </div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <iframe 
+                id="raumbuchIframe"
+                src="https://raumbuch.azurewebsites.net/"
+                title="Raumbuch Manager - Embedded"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                onload="onIframeLoad()"
+                onerror="onIframeError()">
+            </iframe>
+        </div>
+
+        <div class="test-section">
+            <h2>📚 Documentation</h2>
+            <p>For detailed information about the iframe embedding configuration, see:</p>
+            <ul>
+                <li><strong>TRIMBLE_IFRAME_EMBEDDING.md</strong> - Comprehensive guide to iframe configuration</li>
+                <li><strong>AZURE_DEPLOYMENT_GUIDE.md</strong> - Deployment and verification instructions</li>
+                <li><strong>RaumbuchService/Web.config</strong> - Configuration file with headers</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🐛 Troubleshooting</h2>
+            <h3>Issue: iframe doesn't load</h3>
+            <ul>
+                <li>Check browser console for error messages</li>
+                <li>Look for "Refused to display in a frame" or CSP violation errors</li>
+                <li>Verify X-Frame-Options is NOT present in response headers</li>
+                <li>Verify Content-Security-Policy frame-ancestors includes your domain</li>
+            </ul>
+            
+            <h3>Issue: API calls fail</h3>
+            <ul>
+                <li>Check for CORS errors in browser console</li>
+                <li>Verify Access-Control-Allow-Origin header is present</li>
+                <li>Ensure the origin matches exactly (protocol and domain)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function onIframeLoad() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status success';
+            statusDiv.textContent = '✅ iframe loaded successfully! Embedding is working correctly.';
+            statusDiv.style.display = 'block';
+            console.log('✅ Raumbuch iframe loaded successfully');
+        }
+
+        function onIframeError() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status error';
+            statusDiv.textContent = '❌ iframe failed to load. Check browser console for error messages.';
+            statusDiv.style.display = 'block';
+            console.error('❌ Raumbuch iframe failed to load');
+        }
+
+        // Monitor for CSP violations
+        document.addEventListener('securitypolicyviolation', (e) => {
+            console.error('CSP Violation:', e.violatedDirective, e.blockedURI);
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status error';
+            statusDiv.textContent = `❌ CSP Violation: ${e.violatedDirective} blocked ${e.blockedURI}`;
+            statusDiv.style.display = 'block';
+        });
+
+        // Check iframe accessibility after load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const iframe = document.getElementById('raumbuchIframe');
+                try {
+                    // Try to access iframe - will throw if blocked
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        console.log('✅ iframe content is accessible');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ iframe content not accessible (expected due to cross-origin):', e.message);
+                    // This is expected and normal for cross-origin iframes
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

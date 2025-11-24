@@ -539,13 +539,19 @@ textarea {
 
 .tc-tab {
     flex: 1;
-    text-align: center;
-    padding: 14px 0;
+    display: flex; /* flex container */
+    flex-direction: column; /* logo above text */
+    align-items: center; /* center horizontal */
+    justify-content: center; /* center vertical */
+    gap: 4px; /* space between icon and text */
+
+    padding: 10px 0;
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
     user-select: none;
     transition: background-color 0.2s ease;
+    text-align: center;
 }
 
     .tc-tab:hover {
@@ -556,6 +562,13 @@ textarea {
         background-color: var(--tc-primary-blue);
         border-bottom: 3px solid white;
     }
+
+/* icon style */
+.tc-tab-icon {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
 
 .tab-content {
     display: none;
