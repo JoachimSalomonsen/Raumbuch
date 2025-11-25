@@ -368,8 +368,8 @@
         const API_RAUMBUCH = '/api/raumbuch';
         
         // Configuration constants
-        // FALLBACK_BATCH_SIZE: Balance between getting enough data for functionality
-        // while avoiding API rate limits and keeping load times reasonable
+        // FALLBACK_BATCH_SIZE: Limits sequential API calls to keep load times reasonable
+        // and avoid overwhelming the Trimble Connect API when batch methods fail
         const FALLBACK_BATCH_SIZE = 50;
         // UUID_PATTERN: Matches standard UUIDs with or without hyphens
         const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
