@@ -931,9 +931,9 @@
                             const allEntities = await API.viewer.getEntities(modelId);
                             console.log(`Model ${modelId}: ${allEntities?.length || 0} total entities`);
                             
-                            // Log structure of first entity for debugging
+                            // Log structure of first entity for debugging (browser handles object inspection)
                             if (allEntities && allEntities.length > 0) {
-                                console.log("Sample entity structure:", JSON.stringify(allEntities[0], null, 2).substring(0, 500));
+                                console.log("Sample entity structure:", allEntities[0]);
                             }
                             
                             // Filter for IfcSpace
@@ -957,7 +957,7 @@
                     // Log IfcSpace entities for debugging
                     console.log(`Found ${ifcSpaceEntities.length} IfcSpace entities in model ${modelId}`);
                     if (ifcSpaceEntities.length > 0) {
-                        console.log("Sample IfcSpace entity:", JSON.stringify(ifcSpaceEntities[0], null, 2).substring(0, 800));
+                        console.log("Sample IfcSpace entity:", ifcSpaceEntities[0]);
                     }
                     
                     // Step 3: Get object IDs (runtime IDs) for IfcSpace entities
@@ -999,11 +999,13 @@
                         }
                     }
                     
-                    // Approach 3: Try getting properties one by one
+                    // Approach 3: Try getting properties one by one (fallback, limited to 50 for performance)
+                    // Note: This is a fallback approach and 50 is a reasonable limit to avoid API rate limits
+                    // while still getting useful data for debugging and basic functionality
                     if (!properties || properties.length === 0) {
-                        console.log("Trying to get properties one by one...");
+                        console.log("Trying to get properties one by one (limited to first 50)...");
                         properties = [];
-                        for (let i = 0; i < Math.min(objectRuntimeIds.length, 10); i++) {
+                        for (let i = 0; i < Math.min(objectRuntimeIds.length, 50); i++) {
                             try {
                                 const objId = objectRuntimeIds[i];
                                 const props = await API.viewer.getObjectProperties(modelId, objId);
@@ -1018,8 +1020,8 @@
                     }
                     
                     if (properties && properties.length > 0) {
-                        // Log first property object structure for debugging
-                        console.log("Sample property object structure:", JSON.stringify(properties[0], null, 2).substring(0, 1000));
+                        // Log first property object structure for debugging (let browser handle object inspection)
+                        console.log("Sample property object structure:", properties[0]);
                         
                         // Match objects by Long Name property
                         properties.forEach((obj, index) => {
@@ -1102,7 +1104,8 @@
                     const psetName = (pset.name || pset.Name || '').toLowerCase();
                     
                     // Check in "IFC Space", "Ifc Space", "IfcSpace" or related property sets
-                    if (psetName.includes('ifc') && psetName.includes('space') || 
+                    // Note: Using explicit parentheses for operator precedence
+                    if ((psetName.includes('ifc') && psetName.includes('space')) || 
                         psetName.includes('pset_spacecommon') ||
                         psetName.includes('space')) {
                         
@@ -1149,7 +1152,8 @@
             
             // From name property (sometimes Long Name is stored as name)
             // Only use if it looks like a room type name (not a GUID or generic name)
-            if (obj.name && typeof obj.name === 'string' && !obj.name.match(/^[0-9a-f-]{36}$/i)) {
+            // Note: This pattern matches standard UUIDs; IFC may use different GUID formats but this covers common cases
+            if (obj.name && typeof obj.name === 'string' && !obj.name.match(/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i)) {
                 // Don't return generic names like "Space" or IFC class names
                 const name = obj.name;
                 if (!name.toLowerCase().startsWith('ifc') && name.length > 2) {
