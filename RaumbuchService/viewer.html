@@ -168,6 +168,53 @@
         .room-list.collapsed {
             display: none;
         }
+        
+        /* KPI Overview - Row-based layout for narrow panel */
+        .kpi-overview {
+            background: linear-gradient(135deg, var(--tc-dark-blue) 0%, var(--tc-primary-blue) 100%);
+            color: white;
+        }
+        
+        .kpi-overview h2 {
+            color: white;
+            margin-bottom: 12px;
+        }
+        
+        .kpi-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+        
+        .kpi-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .kpi-row-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .kpi-row-value {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .kpi-row-ok {
+            border-left: 3px solid #2E8540;
+        }
+        
+        .kpi-row-under {
+            border-left: 3px solid #D64545;
+        }
+        
+        .kpi-row-over {
+            border-left: 3px solid #FFBF47;
+        }
     </style>
 </head>
 <body>
@@ -178,20 +225,52 @@
             <span id="statusText">Verbinde mit 3D Viewer...</span>
         </div>
 
-        <!-- File Selection Section -->
+        <!-- Configuration Selection Section -->
         <section class="card">
-            <h2>📁 JSON Konfiguration laden</h2>
-            <p>Wählen Sie eine JSON-Datei mit Raumkategorien (Erfüllt, Unterschritten, Überschritten).</p>
+            <h2>📁 Raumbuch Konfiguration laden</h2>
+            <p>Wählen Sie eine gespeicherte Konfiguration aus Azure Storage.</p>
             
             <div class="file-input-section">
                 <div class="form-group">
-                    <label for="jsonFileInput">JSON Datei:</label>
-                    <input type="file" id="jsonFileInput" class="form-control" accept=".json">
+                    <label for="savedConfigs">Gespeicherte Konfigurationen:</label>
+                    <select id="savedConfigs" class="form-control" style="max-width: none; width: 100%;">
+                        <option value="">-- Verbinde mit Trimble Connect... --</option>
+                    </select>
                 </div>
                 <button class="btn btn-primary" id="loadBtn" onclick="loadConfiguration()">📥 Laden</button>
+                <button class="btn btn-secondary" id="refreshBtn" onclick="loadSavedConfigurations()">🔄 Aktualisieren</button>
             </div>
             
             <div id="loadResult" class="result"></div>
+        </section>
+
+        <!-- KPI Overview Widget (row-based for narrow panel) -->
+        <section class="card kpi-overview" id="kpiSection" style="display: none;">
+            <h2>📊 Übersicht</h2>
+            <div class="kpi-row">
+                <span class="kpi-row-label">SOLL Gesamt</span>
+                <span class="kpi-row-value" id="kpiSollTotal">- m²</span>
+            </div>
+            <div class="kpi-row">
+                <span class="kpi-row-label">IST Gesamt</span>
+                <span class="kpi-row-value" id="kpiIstTotal">- m²</span>
+            </div>
+            <div class="kpi-row">
+                <span class="kpi-row-label">Abweichung</span>
+                <span class="kpi-row-value" id="kpiDeviation">- %</span>
+            </div>
+            <div class="kpi-row kpi-row-ok">
+                <span class="kpi-row-label">✅ Erfüllt</span>
+                <span class="kpi-row-value" id="kpiOkCount">0</span>
+            </div>
+            <div class="kpi-row kpi-row-under">
+                <span class="kpi-row-label">⚠️ Unterschritten</span>
+                <span class="kpi-row-value" id="kpiUnderCount">0</span>
+            </div>
+            <div class="kpi-row kpi-row-over">
+                <span class="kpi-row-label">📊 Überschritten</span>
+                <span class="kpi-row-value" id="kpiOverCount">0</span>
+            </div>
         </section>
 
         <!-- Category Sections -->
@@ -284,10 +363,17 @@
         // TRIMBLE CONNECT 3D VIEWER EXTENSION
         // ====================================================================
         
+        // API endpoints
+        const API_PROJECT = '/api/project';
+        const API_RAUMBUCH = '/api/raumbuch';
+        
         // API reference and state
         let API = null;
         let viewerAPI = null;
         let isConnected = false;
+        let workspaceToken = null;
+        let workspaceProjectId = null;
+        let currentConfig = null;
         
         // Category data structure
         let categoryData = {
@@ -325,6 +411,22 @@
                 
                 console.log("Connected to Workspace API:", API);
                 
+                // Get access token and project info
+                try {
+                    workspaceToken = await API.extension.requestPermission("accesstoken");
+                    console.log("Access token received from Workspace API");
+                    
+                    const project = await API.project.getCurrentProject();
+                    console.log("Current project:", project);
+                    
+                    if (project && project.id) {
+                        workspaceProjectId = project.id;
+                        console.log("Project ID from Workspace API:", workspaceProjectId);
+                    }
+                } catch (tokenError) {
+                    console.warn("Could not get token/project:", tokenError);
+                }
+                
                 // Initialize 3D Viewer
                 if (API && API.embed && typeof API.embed.init3DViewer === 'function') {
                     viewerAPI = await API.embed.init3DViewer({});
@@ -344,6 +446,11 @@
                     setConnectedState('connected', 'Verbunden (eingeschränkter Modus)');
                 }
                 
+                // Load saved configurations from Azure
+                if (workspaceProjectId) {
+                    await loadSavedConfigurations();
+                }
+                
             } catch (error) {
                 console.error("Error initializing extension:", error);
                 setConnectedState('disconnected', 'Fehler: ' + error.message);
@@ -358,6 +465,7 @@
             }
             if (event === "extension.accessToken") {
                 console.log("Access token event received");
+                workspaceToken = args.data;
             }
             if (event === "viewer.selectionChanged") {
                 console.log("Selection changed:", args);
@@ -433,7 +541,7 @@
         }
         
         // ====================================================================
-        // FILE LOADING
+        // AZURE CONFIGURATION LOADING
         // ====================================================================
         
         function showResult(elementId, type, message) {
@@ -442,25 +550,110 @@
             el.innerHTML = message;
         }
         
+        /**
+         * Loads saved configurations from Azure Storage
+         */
+        async function loadSavedConfigurations() {
+            try {
+                console.log('Loading saved configurations for project:', workspaceProjectId);
+                
+                const response = await fetch(`${API_PROJECT}/config/list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectId: workspaceProjectId })
+                });
+
+                if (!response.ok) {
+                    console.warn('Failed to load configurations:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const configSelect = document.getElementById('savedConfigs');
+                configSelect.innerHTML = '<option value="">-- Konfiguration auswählen --</option>';
+
+                if (data.success && data.configurations && data.configurations.length > 0) {
+                    data.configurations.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config.name;
+                        const dateStr = config.lastModified ? new Date(config.lastModified).toLocaleDateString('de-DE') : '';
+                        option.textContent = `${config.name} ${dateStr ? '(' + dateStr + ')' : ''}`;
+                        configSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${data.configurations.length} saved configurations`);
+                } else {
+                    configSelect.innerHTML = '<option value="">-- Keine gespeicherten Konfigurationen --</option>';
+                }
+            } catch (error) {
+                console.error('Error loading saved configurations:', error);
+                const configSelect = document.getElementById('savedConfigs');
+                configSelect.innerHTML = '<option value="">-- Fehler beim Laden --</option>';
+            }
+        }
+        
+        /**
+         * Loads configuration from Azure and applies viewer data
+         */
         async function loadConfiguration() {
-            const fileInput = document.getElementById('jsonFileInput');
+            const configName = document.getElementById('savedConfigs').value;
             
-            if (!fileInput.files || fileInput.files.length === 0) {
-                showResult('loadResult', 'error', '⚠️ Bitte wählen Sie eine JSON-Datei aus.');
+            if (!configName) {
+                showResult('loadResult', 'error', '⚠️ Bitte wählen Sie eine Konfiguration aus.');
                 return;
             }
             
-            const file = fileInput.files[0];
-            showResult('loadResult', 'loading', '⏳ Lade JSON-Konfiguration...');
+            if (!workspaceProjectId) {
+                showResult('loadResult', 'error', '⚠️ Project ID nicht gefunden. Bitte Seite neu laden.');
+                return;
+            }
+            
+            showResult('loadResult', 'loading', '⏳ Lade Konfiguration aus Azure...');
             
             try {
-                const text = await file.text();
-                const config = JSON.parse(text);
+                // Load configuration from Azure
+                const response = await fetch(`${API_PROJECT}/config/load`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectId: workspaceProjectId,
+                        configName: configName
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText || 'Verbindungsfehler'}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.success || !data.configuration) {
+                    throw new Error(data.message || 'Fehler beim Laden');
+                }
                 
-                console.log("Loaded configuration:", config);
+                currentConfig = data.configuration;
+                console.log("Loaded configuration:", currentConfig);
                 
-                // Validate and process configuration
-                processConfiguration(config);
+                // Check if we have viewer data in the config
+                if (currentConfig.viewerData) {
+                    // Use pre-saved viewer data
+                    processViewerData(currentConfig.viewerData);
+                } else if (currentConfig.files && currentConfig.files.raumbuch && workspaceToken) {
+                    // Load viewer data from Raumbuch file
+                    await loadViewerDataFromRaumbuch(currentConfig);
+                } else {
+                    // Try to use zusammenfassung data if available
+                    if (currentConfig.zusammenfassung && currentConfig.zusammenfassung.length > 0) {
+                        processZusammenfassungData(currentConfig.zusammenfassung, currentConfig.toleranceMin || -10, currentConfig.toleranceMax || 10);
+                    } else {
+                        showResult('loadResult', 'error', '⚠️ Keine Raumbuch-Daten in der Konfiguration gefunden.');
+                        return;
+                    }
+                }
+                
+                // Update KPI widget with zusammenfassung data
+                if (currentConfig.zusammenfassung && currentConfig.zusammenfassung.length > 0) {
+                    updateKPIWidget(currentConfig.zusammenfassung, currentConfig.toleranceMin || -10, currentConfig.toleranceMax || 10);
+                }
                 
                 // Show categories section
                 document.getElementById('categoriesSection').style.display = 'block';
@@ -470,9 +663,9 @@
                 
                 showResult('loadResult', 'success', 
                     `✅ Konfiguration geladen!<br>` +
-                    `Erfüllt: ${categoryData.erfuellt.rooms.length} Räume<br>` +
-                    `Unterschritten: ${categoryData.unterschritten.rooms.length} Räume<br>` +
-                    `Überschritten: ${categoryData.ueberschritten.rooms.length} Räume`
+                    `Erfüllt: ${categoryData.erfuellt.rooms.length} Raumtypen<br>` +
+                    `Unterschritten: ${categoryData.unterschritten.rooms.length} Raumtypen<br>` +
+                    `Überschritten: ${categoryData.ueberschritten.rooms.length} Raumtypen`
                 );
                 
             } catch (error) {
@@ -482,53 +675,43 @@
         }
         
         /**
-         * Helper function to normalize category names (handles umlauts)
+         * Loads viewer data from Raumbuch file via API
          */
-        function normalizeKey(key) {
-            return key.toLowerCase()
-                .replace(/ü/g, 'ue')
-                .replace(/ä/g, 'ae')
-                .replace(/ö/g, 'oe')
-                .replace(/ß/g, 'ss');
+        async function loadViewerDataFromRaumbuch(config) {
+            const raumbuchFileId = config.files?.raumbuch;
+            
+            if (!raumbuchFileId || !workspaceToken) {
+                throw new Error('Raumbuch-Datei ID oder Token fehlt');
+            }
+            
+            const response = await fetch(`${API_RAUMBUCH}/get-viewer-data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    accessToken: workspaceToken,
+                    raumbuchFileId: raumbuchFileId,
+                    toleranceMin: config.toleranceMin || -10,
+                    toleranceMax: config.toleranceMax || 10
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Fehler beim Laden der Viewer-Daten: HTTP ${response.status} ${response.statusText || ''}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.message || 'Fehler beim Laden der Viewer-Daten');
+            }
+            
+            processViewerData(data);
         }
         
         /**
-         * Helper function to get category value from config object with multiple key formats
+         * Processes viewer data from API (Raumtyp values that match IfcSpace.LongName)
          */
-        function getCategoryValue(obj, baseName) {
-            if (!obj) return null;
-            
-            // Try different key formats
-            const variations = [
-                baseName,
-                baseName.charAt(0).toUpperCase() + baseName.slice(1),
-                baseName.toLowerCase()
-            ];
-            
-            // Add umlaut variations for 'ueberschritten'
-            if (baseName === 'ueberschritten') {
-                variations.push('Überschritten', 'überschritten');
-            }
-            
-            for (const key of variations) {
-                if (obj[key] !== undefined) {
-                    return obj[key];
-                }
-            }
-            return null;
-        }
-        
-        /**
-         * Helper function to extract room name from room object
-         */
-        function extractRoomName(room) {
-            if (typeof room !== 'object' || room === null) {
-                return room;
-            }
-            return room.longName || room.LongName || room.name || room.Name || room.roomName || room.RoomName || 'Unbekannter Raum';
-        }
-        
-        function processConfiguration(config) {
+        function processViewerData(data) {
             // Reset category data
             categoryData = {
                 erfuellt: { rooms: [], objectIds: [], color: '#2E8540' },
@@ -536,50 +719,44 @@
                 ueberschritten: { rooms: [], objectIds: [], color: '#D64545' }
             };
             
-            // Process each category using helper function
-            const categoryNames = ['erfuellt', 'unterschritten', 'ueberschritten'];
+            // Process viewer data (Raumtyp values that match IfcSpace.LongName)
+            categoryData.erfuellt.rooms = data.Erfuellt || data.erfuellt || [];
+            categoryData.unterschritten.rooms = data.Unterschritten || data.unterschritten || [];
+            categoryData.ueberschritten.rooms = data.Ueberschritten || data.ueberschritten || [];
             
-            // Format 1: Direct arrays at root level
-            categoryNames.forEach(category => {
-                const value = getCategoryValue(config, category);
-                if (Array.isArray(value)) {
-                    categoryData[category].rooms = value;
+            // Update UI counts
+            updateCategoryCounts();
+            
+            // Find matching object IDs
+            findMatchingObjects();
+        }
+        
+        /**
+         * Processes zusammenfassung data to extract Raumtyp values by status
+         */
+        function processZusammenfassungData(zusammenfassung, toleranceMin, toleranceMax) {
+            // Reset category data
+            categoryData = {
+                erfuellt: { rooms: [], objectIds: [], color: '#2E8540' },
+                unterschritten: { rooms: [], objectIds: [], color: '#FFBF47' },
+                ueberschritten: { rooms: [], objectIds: [], color: '#D64545' }
+            };
+            
+            zusammenfassung.forEach(item => {
+                const raumtyp = item.roomCategory || item.RoomCategory;
+                const percentage = item.percentage || item.Percentage || 100;
+                
+                if (!raumtyp) return;
+                
+                const deviation = percentage - 100;
+                
+                if (deviation < toleranceMin) {
+                    categoryData.unterschritten.rooms.push(raumtyp);
+                } else if (deviation > toleranceMax) {
+                    categoryData.ueberschritten.rooms.push(raumtyp);
+                } else {
+                    categoryData.erfuellt.rooms.push(raumtyp);
                 }
-            });
-            
-            // Format 2: Categories with rooms property
-            if (config.categories) {
-                categoryNames.forEach(category => {
-                    const catValue = getCategoryValue(config.categories, category);
-                    if (catValue) {
-                        categoryData[category].rooms = catValue.rooms || (Array.isArray(catValue) ? catValue : []);
-                    }
-                });
-            }
-            
-            // Format 3: Array of items with status/category property
-            if (Array.isArray(config.rooms) || Array.isArray(config.items) || Array.isArray(config.data)) {
-                const items = config.rooms || config.items || config.data;
-                items.forEach(item => {
-                    const name = item.name || item.longName || item.LongName || item.roomName || item.RoomName;
-                    const status = item.status || item.Status || item.category || item.Category;
-                    
-                    if (name && status) {
-                        const normalizedStatus = normalizeKey(status);
-                        if (normalizedStatus.includes('erfuellt') || normalizedStatus === 'ok') {
-                            categoryData.erfuellt.rooms.push(name);
-                        } else if (normalizedStatus.includes('unterschritten') || normalizedStatus === 'under' || normalizedStatus === 'zu wenig') {
-                            categoryData.unterschritten.rooms.push(name);
-                        } else if (normalizedStatus.includes('ueberschritten') || normalizedStatus === 'over' || normalizedStatus === 'zu viel') {
-                            categoryData.ueberschritten.rooms.push(name);
-                        }
-                    }
-                });
-            }
-            
-            // Extract LongName values if rooms contain objects
-            categoryNames.forEach(category => {
-                categoryData[category].rooms = categoryData[category].rooms.map(extractRoomName);
             });
             
             // Update UI counts
@@ -587,6 +764,60 @@
             
             // Find matching object IDs
             findMatchingObjects();
+            
+            // Update KPI widget with zusammenfassung data
+            if (currentConfig && currentConfig.zusammenfassung) {
+                updateKPIWidget(currentConfig.zusammenfassung, toleranceMin, toleranceMax);
+            }
+        }
+        
+        /**
+         * Updates KPI widget with summary data (row-based layout)
+         */
+        function updateKPIWidget(zusammenfassung, toleranceMin, toleranceMax) {
+            if (!zusammenfassung || zusammenfassung.length === 0) return;
+
+            let totalSoll = 0;
+            let totalIst = 0;
+            let okCount = 0;
+            let underCount = 0;
+            let overCount = 0;
+
+            zusammenfassung.forEach(item => {
+                const soll = item.sollArea || item.SollArea || 0;
+                const ist = item.istArea || item.IstArea || 0;
+                const percentage = item.percentage || item.Percentage || 100;
+                
+                totalSoll += soll;
+                totalIst += ist;
+                
+                const deviation = percentage - 100;
+                if (deviation < toleranceMin) underCount++;
+                else if (deviation > toleranceMax) overCount++;
+                else okCount++;
+            });
+
+            const deviation = totalSoll > 0 ? ((totalIst / totalSoll) * 100 - 100).toFixed(1) : 0;
+
+            document.getElementById('kpiSollTotal').textContent = totalSoll.toFixed(2) + ' m²';
+            document.getElementById('kpiIstTotal').textContent = totalIst.toFixed(2) + ' m²';
+            document.getElementById('kpiDeviation').textContent = (deviation >= 0 ? '+' : '') + deviation + '%';
+            document.getElementById('kpiOkCount').textContent = okCount;
+            document.getElementById('kpiUnderCount').textContent = underCount;
+            document.getElementById('kpiOverCount').textContent = overCount;
+
+            // Color the deviation based on value
+            const deviationEl = document.getElementById('kpiDeviation');
+            if (deviation < toleranceMin) {
+                deviationEl.style.color = '#ffcccc';
+            } else if (deviation > toleranceMax) {
+                deviationEl.style.color = '#ffffcc';
+            } else {
+                deviationEl.style.color = '#ccffcc';
+            }
+            
+            // Show KPI section
+            document.getElementById('kpiSection').style.display = 'block';
         }
         
         function updateCategoryCounts() {

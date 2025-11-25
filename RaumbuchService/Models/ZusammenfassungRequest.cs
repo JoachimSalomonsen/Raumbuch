@@ -73,4 +73,54 @@ namespace RaumbuchService.Models
         /// </summary>
         public bool IsOverLimit => !double.IsNaN(Percentage) && Percentage > 100.0;
     }
+
+    /// <summary>
+    /// Request for getting 3D Viewer data (rooms grouped by status).
+    /// </summary>
+    public class GetViewerDataRequest
+    {
+        /// <summary>
+        /// Trimble Connect access token
+        /// </summary>
+        public string AccessToken { get; set; }
+
+        /// <summary>
+        /// Raumbuch file ID in Trimble Connect
+        /// </summary>
+        public string RaumbuchFileId { get; set; }
+
+        /// <summary>
+        /// Tolerance minimum (percentage below 100% considered as under)
+        /// </summary>
+        public double ToleranceMin { get; set; } = -10;
+
+        /// <summary>
+        /// Tolerance maximum (percentage above 100% considered as over)
+        /// </summary>
+        public double ToleranceMax { get; set; } = 10;
+    }
+
+    /// <summary>
+    /// Response containing rooms grouped by status for 3D Viewer.
+    /// </summary>
+    public class GetViewerDataResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        
+        /// <summary>
+        /// Rooms that are within tolerance (Erfüllt)
+        /// </summary>
+        public List<string> Erfuellt { get; set; }
+        
+        /// <summary>
+        /// Rooms that are under tolerance (Unterschritten / IST less than SOLL)
+        /// </summary>
+        public List<string> Unterschritten { get; set; }
+        
+        /// <summary>
+        /// Rooms that are over tolerance (Überschritten / IST more than SOLL)
+        /// </summary>
+        public List<string> Ueberschritten { get; set; }
+    }
 }
