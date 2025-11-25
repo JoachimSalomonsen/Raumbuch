@@ -298,6 +298,7 @@
     <Compile Include="Models\UpdateInventoryRequest.cs" />
     <Compile Include="Models\UpdateRaumbuchRequest.cs" />
     <Compile Include="Models\WriteRaumbuchPsetRequest.cs" />
+    <Compile Include="Models\ZusammenfassungRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AzureStorageService.cs" />
     <Compile Include="Services\EmailService.cs" />
