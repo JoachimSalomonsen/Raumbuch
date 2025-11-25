@@ -673,6 +673,174 @@ namespace RaumbuchService.Controllers
             }
         }
 
+        // --------------------------------------------------------------------
+        //  UPDATE ZUSAMMENFASSUNG - Write comments and status to Excel
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Updates the Zusammenfassung sheet in Raumbuch Excel with comments and status.
+        /// Also updates the Raumbuch sheet with comments per Raumtyp.
+        /// </summary>
+        [HttpPost]
+        [Route("update-zusammenfassung")]
+        public async Task<IHttpActionResult> UpdateZusammenfassung([FromBody] UpdateZusammenfassungRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
+                    string.IsNullOrWhiteSpace(request.TargetFolderId) ||
+                    request.Zusammenfassung == null)
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken, RaumbuchFileId, TargetFolderId und Zusammenfassung sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+
+                // Download Raumbuch Excel
+                string raumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch.xlsx"
+                );
+
+                // Update Zusammenfassung sheet
+                UpdateZusammenfassungExcel(raumbuchPath, request.Zusammenfassung, request.ToleranceMin, request.ToleranceMax);
+
+                // Upload updated file
+                string uploadedFileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
+
+                // Cleanup
+                File.Delete(raumbuchPath);
+
+                return Ok(new UpdateZusammenfassungResponse
+                {
+                    Success = true,
+                    Message = "Zusammenfassung erfolgreich aktualisiert.",
+                    RaumbuchFileId = uploadedFileId
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in UpdateZusammenfassung: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Aktualisieren der Zusammenfassung: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Updates Zusammenfassung sheet with comments and status colors.
+        /// Also updates Raumbuch sheet with comments per Raumtyp.
+        /// </summary>
+        private void UpdateZusammenfassungExcel(string excelPath, List<ZusammenfassungItem> data, double toleranceMin, double toleranceMax)
+        {
+            using (var wb = new XLWorkbook(excelPath))
+            {
+                // Update Zusammenfassung sheet
+                var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                if (summaryWs != null)
+                {
+                    var range = summaryWs.RangeUsed();
+                    if (range != null)
+                    {
+                        int lastRow = range.LastRow().RowNumber();
+                        
+                        // Update header if needed
+                        if (summaryWs.Cell(1, 6).GetString() != "Kommentar")
+                        {
+                            summaryWs.Cell(1, 6).Value = "Kommentar";
+                        }
+
+                        // Match data by Raumtyp and update
+                        for (int r = 2; r <= lastRow; r++)
+                        {
+                            string raumtyp = summaryWs.Cell(r, 1).GetString().Trim();
+                            var item = data.FirstOrDefault(d => 
+                                (d.RoomCategory ?? "").Equals(raumtyp, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (item != null)
+                            {
+                                // Update status
+                                string status = item.Status ?? "Erfüllt";
+                                summaryWs.Cell(r, 5).Value = status;
+                                
+                                // Update comment
+                                summaryWs.Cell(r, 6).Value = item.Comment ?? "";
+                                
+                                // Apply colors based on tolerance
+                                double percentage = item.Percentage;
+                                double deviation = percentage - 100;
+                                
+                                // Clear existing background
+                                summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.NoColor;
+                                
+                                if (deviation < toleranceMin)
+                                {
+                                    // Unterschritten - Red
+                                    summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.LightPink;
+                                }
+                                else if (deviation > toleranceMax)
+                                {
+                                    // Überschritten - No color (or could use light yellow)
+                                }
+                                else
+                                {
+                                    // Erfüllt - Light green
+                                    summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update Raumbuch sheet with comments per Raumtyp
+                var raumbuchWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch");
+                if (raumbuchWs != null)
+                {
+                    var range = raumbuchWs.RangeUsed();
+                    if (range != null)
+                    {
+                        int lastRow = range.LastRow().RowNumber();
+                        int lastCol = range.LastColumn().ColumnNumber();
+                        
+                        // Check if Kommentar column exists, if not add it
+                        int kommentarCol = -1;
+                        for (int c = 1; c <= lastCol; c++)
+                        {
+                            if (raumbuchWs.Cell(1, c).GetString().Trim() == "Kommentar")
+                            {
+                                kommentarCol = c;
+                                break;
+                            }
+                        }
+                        
+                        if (kommentarCol == -1)
+                        {
+                            kommentarCol = lastCol + 1;
+                            raumbuchWs.Cell(1, kommentarCol).Value = "Kommentar";
+                            raumbuchWs.Cell(1, kommentarCol).Style.Font.Bold = true;
+                            raumbuchWs.Cell(1, kommentarCol).Style.Fill.BackgroundColor = XLColor.LightGray;
+                        }
+                        
+                        // Update comments for each row based on Raumtyp (column 1)
+                        for (int r = 2; r <= lastRow; r++)
+                        {
+                            string raumtyp = raumbuchWs.Cell(r, 1).GetString().Trim();
+                            var item = data.FirstOrDefault(d => 
+                                (d.RoomCategory ?? "").Equals(raumtyp, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (item != null && !string.IsNullOrEmpty(item.Comment))
+                            {
+                                raumbuchWs.Cell(r, kommentarCol).Value = item.Comment;
+                            }
+                        }
+                    }
+                }
+
+                wb.Save();
+            }
+        }
+
         /// <summary>
         /// Writes Pset "Raumbuch" to IFC spaces based on Raumbuch Excel data.
         /// Swiss German: Schreibt Raumbuch Pset in IFC-Datei.

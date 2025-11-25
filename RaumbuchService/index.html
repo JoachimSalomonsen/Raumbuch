@@ -1273,8 +1273,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         break;
                     }
                 }
-                if (!found && config.targetFolder.id) {
-                    // Add as option if not found
+                // If not found, add temporary option
+                if (!found) {
                     const option = document.createElement('option');
                     option.value = config.targetFolder.id;
                     option.textContent = config.targetFolder.path || config.targetFolder.name;
@@ -1313,6 +1313,38 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const option = select.options[i];
                     const isSelected = config.bcfAssignees.some(u => u.email === option.value);
                     option.selected = isSelected;
+                }
+            }
+            
+            // Restore tolerance settings
+            if (config.toleranceMin !== undefined) {
+                toleranceSettings.min = config.toleranceMin;
+                document.getElementById('toleranceMin').value = config.toleranceMin;
+            }
+            if (config.toleranceMax !== undefined) {
+                toleranceSettings.max = config.toleranceMax;
+                document.getElementById('toleranceMax').value = config.toleranceMax;
+            }
+            
+            // Restore zusammenfassung data
+            if (config.zusammenfassung && config.zusammenfassung.length > 0) {
+                analyseData = config.zusammenfassung;
+                currentConfig.zusammenfassung = config.zusammenfassung;
+            }
+            
+            // Restore Ausstattung tab settings
+            if (config.inventoryFolder) {
+                setSelectValue('inventoryFolder', config.inventoryFolder.id, config.inventoryFolder.name);
+            }
+            if (config.psetPartialName) {
+                document.getElementById('psetPartialName').value = config.psetPartialName;
+            }
+            if (config.roomPropertyName) {
+                document.getElementById('roomPropertyName').value = config.roomPropertyName;
+            }
+        }
+
+        function getSelectedOption(selectId) {
                 }
             }
         }
@@ -2683,7 +2715,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         /**
-         * Saves analyse changes (comments) to JSON config
+         * Saves analyse changes (comments) to JSON config and Excel
          */
         async function saveAnalyseChanges() {
             showResult('analyseResult', 'loading', '⏳ Speichere Änderungen...');
@@ -2706,6 +2738,35 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (!configName) {
                     showResult('analyseResult', 'error', '⚠️ Bitte geben Sie einen Konfigurationsnamen ein');
                     return;
+                }
+                
+                // Also update the Excel file with comments
+                const token = getToken();
+                const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
+                const targetFolderId = document.getElementById('targetFolder')?.value;
+                
+                if (token && raumbuchFileId && targetFolderId) {
+                    try {
+                        const updateResponse = await fetch(`${API_BASE}/update-zusammenfassung`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                accessToken: token,
+                                raumbuchFileId: raumbuchFileId,
+                                targetFolderId: targetFolderId,
+                                zusammenfassung: analyseData,
+                                toleranceMin: toleranceSettings.min,
+                                toleranceMax: toleranceSettings.max
+                            })
+                        });
+                        
+                        if (updateResponse.ok) {
+                            console.log('Excel updated with comments');
+                        }
+                    } catch (excelError) {
+                        console.error('Error updating Excel:', excelError);
+                        // Continue with JSON save even if Excel update fails
+                    }
                 }
                 
                 // Build full configuration
