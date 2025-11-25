@@ -111,8 +111,8 @@
                 <!-- Kombinert: Vorlage + Raumbuch -->
                 <!-- =============================== -->
                 <section class="card">
-                    <h2>Raumprogramm & Raumbuch</h2>
-                    <p>Vorlage importieren und Raumbuch erzeugen/aktualisieren</p>
+                    <h2>Raumbuch</h2>
+                    <p>Vorlage laden und Raumbuch erzeugen/aktualisieren</p>
 
                     <!-- TEMPLATE -->
                     <div class="form-group">
@@ -122,21 +122,52 @@
                                 <option value="">-- Vorlage auswählen nach "Dateien laden" --</option>
                             </select>
 
-                            <!-- Import template moved here -->
-                            <button class="btn btn-primary" onclick="importTemplate()">📥 Raumprogramm erstellen</button>
+                            <!-- Load template headers for mapping -->
+                            <button class="btn btn-primary" onclick="loadTemplateHeaders()">📥 Vorlagen laden</button>
                         </div>
-
                     </div>
 
-                    <!-- RAUMPROGRAMM -->
-                    <div class="form-group">
-                        <label for="raumprogrammFile">Raumprogramm-Datei (.xlsx):</label>
-                        <select id="raumprogrammFile" class="form-control" style="flex:1;">
-                            <option value="">-- Raumprogramm auswählen nach "Dateien laden" --</option>
-                        </select>
-
-                        <small>Wählen Sie die Raumprogramm.xlsx aus Schritt 1</small>
+                    <!-- COLUMN MAPPING TABLE -->
+                    <div class="form-group" id="mappingTableContainer" style="display:none;">
+                        <label>Spaltenzuordnung:</label>
+                        <table class="mapping-table" style="width:100%; max-width:500px; border-collapse:collapse; margin-top:8px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left; padding:8px; border-bottom:2px solid var(--tc-border); background:#f5f5f5;">Eigenschaft</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:2px solid var(--tc-border); background:#f5f5f5;">Excel-Spalte</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Raumtyp</td>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
+                                        <select id="mappingRaumtyp" class="form-control" style="width:100%; max-width:200px;">
+                                            <option value="">-- Spalte wählen --</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Raumkategorie</td>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
+                                        <select id="mappingRaumkategorie" class="form-control" style="width:100%; max-width:200px;">
+                                            <option value="">-- Spalte wählen --</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Fläche Soll</td>
+                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
+                                        <select id="mappingFlaecheSoll" class="form-control" style="width:100%; max-width:200px;">
+                                            <option value="">-- Spalte wählen --</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <small>Wählen Sie die Spalten aus der Vorlage, die den Eigenschaften entsprechen</small>
                     </div>
+
+                    <div id="step1Result" class="result"></div>
 
                     <!-- IFC FILE -->
                     <div class="form-group">
@@ -145,8 +176,6 @@
                             <option value="">-- IFC auswählen nach "Dateien laden" --</option>
                         </select>
                     </div>
-
-
 
                     <!-- RAUMBUCH -->
                     <div class="form-group">
@@ -158,14 +187,13 @@
                             </select>
 
                             <!-- IFC -> Raumbuch -->
-                            <button class="btn btn-primary" onclick="importIfc()">🏗️ Raumbuch erstellen</button>
+                            <button class="btn btn-primary" onclick="createRaumbuch()">🏗️ Raumbuch erstellen</button>
                             <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
                         </div>
 
-                        <small>Wird automatisch ausgefüllt nach "IFC importieren"</small>
+                        <small>Wird automatisch ausgefüllt nach "Raumbuch erstellen"</small>
                     </div>
 
-                    <div id="step1Result" class="result"></div>
                     <div id="step3Result" class="result"></div>
                 </section>
 
@@ -250,16 +278,17 @@
                             <thead>
                                 <tr>
                                     <th onclick="sortAnalyseTable(0)">Raumtyp ↕</th>
-                                    <th onclick="sortAnalyseTable(1)">SOLL (m²) ↕</th>
-                                    <th onclick="sortAnalyseTable(2)">IST (m²) ↕</th>
+                                    <th onclick="sortAnalyseTable(1)">Raumkategorie ↕</th>
+                                    <th onclick="sortAnalyseTable(2)">SOLL (m²) ↕</th>
+                                    <th onclick="sortAnalyseTable(3)">IST (m²) ↕</th>
                                     <th>Abweichung</th>
-                                    <th onclick="sortAnalyseTable(4)">Status ↕</th>
+                                    <th onclick="sortAnalyseTable(5)">Status ↕</th>
                                     <th>Kommentar</th>
                                 </tr>
                             </thead>
                             <tbody id="analyseTableBody">
                                 <tr>
-                                    <td colspan="6" style="text-align:center; color:#666;">
+                                    <td colspan="7" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Bitte laden Sie eine Konfiguration oder erstellen Sie ein Raumbuch.
                                     </td>
                                 </tr>
@@ -269,6 +298,8 @@
                     
                     <div style="margin-top:15px;">
                         <button class="btn btn-primary" onclick="loadAnalyseData()">📥 Daten laden</button>
+                        <button class="btn btn-secondary" onclick="updateIstValues()">🔄 IST aktualisieren</button>
+                        <button class="btn btn-secondary" onclick="recalculateStatus()">📊 Status aktualisieren</button>
                         <button class="btn btn-primary" onclick="saveAnalyseChanges()">💾 Änderungen speichern</button>
                     </div>
                     <div id="analyseResult" class="result"></div>
@@ -282,6 +313,7 @@
                     <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
                     <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
                     <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
+                    <button class="btn btn-secondary" onclick="openIn3DViewer()">🔍 In 3D-Viewer öffnen</button>
                     <div id="step4Result" class="result"></div>
                 </section>
 
@@ -913,11 +945,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const templateSelect = document.getElementById('templateFile');
                     templateSelect.innerHTML = '<option value="">-- Vorlage auswählen --</option>';
 
-                    // Populate raumprogramm dropdown (Step 3)
-                    const raumprogrammSelect = document.getElementById('raumprogrammFile');
-                    raumprogrammSelect.innerHTML = '<option value="">-- Raumprogramm auswählen --</option>';
-
-                    // Populate raumbuch dropdown (Step 4)
+                    // Populate raumbuch dropdown
                     const raumbuchSelect = document.getElementById('raumbuchFile');
                     raumbuchSelect.innerHTML = '<option value="">-- Raumbuch auswählen --</option>';
 
@@ -934,14 +962,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             templateOption.dataset.name = file.name;
                             templateOption.dataset.versionId = file.versionId;
                             templateSelect.appendChild(templateOption);
-
-                            // Add to raumprogramm dropdown
-                            const raumprogrammOption = document.createElement('option');
-                            raumprogrammOption.value = file.id;
-                            raumprogrammOption.textContent = file.name;
-                            raumprogrammOption.dataset.name = file.name;
-                            raumprogrammOption.dataset.versionId = file.versionId;
-                            raumprogrammSelect.appendChild(raumprogrammOption);
 
                             // Add to raumbuch dropdown (used by both Step 3 update and Step 4 pset operations)
                             const raumbuchOption = document.createElement('option');
@@ -1094,7 +1114,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 targetFolder: getSelectedOption('targetFolder'),
                 files: {
                     template: getSelectedOption('templateFile'),
-                    raumprogramm: getSelectedOption('raumprogrammFile'),
                     ifcModel: getSelectedOption('ifcFile'),
                     raumbuch: getSelectedOption('raumbuchFile')
                 },
@@ -1293,11 +1312,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 setSelectValue('templateFile', config.files.template.id, config.files.template.name);
             }
 
-            // Fill Raumprogramm (changed from readonly to dropdown)
-            if (config.files?.raumprogramm) {
-                setSelectValue('raumprogrammFile', config.files.raumprogramm.id, config.files.raumprogramm.name);
-            }
-
             // Fill IFC
             if (config.files?.ifcModel) {
                 setSelectValue('ifcFile', config.files.ifcModel.id, config.files.ifcModel.name);
@@ -1349,6 +1363,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         function getSelectedOption(selectId) {
             const select = document.getElementById(selectId);
+            if (!select) return null;
             const option = select.options[select.selectedIndex];
             if (!option || !option.value) return null;
 
@@ -1376,6 +1391,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         function setSelectValue(selectId, value, name) {
             const select = document.getElementById(selectId);
+            if (!select) {
+                console.log(`Select element ${selectId} not found, skipping`);
+                return;
+            }
             let found = false;
 
             // Try to find existing option
@@ -1467,6 +1486,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         function updateDropdownWithFile(selectId, file) {
             const select = document.getElementById(selectId);
+            if (!select) {
+                console.log(`Dropdown ${selectId} not found, skipping update`);
+                return;
+            }
 
             // Check if file already exists in dropdown
             let optionExists = false;
@@ -1783,28 +1806,38 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const token = getToken();
             const projectId = getProjectId();
             const ifcFileId = document.getElementById('ifcFile').value;
-            const raumprogrammFileId = document.getElementById('raumprogrammFile').value;
-            const existingRaumbuchFileId = document.getElementById('raumbuchFile').value; // Use Step 4 dropdown
+            const templateFileId = document.getElementById('templateFile').value;
+            const existingRaumbuchFileId = document.getElementById('raumbuchFile').value;
             const targetFolder = getTargetFolder();
+
+            // Get column mappings
+            const raumtypCol = document.getElementById('mappingRaumtyp').value;
+            const raumkategorieCol = document.getElementById('mappingRaumkategorie').value;
+            const flaecheSollCol = document.getElementById('mappingFlaecheSoll').value;
 
             console.log('updateRaumbuch() called');
             console.log('Token length:', token ? token.length : 0);
             console.log('ProjectId:', projectId);
             console.log('IFC File ID:', ifcFileId);
-            console.log('Raumprogramm File ID:', raumprogrammFileId);
+            console.log('Template File ID:', templateFileId);
             console.log('Existing Raumbuch File ID:', existingRaumbuchFileId);
             console.log('Target Folder:', targetFolder);
 
-            if (!token || !projectId || !ifcFileId || !raumprogrammFileId || !existingRaumbuchFileId || !targetFolder) {
+            if (!token || !projectId || !ifcFileId || !templateFileId || !existingRaumbuchFileId || !targetFolder) {
                 let missingFields = [];
                 if (!token) missingFields.push('Token');
                 if (!projectId) missingFields.push('Project ID');
                 if (!ifcFileId) missingFields.push('IFC File');
-                if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
-                if (!existingRaumbuchFileId) missingFields.push('Raumbuch File (siehe Schritt 4)');
+                if (!templateFileId) missingFields.push('Vorlagendatei');
+                if (!existingRaumbuchFileId) missingFields.push('Raumbuch File');
                 if (!targetFolder) missingFields.push('Target Folder');
 
                 showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            if (!raumtypCol || !flaecheSollCol) {
+                showResult('step3Result', 'error', '⚠ Bitte laden Sie die Vorlage und wählen Sie mindestens Raumtyp und Fläche Soll Spalten aus');
                 return;
             }
 
@@ -1815,14 +1848,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     accessToken: token,
                     projectId: projectId,
                     raumbuchFileId: existingRaumbuchFileId,
+                    templateFileId: templateFileId,
                     ifcFileId: ifcFileId,
-                    raumprogrammFileId: raumprogrammFileId,
-                    targetFolderId: targetFolder
+                    targetFolderId: targetFolder,
+                    columnMappings: {
+                        raumtypColumn: parseInt(raumtypCol),
+                        raumkategorieColumn: raumkategorieCol ? parseInt(raumkategorieCol) : -1,
+                        flaecheSollColumn: parseInt(flaecheSollCol)
+                    }
                 };
 
                 console.log('Sending request body:', requestBody);
 
-                const response = await fetch(`${API_BASE}/update-raumbuch`, {
+                const response = await fetch(`${API_BASE}/update-raumbuch-with-mappings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
@@ -1990,6 +2028,40 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     showResult('step4Result', 'error', `❌ ${errorMsg}`);
                 }
             } catch (error) {
+                showResult('step4Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Opens the IFC file in 3D Viewer using Trimble Connect
+         */
+        async function openIn3DViewer() {
+            const ifcFileId = document.getElementById('ifcFile').value;
+            const projectId = getProjectId();
+
+            if (!ifcFileId) {
+                showResult('step4Result', 'error', '⚠ Bitte IFC-Datei in Einstellungen auswählen');
+                return;
+            }
+
+            if (!projectId) {
+                showResult('step4Result', 'error', '⚠ Projekt-ID nicht verfügbar');
+                return;
+            }
+
+            try {
+                // Build the Trimble Connect 3D Viewer URL
+                // Format: https://web.connect.trimble.com/projects/{projectId}/viewer/3d/?modelId={fileId}
+                const viewerUrl = `https://web.connect.trimble.com/projects/${projectId}/viewer/3d/?modelId=${ifcFileId}`;
+                
+                console.log('Opening 3D Viewer:', viewerUrl);
+                
+                // Open in new tab
+                window.open(viewerUrl, '_blank');
+                
+                showResult('step4Result', 'success', '✅ 3D-Viewer wird in neuem Tab geöffnet...');
+            } catch (error) {
+                console.error('Error opening 3D Viewer:', error);
                 showResult('step4Result', 'error', `❌ Fehler: ${error.message}`);
             }
         }
@@ -2471,29 +2543,39 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             let html = '';
             data.forEach((item, index) => {
-                const percentage = item.percentage || item.Percentage || 0;
-                const sollArea = item.sollArea || item.SollArea || 0;
-                const istArea = item.istArea || item.IstArea || 0;
-                const category = item.roomCategory || item.RoomCategory || '-';
-                const comment = item.comment || item.Comment || '';
+                const percentage = getItemProp(item, 'percentage', 'Percentage', 0);
+                const sollArea = getItemProp(item, 'sollArea', 'SollArea', 0);
+                const istArea = getItemProp(item, 'istArea', 'IstArea', 0);
+                const raumtyp = getItemProp(item, 'raumtyp', 'Raumtyp', null) || 
+                               getItemProp(item, 'roomCategory', 'RoomCategory', '-');
+                const raumkategorie = getItemProp(item, 'raumkategorie', 'Raumkategorie', '');
+                const comment = getItemProp(item, 'comment', 'Comment', '');
                 
                 // Determine status based on tolerance settings
                 const status = getStatus(percentage, sollArea, istArea);
                 const statusClass = getStatusClass(status);
-                // Light green for Erfüllt (within tolerance), red for Unterschritten
-                const rowClass = status === 'Unterschritten' ? 'analyse-row-under' : (status === 'Erfüllt' ? 'analyse-row-ok' : '');
+                // Color logic: Red for Unterschritten, Green for Erfüllt, Yellow for Überschritten
+                let rowClass = '';
+                if (status === 'Unterschritten' || sollArea === 0) {
+                    rowClass = 'analyse-row-under';
+                } else if (status === 'Erfüllt') {
+                    rowClass = 'analyse-row-ok';
+                } else if (status === 'Überschritten') {
+                    rowClass = 'analyse-row-over';
+                }
                 
                 // Create visual bar
                 const barHtml = createProgressBar(percentage);
                 
                 html += `
                     <tr class="analyse-row ${rowClass}" data-status="${status.toLowerCase()}" data-index="${index}">
-                        <td>${escapeHtml(category)}</td>
-                        <td>${sollArea.toFixed(2)}</td>
+                        <td>${escapeHtml(raumtyp)}</td>
+                        <td><input type="text" class="kategorie-input form-control" value="${escapeHtml(raumkategorie)}" data-index="${index}" data-field="raumkategorie" style="width:100px; padding:4px;" onchange="onAnalyseFieldChange(${index})"></td>
+                        <td><input type="number" class="soll-input form-control" value="${sollArea.toFixed(2)}" data-index="${index}" data-field="sollArea" step="0.01" style="width:80px; padding:4px;" onchange="onSollChange(${index})"></td>
                         <td>${istArea.toFixed(2)}</td>
                         <td>${barHtml}</td>
-                        <td><span class="status-badge ${statusClass}">${status}</span></td>
-                        <td><input type="text" class="comment-input" value="${escapeHtml(comment)}" data-index="${index}" placeholder="Kommentar..."></td>
+                        <td><span class="status-badge ${statusClass}" data-index="${index}">${status}</span></td>
+                        <td><input type="text" class="comment-input" value="${escapeHtml(comment)}" data-index="${index}" data-field="comment" placeholder="Kommentar..." onchange="onAnalyseFieldChange(${index})"></td>
                     </tr>
                 `;
             });
@@ -2508,15 +2590,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         function getStatus(percentage, sollArea, istArea) {
             // Handle null/undefined/NaN cases
             if (percentage == null || isNaN(percentage)) return 'Erfüllt';
+            
+            // SOLL=0 is considered Unterschritten (red)
+            if (sollArea === 0) return 'Unterschritten';
+            
+            // Both zero = Erfüllt
             if (sollArea <= 0 && istArea <= 0) return 'Erfüllt';
             
             const deviation = percentage - 100;
             
+            // IST < SOLL = Unterschritten (red)
             if (deviation < toleranceSettings.min) {
                 return 'Unterschritten';
+            // IST > SOLL = Überschritten (no color in Excel, yellow in UI)
             } else if (deviation > toleranceSettings.max) {
                 return 'Überschritten';
             }
+            // Within tolerance = Erfüllt (green)
             return 'Erfüllt';
         }
 
@@ -2581,9 +2671,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             let overCount = 0;
 
             data.forEach(item => {
-                const soll = item.sollArea || item.SollArea || 0;
-                const ist = item.istArea || item.IstArea || 0;
-                const percentage = item.percentage || item.Percentage || 0;
+                const soll = getItemProp(item, 'sollArea', 'SollArea', 0);
+                const ist = getItemProp(item, 'istArea', 'IstArea', 0);
+                const percentage = getItemProp(item, 'percentage', 'Percentage', 0);
                 
                 totalSoll += soll;
                 totalIst += ist;
@@ -2713,19 +2803,40 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         /**
-         * Saves analyse changes (comments) to JSON config and Excel
+         * Saves analyse changes (comments, Raumkategorie, SOLL) to JSON config and Excel
+         * Updates both Raumbuch sheet (all rooms by category) and Zusammenfassung sheet
          */
         async function saveAnalyseChanges() {
             showResult('analyseResult', 'loading', '⏳ Speichere Änderungen...');
             
             try {
-                // Collect comments from input fields
-                const commentInputs = document.querySelectorAll('.comment-input');
-                commentInputs.forEach(input => {
-                    const index = parseInt(input.dataset.index);
-                    if (analyseData[index]) {
-                        analyseData[index].comment = input.value;
+                // Collect all editable field values from inputs
+                analyseData.forEach((item, index) => {
+                    const kategorieInput = document.querySelector(`.kategorie-input[data-index="${index}"]`);
+                    const sollInput = document.querySelector(`.soll-input[data-index="${index}"]`);
+                    const commentInput = document.querySelector(`.comment-input[data-index="${index}"]`);
+                    
+                    if (kategorieInput) {
+                        item.raumkategorie = kategorieInput.value;
+                        item.Raumkategorie = kategorieInput.value;
                     }
+                    if (sollInput) {
+                        item.sollArea = parseFloat(sollInput.value) || 0;
+                        item.SollArea = item.sollArea;
+                        // Recalculate percentage
+                        const istArea = item.istArea || item.IstArea || 0;
+                        item.percentage = item.sollArea > 0 ? (istArea / item.sollArea) * 100 : 0;
+                        item.Percentage = item.percentage;
+                    }
+                    if (commentInput) {
+                        item.comment = commentInput.value;
+                        item.Comment = commentInput.value;
+                    }
+                    
+                    // Calculate status for saving
+                    const status = getStatus(item.percentage, item.sollArea, item.istArea || item.IstArea);
+                    item.status = status;
+                    item.Status = status;
                 });
                 
                 // Update config
@@ -2738,11 +2849,12 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     return;
                 }
                 
-                // Also update the Excel file with comments
+                // Update the Excel file with all changes (Raumbuch + Zusammenfassung sheets)
                 const token = getToken();
                 const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
                 const targetFolderId = document.getElementById('targetFolder')?.value;
                 
+                let excelUpdateSuccess = false;
                 if (token && raumbuchFileId && targetFolderId) {
                     try {
                         const updateResponse = await fetch(`${API_BASE}/update-zusammenfassung`, {
@@ -2759,7 +2871,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         });
                         
                         if (updateResponse.ok) {
-                            console.log('Excel updated with comments');
+                            const updateData = await updateResponse.json();
+                            if (updateData.success) {
+                                excelUpdateSuccess = true;
+                                console.log('Excel updated successfully');
+                            }
                         }
                     } catch (excelError) {
                         console.error('Error updating Excel:', excelError);
@@ -2767,9 +2883,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     }
                 }
                 
-                // Build full configuration
+                // Build full configuration and save to JSON
                 await saveConfig();
-                showResult('analyseResult', 'success', '✅ Änderungen gespeichert');
+                
+                if (excelUpdateSuccess) {
+                    showResult('analyseResult', 'success', '✅ Änderungen in Excel und Konfiguration gespeichert');
+                } else {
+                    showResult('analyseResult', 'success', '✅ Änderungen in Konfiguration gespeichert (Excel-Update nicht möglich)');
+                }
             } catch (error) {
                 console.error('Error saving analyse changes:', error);
                 showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
@@ -2797,7 +2918,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     targetFolder: getSelectedOption('targetFolder'),
                     files: {
                         template: getSelectedOption('templateFile'),
-                        raumprogramm: getSelectedOption('raumprogrammFile'),
                         ifcModel: getSelectedOption('ifcFile'),
                         raumbuch: getSelectedOption('raumbuchFile')
                     },
@@ -2861,6 +2981,434 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        /**
+         * Helper function to get property from item with both camelCase and PascalCase fallback
+         * @param {object} item - The data item
+         * @param {string} camelCase - Property name in camelCase (e.g., 'sollArea')
+         * @param {string} pascalCase - Property name in PascalCase (e.g., 'SollArea')
+         * @param {*} defaultValue - Default value if property not found
+         */
+        function getItemProp(item, camelCase, pascalCase, defaultValue) {
+            if (!item) return defaultValue;
+            return item[camelCase] ?? item[pascalCase] ?? defaultValue;
+        }
+
+        // Store column mappings
+        let columnMappings = {
+            raumtyp: '',
+            raumkategorie: '',
+            flaecheSoll: ''
+        };
+
+        // Store template headers
+        let templateHeaders = [];
+
+        /**
+         * Loads template headers for column mapping
+         */
+        async function loadTemplateHeaders() {
+            const token = getToken();
+            const templateFileId = document.getElementById('templateFile').value;
+
+            if (!token || !templateFileId) {
+                showResult('step1Result', 'error', '⚠ Bitte Vorlagendatei auswählen');
+                return;
+            }
+
+            showResult('step1Result', 'loading', '⏳ Lade Spaltenüberschriften...');
+
+            try {
+                const response = await fetch(`${API_BASE}/get-template-headers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        templateFileId: templateFileId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    templateHeaders = data.headers || [];
+                    
+                    // Populate mapping dropdowns
+                    const mappingSelects = ['mappingRaumtyp', 'mappingRaumkategorie', 'mappingFlaecheSoll'];
+                    mappingSelects.forEach(selectId => {
+                        const select = document.getElementById(selectId);
+                        if (select) {
+                            select.innerHTML = '<option value="">-- Spalte wählen --</option>';
+                            templateHeaders.forEach((header, index) => {
+                                const option = document.createElement('option');
+                                option.value = index.toString();
+                                option.textContent = `${getColumnLetter(index)}: ${header}`;
+                                select.appendChild(option);
+                            });
+                        }
+                    });
+
+                    // Set default mappings if columns exist - with validation
+                    // Default: A=Raumtyp, F=Raumkategorie, G=Fläche Soll
+                    if (templateHeaders.length >= 1) {
+                        document.getElementById('mappingRaumtyp').value = '0'; // Column A
+                    }
+                    if (templateHeaders.length >= 6) {
+                        document.getElementById('mappingRaumkategorie').value = '5'; // Column F
+                    } else {
+                        // Leave Raumkategorie unmapped if not enough columns - will use IFC LongName
+                        console.log('Template has fewer than 6 columns - Raumkategorie will be derived from IFC');
+                    }
+                    if (templateHeaders.length >= 7) {
+                        document.getElementById('mappingFlaecheSoll').value = '6'; // Column G
+                    } else if (templateHeaders.length >= 4) {
+                        // Fallback: try column D for Fläche Soll (older format)
+                        document.getElementById('mappingFlaecheSoll').value = '3'; // Column D
+                        console.log('Template has fewer than 7 columns - using column D for Fläche Soll');
+                    }
+
+                    // Show mapping table
+                    document.getElementById('mappingTableContainer').style.display = 'block';
+
+                    // Show helpful message with validation info
+                    let message = `✅ ${templateHeaders.length} Spalten geladen.`;
+                    if (templateHeaders.length < 7) {
+                        message += ` Hinweis: Weniger als 7 Spalten gefunden - bitte Zuordnung prüfen.`;
+                    } else {
+                        message += ` Bitte Zuordnung prüfen.`;
+                    }
+                    showResult('step1Result', 'success', message);
+                } else {
+                    const errorMsg = data.message || 'Fehler beim Laden';
+                    showResult('step1Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error loading template headers:', error);
+                showResult('step1Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Converts column index to Excel letter (0 = A, 1 = B, etc.)
+         */
+        function getColumnLetter(index) {
+            let letter = '';
+            while (index >= 0) {
+                letter = String.fromCharCode((index % 26) + 65) + letter;
+                index = Math.floor(index / 26) - 1;
+            }
+            return letter;
+        }
+
+        /**
+         * Creates Raumbuch directly from template file using column mappings
+         */
+        async function createRaumbuch() {
+            const token = getToken();
+            const projectId = getProjectId();
+            const templateFileId = document.getElementById('templateFile').value;
+            const ifcFileId = document.getElementById('ifcFile').value;
+            const targetFolder = getTargetFolder();
+
+            // Get column mappings
+            const raumtypCol = document.getElementById('mappingRaumtyp').value;
+            const raumkategorieCol = document.getElementById('mappingRaumkategorie').value;
+            const flaecheSollCol = document.getElementById('mappingFlaecheSoll').value;
+
+            console.log('createRaumbuch() called');
+            console.log('Token length:', token ? token.length : 0);
+            console.log('Template File ID:', templateFileId);
+            console.log('IFC File ID:', ifcFileId);
+            console.log('Column mappings:', { raumtypCol, raumkategorieCol, flaecheSollCol });
+
+            if (!token || !projectId || !templateFileId || !ifcFileId || !targetFolder) {
+                let missingFields = [];
+                if (!token) missingFields.push('Token');
+                if (!projectId) missingFields.push('Project ID');
+                if (!templateFileId) missingFields.push('Vorlagendatei');
+                if (!ifcFileId) missingFields.push('IFC Datei');
+                if (!targetFolder) missingFields.push('Zielordner');
+                showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            if (!raumtypCol || !flaecheSollCol) {
+                showResult('step3Result', 'error', '⚠ Bitte laden Sie die Vorlage und wählen Sie mindestens Raumtyp und Fläche Soll Spalten aus');
+                return;
+            }
+
+            showResult('step3Result', 'loading', '⏳ Erstelle Raumbuch... (kann einige Sekunden dauern)');
+
+            try {
+                const requestBody = {
+                    accessToken: token,
+                    projectId: projectId,
+                    templateFileId: templateFileId,
+                    ifcFileId: ifcFileId,
+                    targetFolderId: targetFolder,
+                    columnMappings: {
+                        raumtypColumn: parseInt(raumtypCol),
+                        raumkategorieColumn: raumkategorieCol ? parseInt(raumkategorieCol) : -1,
+                        flaecheSollColumn: parseInt(flaecheSollCol)
+                    }
+                };
+
+                console.log('Sending request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/create-raumbuch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    const fileName = data.raumbuchFileName || 'Raumbuch.xlsx';
+                    const fileId = data.raumbuchFileId || 'N/A';
+
+                    console.log('Raumbuch created successfully:', fileName, fileId);
+
+                    // Save to config
+                    currentConfig.files.raumbuch = {
+                        id: fileId,
+                        name: fileName
+                    };
+
+                    let message = `✅ Raumbuch erstellt!<br>Datei: ${fileName}<br>⏳ Warte auf ID von Connect...`;
+                    if (data.analysis && data.analysis.length > 0) {
+                        message += '<br><br><strong>Analyse:</strong><br>';
+                        data.analysis.forEach(a => {
+                            const status = a.status || (a.percentage < 90 ? '⚠️ Zu wenig' : (a.percentage > 110 ? '📊 Zu viel' : '✅ OK'));
+                            message += `- ${a.raumtyp || a.roomCategory}: ${a.percentage.toFixed(1)}% ${status}<br>`;
+                        });
+                    }
+
+                    showResult('step3Result', 'loading', message);
+
+                    // Poll for the file to get the actual Connect ID
+                    const foundFile = await pollForFile(fileName);
+
+                    if (foundFile) {
+                        // Update config with correct ID
+                        currentConfig.files.raumbuch.id = foundFile.id;
+
+                        // Update dropdown
+                        updateDropdownWithFile('raumbuchFile', foundFile);
+
+                        message = `✅ Raumbuch erfolgreich erstellt!<br>Datei: ${fileName}<br>ID: ${foundFile.id}<br>✅ Raumbuch wurde zur Dropdown-Liste hinzugefügt!`;
+                        showResult('step3Result', 'success', message);
+                    } else {
+                        showResult('step3Result', 'warning', `⚠️ Raumbuch wurde erstellt, aber ID konnte nicht abgerufen werden. Bitte "Dateien laden" klicken.`);
+                    }
+                } else {
+                    const errorMsg = data.message || data.exceptionMessage || `HTTP ${response.status}`;
+                    showResult('step3Result', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error in createRaumbuch:', error);
+                showResult('step3Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Handles changes to SOLL values - recalculates percentage and status
+         */
+        function onSollChange(index) {
+            const input = document.querySelector(`.soll-input[data-index="${index}"]`);
+            if (!input || !analyseData[index]) return;
+
+            const newSoll = parseFloat(input.value) || 0;
+            const istArea = analyseData[index].istArea || analyseData[index].IstArea || 0;
+
+            // Update the data
+            analyseData[index].sollArea = newSoll;
+            analyseData[index].SollArea = newSoll;
+
+            // Recalculate percentage
+            const newPercentage = newSoll > 0 ? (istArea / newSoll) * 100 : 0;
+            analyseData[index].percentage = newPercentage;
+            analyseData[index].Percentage = newPercentage;
+
+            // Update the row
+            updateAnalyseRow(index);
+        }
+
+        /**
+         * Handles changes to other fields (Raumkategorie, Comment)
+         */
+        function onAnalyseFieldChange(index) {
+            if (!analyseData[index]) return;
+
+            // Update Raumkategorie
+            const kategorieInput = document.querySelector(`.kategorie-input[data-index="${index}"]`);
+            if (kategorieInput) {
+                analyseData[index].raumkategorie = kategorieInput.value;
+                analyseData[index].Raumkategorie = kategorieInput.value;
+            }
+
+            // Update Comment
+            const commentInput = document.querySelector(`.comment-input[data-index="${index}"]`);
+            if (commentInput) {
+                analyseData[index].comment = commentInput.value;
+                analyseData[index].Comment = commentInput.value;
+            }
+        }
+
+        /**
+         * Updates a single row in the analyse table
+         */
+        function updateAnalyseRow(index) {
+            const row = document.querySelector(`.analyse-row[data-index="${index}"]`);
+            if (!row || !analyseData[index]) return;
+
+            const item = analyseData[index];
+            const percentage = item.percentage || item.Percentage || 0;
+            const sollArea = item.sollArea || item.SollArea || 0;
+            const istArea = item.istArea || item.IstArea || 0;
+
+            // Determine status
+            const status = getStatus(percentage, sollArea, istArea);
+            const statusClass = getStatusClass(status);
+            
+            // Color logic: Red for Unterschritten, Green for Erfüllt, Yellow for Überschritten
+            let rowClass = '';
+            if (status === 'Unterschritten' || sollArea === 0) {
+                rowClass = 'analyse-row-under';
+            } else if (status === 'Erfüllt') {
+                rowClass = 'analyse-row-ok';
+            } else if (status === 'Überschritten') {
+                rowClass = 'analyse-row-over';
+            }
+
+            // Update row class
+            row.className = `analyse-row ${rowClass}`;
+            row.dataset.status = status.toLowerCase();
+
+            // Update status badge
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `status-badge ${statusClass}`;
+                statusBadge.textContent = status;
+            }
+
+            // Update progress bar (column index 4)
+            const cells = row.cells;
+            if (cells && cells.length > 4) {
+                cells[4].innerHTML = createProgressBar(percentage);
+            }
+
+            // Update KPI widget
+            updateKPIWidget(analyseData);
+        }
+
+        /**
+         * Recalculates status for all rows
+         */
+        function recalculateStatus() {
+            if (!analyseData || analyseData.length === 0) {
+                showResult('analyseResult', 'warning', '⚠️ Keine Daten zum Aktualisieren');
+                return;
+            }
+
+            // Collect current values from inputs
+            analyseData.forEach((item, index) => {
+                const sollInput = document.querySelector(`.soll-input[data-index="${index}"]`);
+                const kategorieInput = document.querySelector(`.kategorie-input[data-index="${index}"]`);
+                const commentInput = document.querySelector(`.comment-input[data-index="${index}"]`);
+
+                if (sollInput) {
+                    item.sollArea = parseFloat(sollInput.value) || 0;
+                    item.SollArea = item.sollArea;
+                }
+                if (kategorieInput) {
+                    item.raumkategorie = kategorieInput.value;
+                    item.Raumkategorie = kategorieInput.value;
+                }
+                if (commentInput) {
+                    item.comment = commentInput.value;
+                    item.Comment = commentInput.value;
+                }
+
+                // Recalculate percentage
+                const istArea = item.istArea || item.IstArea || 0;
+                item.percentage = item.sollArea > 0 ? (istArea / item.sollArea) * 100 : 0;
+                item.Percentage = item.percentage;
+            });
+
+            // Re-render the table
+            renderAnalyseTable(analyseData);
+            updateKPIWidget(analyseData);
+
+            showResult('analyseResult', 'success', '✅ Status aktualisiert');
+        }
+
+        /**
+         * Updates IST values from IFC file
+         */
+        async function updateIstValues() {
+            const token = getToken();
+            const ifcFileId = document.getElementById('ifcFile').value;
+
+            if (!token || !ifcFileId) {
+                showResult('analyseResult', 'error', '⚠️ Bitte IFC-Datei in Einstellungen auswählen');
+                return;
+            }
+
+            if (!analyseData || analyseData.length === 0) {
+                showResult('analyseResult', 'error', '⚠️ Bitte zuerst Daten laden');
+                return;
+            }
+
+            showResult('analyseResult', 'loading', '⏳ Aktualisiere IST-Werte aus IFC...');
+
+            try {
+                const response = await fetch(`${API_BASE}/get-ist-from-ifc`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        ifcFileId: ifcFileId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Update IST values in analyseData based on Raumkategorie
+                    const istByCategory = data.istByCategory || {};
+                    let updatedCount = 0;
+
+                    analyseData.forEach(item => {
+                        const kategorie = item.raumkategorie || item.Raumkategorie || item.raumtyp || item.Raumtyp || item.roomCategory || item.RoomCategory;
+                        if (kategorie && istByCategory[kategorie] !== undefined) {
+                            item.istArea = istByCategory[kategorie];
+                            item.IstArea = istByCategory[kategorie];
+                            
+                            // Recalculate percentage
+                            const sollArea = item.sollArea || item.SollArea || 0;
+                            item.percentage = sollArea > 0 ? (item.istArea / sollArea) * 100 : 0;
+                            item.Percentage = item.percentage;
+                            updatedCount++;
+                        }
+                    });
+
+                    // Re-render table
+                    renderAnalyseTable(analyseData);
+                    updateKPIWidget(analyseData);
+
+                    showResult('analyseResult', 'success', `✅ ${updatedCount} IST-Werte aktualisiert`);
+                } else {
+                    const errorMsg = data.message || 'Fehler beim Laden';
+                    showResult('analyseResult', 'error', `❌ ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error updating IST values:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
         }
 
         // Initialize date picker with today's date as default

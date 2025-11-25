@@ -67,8 +67,8 @@ body {
    CONTAINER
    ------------------------------------------------------------ */
 .container {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: calc(100vw - 40px);
+    margin: 0 20px;
     background: var(--tc-bg-card);
     border-radius: 6px;
     box-shadow: var(--tc-shadow-lg);
@@ -194,7 +194,7 @@ small {
     font-weight: 600;
     font-family: 'Segoe UI', sans-serif;
     width: 240px;
-    " cursor: pointer;
+    cursor: pointer;
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
     display: inline-block;
     margin-right: 10px;
@@ -537,35 +537,44 @@ textarea {
     align-items: center;
     width: 100vw; /* full viewport width */
     margin-left: calc(-50vw + 50%); /* break out of container */
+    margin-top: 0px; /* thin top margin per requirement */
+    --tc-dark-blue: #004987;
     background-color: var(--tc-dark-blue);
     padding: 0;
     border-bottom: none;
-    height: 60px; /* matches Trimble Connect */
+    height: 70px; /* matches Trimble Connect */
     position: relative;
     box-sizing: border-box;
 }
 
 /* TABS */
 .tc-tab {
-    flex: 0 0 auto;
-    min-width: 120px;
-    max-width: 200px;
     display: flex;
-    flex-direction: column; /* icon above text */
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    flex-direction: column;
+    height: 70px;
+    padding: 0 20px; 
+    box-sizing: border-box;
+    gap: 0px;
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
     user-select: none;
     text-align: center;
-    padding: 6px 20px;
-    height: 100%;
-    transition: background-color 0.2s ease;
-    box-sizing: border-box;
     border-bottom: 3px solid transparent;
 }
+
+/* Wrapper for placement */
+.tc-tab-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* IKON + TEKST → centered */
+    height: 100%;
+}
+
+
 
     /* Hover state = soft lighter blue (same appearance as Trimble Connect) */
     .tc-tab:hover {
@@ -580,8 +589,8 @@ textarea {
 
 /* ICONS */
 .tc-tab-icon {
-    width: 26px; /* Trimble uses slightly smaller icons */
-    height: 26px;
+    width: auto; /* Trimble uses slightly smaller icons */
+    height: 20px;
     object-fit: contain;
     opacity: 0.9; /* matches the subtle style used in TC */
 }
@@ -755,6 +764,14 @@ textarea {
 
 .analyse-row-ok:hover {
     background-color: #c8e6c9 !important;
+}
+
+.analyse-row-over {
+    background-color: #fff8e1 !important;
+}
+
+.analyse-row-over:hover {
+    background-color: #ffecb3 !important;
 }
 
 /* Status Badges */

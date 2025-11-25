@@ -56,7 +56,25 @@ namespace RaumbuchService.Models
     /// </summary>
     public class ZusammenfassungItem
     {
-        public string RoomCategory { get; set; }
+        /// <summary>
+        /// Room type (Raumtyp) - from template column A
+        /// </summary>
+        public string Raumtyp { get; set; }
+        
+        /// <summary>
+        /// Room category (Raumkategorie) - from template column F or IFC LongName
+        /// </summary>
+        public string Raumkategorie { get; set; }
+        
+        /// <summary>
+        /// Legacy property - maps to Raumtyp for backward compatibility
+        /// </summary>
+        public string RoomCategory 
+        { 
+            get => Raumtyp; 
+            set => Raumtyp = value; 
+        }
+        
         public double SollArea { get; set; }
         public double IstArea { get; set; }
         public double Percentage { get; set; }
@@ -122,5 +140,106 @@ namespace RaumbuchService.Models
         /// Rooms that are over tolerance (Überschritten / IST more than SOLL)
         /// </summary>
         public List<string> Ueberschritten { get; set; }
+    }
+    
+    /// <summary>
+    /// Request for getting template headers for column mapping.
+    /// </summary>
+    public class GetTemplateHeadersRequest
+    {
+        public string AccessToken { get; set; }
+        public string TemplateFileId { get; set; }
+    }
+    
+    /// <summary>
+    /// Response containing template headers.
+    /// </summary>
+    public class GetTemplateHeadersResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public List<string> Headers { get; set; }
+    }
+    
+    /// <summary>
+    /// Request for creating Raumbuch directly from template with column mappings.
+    /// </summary>
+    public class CreateRaumbuchRequest
+    {
+        public string AccessToken { get; set; }
+        public string ProjectId { get; set; }
+        public string TemplateFileId { get; set; }
+        public string IfcFileId { get; set; }
+        public string TargetFolderId { get; set; }
+        public ColumnMappings ColumnMappings { get; set; }
+    }
+    
+    /// <summary>
+    /// Column mappings for template to Raumbuch conversion.
+    /// </summary>
+    public class ColumnMappings
+    {
+        /// <summary>
+        /// Column index for Raumtyp (0-based)
+        /// </summary>
+        public int RaumtypColumn { get; set; }
+        
+        /// <summary>
+        /// Column index for Raumkategorie (0-based), -1 if not specified
+        /// </summary>
+        public int RaumkategorieColumn { get; set; } = -1;
+        
+        /// <summary>
+        /// Column index for Fläche Soll (0-based)
+        /// </summary>
+        public int FlaecheSollColumn { get; set; }
+    }
+    
+    /// <summary>
+    /// Response for creating Raumbuch.
+    /// </summary>
+    public class CreateRaumbuchResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public string RaumbuchFileId { get; set; }
+        public string RaumbuchFileName { get; set; }
+        public List<RoomCategoryAnalysis> Analysis { get; set; }
+    }
+    
+    /// <summary>
+    /// Request for getting IST values from IFC file.
+    /// </summary>
+    public class GetIstFromIfcRequest
+    {
+        public string AccessToken { get; set; }
+        public string IfcFileId { get; set; }
+    }
+    
+    /// <summary>
+    /// Response containing IST values by category.
+    /// </summary>
+    public class GetIstFromIfcResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        /// <summary>
+        /// Dictionary mapping room category to total IST area
+        /// </summary>
+        public Dictionary<string, double> IstByCategory { get; set; }
+    }
+    
+    /// <summary>
+    /// Request for updating Raumbuch with column mappings from template.
+    /// </summary>
+    public class UpdateRaumbuchWithMappingsRequest
+    {
+        public string AccessToken { get; set; }
+        public string ProjectId { get; set; }
+        public string RaumbuchFileId { get; set; }
+        public string TemplateFileId { get; set; }
+        public string IfcFileId { get; set; }
+        public string TargetFolderId { get; set; }
+        public ColumnMappings ColumnMappings { get; set; }
     }
 }
