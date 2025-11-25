@@ -150,10 +150,19 @@
             color: var(--tc-primary-blue);
             display: inline-block;
             margin-top: 4px;
+            background: none;
+            border: none;
+            padding: 4px 0;
+            font-family: inherit;
         }
         
         .expand-toggle:hover {
             text-decoration: underline;
+        }
+        
+        .expand-toggle:focus {
+            outline: 2px solid var(--tc-primary-blue);
+            outline-offset: 2px;
         }
         
         .room-list.collapsed {
@@ -207,8 +216,8 @@
                         <label for="visibilityErfuellt">Sichtbar</label>
                     </div>
                 </div>
-                <span class="expand-toggle" onclick="toggleRoomList('erfuellt')">▶ Räume anzeigen</span>
-                <div class="room-list collapsed" id="roomListErfuellt">
+                <button type="button" class="expand-toggle" aria-expanded="false" aria-controls="roomListErfuellt" onclick="toggleRoomList('erfuellt')">▶ Räume anzeigen</button>
+                <div class="room-list collapsed" id="roomListErfuellt" role="region">
                     <!-- Room list will be populated dynamically -->
                 </div>
             </div>
@@ -230,8 +239,8 @@
                         <label for="visibilityUnterschritten">Sichtbar</label>
                     </div>
                 </div>
-                <span class="expand-toggle" onclick="toggleRoomList('unterschritten')">▶ Räume anzeigen</span>
-                <div class="room-list collapsed" id="roomListUnterschritten">
+                <button type="button" class="expand-toggle" aria-expanded="false" aria-controls="roomListUnterschritten" onclick="toggleRoomList('unterschritten')">▶ Räume anzeigen</button>
+                <div class="room-list collapsed" id="roomListUnterschritten" role="region">
                     <!-- Room list will be populated dynamically -->
                 </div>
             </div>
@@ -253,8 +262,8 @@
                         <label for="visibilityUeberschritten">Sichtbar</label>
                     </div>
                 </div>
-                <span class="expand-toggle" onclick="toggleRoomList('ueberschritten')">▶ Räume anzeigen</span>
-                <div class="room-list collapsed" id="roomListUeberschritten">
+                <button type="button" class="expand-toggle" aria-expanded="false" aria-controls="roomListUeberschritten" onclick="toggleRoomList('ueberschritten')">▶ Räume anzeigen</button>
+                <div class="room-list collapsed" id="roomListUeberschritten" role="region">
                     <!-- Room list will be populated dynamically -->
                 </div>
             </div>
@@ -294,9 +303,17 @@
         // INITIALIZATION
         // ====================================================================
         
+        /**
+         * Helper function to set connected state and update UI
+         */
+        function setConnectedState(status, message) {
+            isConnected = (status === 'connected');
+            updateConnectionStatus(status, message);
+        }
+        
         async function init() {
             console.log("Initializing Raumbuch 3D Viewer Extension...");
-            updateConnectionStatus('connecting', 'Verbinde mit 3D Viewer...');
+            setConnectedState('connecting', 'Verbinde mit 3D Viewer...');
             
             try {
                 // Connect to Trimble Workspace API
@@ -312,32 +329,24 @@
                 if (API && API.embed && typeof API.embed.init3DViewer === 'function') {
                     viewerAPI = await API.embed.init3DViewer({});
                     console.log("3D Viewer initialized:", viewerAPI);
-                    
-                    isConnected = true;
-                    updateConnectionStatus('connected', 'Verbunden mit 3D Viewer');
-                    
-                    // Load all IfcSpace objects
+                    setConnectedState('connected', 'Verbunden mit 3D Viewer');
                     await loadIfcSpaces();
                 } else if (API && API.viewer) {
                     // Alternative: viewer might be directly available
                     viewerAPI = API.viewer;
                     console.log("Viewer API obtained directly:", viewerAPI);
-                    
-                    isConnected = true;
-                    updateConnectionStatus('connected', 'Verbunden mit 3D Viewer');
-                    
+                    setConnectedState('connected', 'Verbunden mit 3D Viewer');
                     await loadIfcSpaces();
                 } else {
                     console.warn("embed.init3DViewer not available, trying alternative methods...");
                     // Try to use the viewer API directly if available
                     viewerAPI = API;
-                    isConnected = true;
-                    updateConnectionStatus('connected', 'Verbunden (eingeschränkter Modus)');
+                    setConnectedState('connected', 'Verbunden (eingeschränkter Modus)');
                 }
                 
             } catch (error) {
                 console.error("Error initializing extension:", error);
-                updateConnectionStatus('disconnected', 'Fehler: ' + error.message);
+                setConnectedState('disconnected', 'Fehler: ' + error.message);
             }
         }
         
@@ -472,6 +481,53 @@
             }
         }
         
+        /**
+         * Helper function to normalize category names (handles umlauts)
+         */
+        function normalizeKey(key) {
+            return key.toLowerCase()
+                .replace(/ü/g, 'ue')
+                .replace(/ä/g, 'ae')
+                .replace(/ö/g, 'oe')
+                .replace(/ß/g, 'ss');
+        }
+        
+        /**
+         * Helper function to get category value from config object with multiple key formats
+         */
+        function getCategoryValue(obj, baseName) {
+            if (!obj) return null;
+            
+            // Try different key formats
+            const variations = [
+                baseName,
+                baseName.charAt(0).toUpperCase() + baseName.slice(1),
+                baseName.toLowerCase()
+            ];
+            
+            // Add umlaut variations for 'ueberschritten'
+            if (baseName === 'ueberschritten') {
+                variations.push('Überschritten', 'überschritten');
+            }
+            
+            for (const key of variations) {
+                if (obj[key] !== undefined) {
+                    return obj[key];
+                }
+            }
+            return null;
+        }
+        
+        /**
+         * Helper function to extract room name from room object
+         */
+        function extractRoomName(room) {
+            if (typeof room !== 'object' || room === null) {
+                return room;
+            }
+            return room.longName || room.LongName || room.name || room.Name || room.roomName || room.RoomName || 'Unbekannter Raum';
+        }
+        
         function processConfiguration(config) {
             // Reset category data
             categoryData = {
@@ -480,36 +536,25 @@
                 ueberschritten: { rooms: [], objectIds: [], color: '#D64545' }
             };
             
-            // Process each category
-            // Support multiple JSON formats
+            // Process each category using helper function
+            const categoryNames = ['erfuellt', 'unterschritten', 'ueberschritten'];
             
-            // Format 1: Direct arrays
-            if (Array.isArray(config.Erfuellt) || Array.isArray(config.erfuellt)) {
-                categoryData.erfuellt.rooms = config.Erfuellt || config.erfuellt || [];
-            }
-            if (Array.isArray(config.Unterschritten) || Array.isArray(config.unterschritten)) {
-                categoryData.unterschritten.rooms = config.Unterschritten || config.unterschritten || [];
-            }
-            if (Array.isArray(config.Ueberschritten) || Array.isArray(config.ueberschritten) || 
-                Array.isArray(config.Überschritten) || Array.isArray(config.überschritten)) {
-                categoryData.ueberschritten.rooms = 
-                    config.Ueberschritten || config.ueberschritten || 
-                    config.Überschritten || config.überschritten || [];
-            }
+            // Format 1: Direct arrays at root level
+            categoryNames.forEach(category => {
+                const value = getCategoryValue(config, category);
+                if (Array.isArray(value)) {
+                    categoryData[category].rooms = value;
+                }
+            });
             
             // Format 2: Categories with rooms property
             if (config.categories) {
-                if (config.categories.Erfuellt) {
-                    categoryData.erfuellt.rooms = config.categories.Erfuellt.rooms || config.categories.Erfuellt || [];
-                }
-                if (config.categories.Unterschritten) {
-                    categoryData.unterschritten.rooms = config.categories.Unterschritten.rooms || config.categories.Unterschritten || [];
-                }
-                if (config.categories.Ueberschritten || config.categories.Überschritten) {
-                    categoryData.ueberschritten.rooms = 
-                        (config.categories.Ueberschritten || config.categories.Überschritten).rooms || 
-                        config.categories.Ueberschritten || config.categories.Überschritten || [];
-                }
+                categoryNames.forEach(category => {
+                    const catValue = getCategoryValue(config.categories, category);
+                    if (catValue) {
+                        categoryData[category].rooms = catValue.rooms || (Array.isArray(catValue) ? catValue : []);
+                    }
+                });
             }
             
             // Format 3: Array of items with status/category property
@@ -520,12 +565,12 @@
                     const status = item.status || item.Status || item.category || item.Category;
                     
                     if (name && status) {
-                        const statusLower = status.toLowerCase();
-                        if (statusLower.includes('erfüllt') || statusLower.includes('erfullt') || statusLower === 'ok') {
+                        const normalizedStatus = normalizeKey(status);
+                        if (normalizedStatus.includes('erfuellt') || normalizedStatus === 'ok') {
                             categoryData.erfuellt.rooms.push(name);
-                        } else if (statusLower.includes('unterschritten') || statusLower === 'under' || statusLower === 'zu wenig') {
+                        } else if (normalizedStatus.includes('unterschritten') || normalizedStatus === 'under' || normalizedStatus === 'zu wenig') {
                             categoryData.unterschritten.rooms.push(name);
-                        } else if (statusLower.includes('überschritten') || statusLower.includes('uberschritten') || statusLower === 'over' || statusLower === 'zu viel') {
+                        } else if (normalizedStatus.includes('ueberschritten') || normalizedStatus === 'over' || normalizedStatus === 'zu viel') {
                             categoryData.ueberschritten.rooms.push(name);
                         }
                     }
@@ -533,13 +578,8 @@
             }
             
             // Extract LongName values if rooms contain objects
-            ['erfuellt', 'unterschritten', 'ueberschritten'].forEach(category => {
-                categoryData[category].rooms = categoryData[category].rooms.map(room => {
-                    if (typeof room === 'object') {
-                        return room.longName || room.LongName || room.name || room.Name || room.roomName || room.RoomName || JSON.stringify(room);
-                    }
-                    return room;
-                });
+            categoryNames.forEach(category => {
+                categoryData[category].rooms = categoryData[category].rooms.map(extractRoomName);
             });
             
             // Update UI counts
@@ -581,12 +621,16 @@
             const listEl = document.getElementById(listId);
             const toggleEl = listEl.previousElementSibling;
             
-            if (listEl.classList.contains('collapsed')) {
-                listEl.classList.remove('collapsed');
-                toggleEl.textContent = '▼ Räume ausblenden';
-            } else {
+            const isExpanded = !listEl.classList.contains('collapsed');
+            
+            if (isExpanded) {
                 listEl.classList.add('collapsed');
                 toggleEl.textContent = '▶ Räume anzeigen';
+                toggleEl.setAttribute('aria-expanded', 'false');
+            } else {
+                listEl.classList.remove('collapsed');
+                toggleEl.textContent = '▼ Räume ausblenden';
+                toggleEl.setAttribute('aria-expanded', 'true');
             }
         }
         
