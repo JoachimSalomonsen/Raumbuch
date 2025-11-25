@@ -895,6 +895,9 @@
                     return;
                 }
                 
+                // Log available API.viewer methods for debugging
+                console.log("Available API.viewer methods:", Object.keys(API.viewer).filter(k => typeof API.viewer[k] === 'function'));
+                
                 // Step 1: Get loaded models using getModels()
                 const models = await API.viewer.getModels();
                 console.log("Loaded models:", models);
@@ -904,76 +907,167 @@
                     return;
                 }
                 
-                // Step 2: For each model, get entities/objects
+                // Step 2: For each model, get IfcSpace entities with filtering
                 for (const model of models) {
                     const modelId = model.id || model.modelId || model;
                     console.log("Processing model:", modelId);
                     
-                    // Try getEntities first (may give us IfcSpace entities)
-                    let entities = [];
+                    // Try to get IfcSpace entities using EntityParameter filter
+                    let ifcSpaceEntities = [];
                     try {
-                        entities = await API.viewer.getEntities(modelId);
-                        console.log(`Model ${modelId}: ${entities?.length || 0} entities`);
+                        // Try filtering by class using EntityParameter
+                        ifcSpaceEntities = await API.viewer.getEntities({ 
+                            modelId: modelId,
+                            class: 'IfcSpace' 
+                        });
+                        console.log(`Model ${modelId}: ${ifcSpaceEntities?.length || 0} IfcSpace entities (filtered)`);
                     } catch (e) {
-                        console.warn("getEntities failed:", e);
+                        console.log("getEntities with filter failed, trying alternative:", e.message);
                     }
                     
-                    // Try getObjects if getEntities didn't work
-                    if (!entities || entities.length === 0) {
+                    // If filtering didn't work, get all entities and filter manually
+                    if (!ifcSpaceEntities || ifcSpaceEntities.length === 0) {
                         try {
-                            const objects = await API.viewer.getObjects(modelId);
-                            console.log(`Model ${modelId}: ${objects?.length || 0} objects`);
-                            entities = objects || [];
+                            const allEntities = await API.viewer.getEntities(modelId);
+                            console.log(`Model ${modelId}: ${allEntities?.length || 0} total entities`);
+                            
+                            // Log structure of first entity for debugging
+                            if (allEntities && allEntities.length > 0) {
+                                console.log("Sample entity structure:", JSON.stringify(allEntities[0], null, 2).substring(0, 500));
+                            }
+                            
+                            // Filter for IfcSpace
+                            if (allEntities && Array.isArray(allEntities)) {
+                                ifcSpaceEntities = allEntities.filter(entity => {
+                                    const className = (entity.class || entity.type || entity.className || entity.ifcType || '').toLowerCase();
+                                    return className.includes('ifcspace') || className === 'space';
+                                });
+                                console.log(`Filtered to ${ifcSpaceEntities.length} IfcSpace entities`);
+                            }
                         } catch (e) {
-                            console.warn("getObjects failed:", e);
+                            console.warn("getEntities failed for model:", modelId, e);
                         }
                     }
                     
-                    if (!entities || entities.length === 0) {
-                        console.warn("No entities found for model:", modelId);
+                    if (!ifcSpaceEntities || ifcSpaceEntities.length === 0) {
+                        // No IfcSpace in this model, skip
                         continue;
                     }
                     
-                    // Step 3: Get object IDs to fetch properties
-                    const objectIds = entities.map(e => e.id || e.objectId || e.entityId || e).filter(id => id);
-                    console.log(`Got ${objectIds.length} object IDs`);
+                    // Log IfcSpace entities for debugging
+                    console.log(`Found ${ifcSpaceEntities.length} IfcSpace entities in model ${modelId}`);
+                    if (ifcSpaceEntities.length > 0) {
+                        console.log("Sample IfcSpace entity:", JSON.stringify(ifcSpaceEntities[0], null, 2).substring(0, 800));
+                    }
                     
-                    if (objectIds.length === 0) continue;
+                    // Step 3: Get object IDs (runtime IDs) for IfcSpace entities
+                    const objectRuntimeIds = ifcSpaceEntities.map(e => {
+                        // Handle different ID formats
+                        if (typeof e === 'number') return e;
+                        return e.runtimeId || e.id || e.objectId || e.entityId;
+                    }).filter(id => id !== undefined && id !== null);
                     
-                    // Step 4: Get properties for objects (in batches if needed)
-                    const batchSize = 100;
-                    for (let i = 0; i < objectIds.length; i += batchSize) {
-                        const batch = objectIds.slice(i, i + batchSize);
-                        
+                    console.log(`Got ${objectRuntimeIds.length} IfcSpace object runtime IDs:`, objectRuntimeIds.slice(0, 10));
+                    
+                    if (objectRuntimeIds.length === 0) continue;
+                    
+                    // Step 4: Get properties for IfcSpace objects
+                    // Try multiple API call formats to find one that works
+                    let properties = null;
+                    
+                    // Approach 1: Try with ModelObjectIds format
+                    try {
+                        const propRequest = {
+                            modelId: modelId,
+                            objectRuntimeIds: objectRuntimeIds
+                        };
+                        console.log("Trying getObjectProperties with ModelObjectIds format:", propRequest);
+                        properties = await API.viewer.getObjectProperties(propRequest);
+                        console.log(`Approach 1: Got properties for ${properties?.length || 0} objects`);
+                    } catch (e) {
+                        console.log("Approach 1 (ModelObjectIds) failed:", e.message);
+                    }
+                    
+                    // Approach 2: Try with two separate parameters (modelId, objectIds)
+                    if (!properties || properties.length === 0) {
                         try {
-                            const properties = await API.viewer.getObjectProperties(modelId, batch);
-                            console.log(`Got properties for ${properties?.length || 0} objects (batch ${i / batchSize + 1})`);
-                            
-                            if (properties && properties.length > 0) {
-                                // Match objects by Long Name property
-                                properties.forEach(obj => {
-                                    const longName = extractLongName(obj);
-                                    const objId = obj.id || obj.objectId || obj.entityId;
-                                    
-                                    if (longName) {
-                                        console.log(`Object ${objId}: Long Name = "${longName}"`);
-                                        
-                                        // Check each category
-                                        if (categoryData.erfuellt.rooms.includes(longName)) {
-                                            categoryData.erfuellt.objectIds.push(objId);
-                                        }
-                                        if (categoryData.unterschritten.rooms.includes(longName)) {
-                                            categoryData.unterschritten.objectIds.push(objId);
-                                        }
-                                        if (categoryData.ueberschritten.rooms.includes(longName)) {
-                                            categoryData.ueberschritten.objectIds.push(objId);
-                                        }
-                                    }
-                                });
-                            }
+                            console.log("Trying getObjectProperties with (modelId, objectIds) format");
+                            properties = await API.viewer.getObjectProperties(modelId, objectRuntimeIds);
+                            console.log(`Approach 2: Got properties for ${properties?.length || 0} objects`);
                         } catch (e) {
-                            console.warn("getObjectProperties failed for batch:", e);
+                            console.log("Approach 2 (two params) failed:", e.message);
                         }
+                    }
+                    
+                    // Approach 3: Try getting properties one by one
+                    if (!properties || properties.length === 0) {
+                        console.log("Trying to get properties one by one...");
+                        properties = [];
+                        for (let i = 0; i < Math.min(objectRuntimeIds.length, 10); i++) {
+                            try {
+                                const objId = objectRuntimeIds[i];
+                                const props = await API.viewer.getObjectProperties(modelId, objId);
+                                if (props) {
+                                    properties.push(Array.isArray(props) ? props[0] : props);
+                                }
+                            } catch (e) {
+                                // Continue to next object
+                            }
+                        }
+                        console.log(`Approach 3: Got properties for ${properties.length} objects (one by one)`);
+                    }
+                    
+                    if (properties && properties.length > 0) {
+                        // Log first property object structure for debugging
+                        console.log("Sample property object structure:", JSON.stringify(properties[0], null, 2).substring(0, 1000));
+                        
+                        // Match objects by Long Name property
+                        properties.forEach((obj, index) => {
+                            const longName = extractLongName(obj);
+                            const objId = obj.runtimeId || obj.id || obj.objectId || obj.entityId || objectRuntimeIds[index];
+                            
+                            if (longName) {
+                                console.log(`IfcSpace ${objId}: Long Name = "${longName}"`);
+                                
+                                // Store modelId with objectId for setObjectState
+                                const objectRef = { modelId: modelId, objectRuntimeId: objId };
+                                
+                                // Check each category
+                                if (categoryData.erfuellt.rooms.includes(longName)) {
+                                    categoryData.erfuellt.objectIds.push(objectRef);
+                                }
+                                if (categoryData.unterschritten.rooms.includes(longName)) {
+                                    categoryData.unterschritten.objectIds.push(objectRef);
+                                }
+                                if (categoryData.ueberschritten.rooms.includes(longName)) {
+                                    categoryData.ueberschritten.objectIds.push(objectRef);
+                                }
+                            }
+                        });
+                    } else {
+                        console.log("No properties returned, trying to match using entity data directly");
+                        
+                        // Fallback: Try to match entities directly if they have properties
+                        ifcSpaceEntities.forEach(entity => {
+                            const longName = extractLongName(entity);
+                            const objId = entity.runtimeId || entity.id || entity.objectId || entity.entityId;
+                            
+                            if (longName) {
+                                console.log(`Entity ${objId}: Long Name = "${longName}" (from entity)`);
+                                
+                                const objectRef = { modelId: modelId, objectRuntimeId: objId };
+                                
+                                if (categoryData.erfuellt.rooms.includes(longName)) {
+                                    categoryData.erfuellt.objectIds.push(objectRef);
+                                }
+                                if (categoryData.unterschritten.rooms.includes(longName)) {
+                                    categoryData.unterschritten.objectIds.push(objectRef);
+                                }
+                                if (categoryData.ueberschritten.rooms.includes(longName)) {
+                                    categoryData.ueberschritten.objectIds.push(objectRef);
+                                }
+                            }
+                        });
                     }
                 }
                 
@@ -990,24 +1084,32 @@
         
         function extractLongName(obj) {
             // Try different ways to extract LongName from object properties
+            // Based on Trimble Connect API documentation, properties can be in various formats
             
-            // Direct property
+            // Direct property (various casing)
             if (obj.longName) return obj.longName;
             if (obj.LongName) return obj.LongName;
             if (obj['Long Name']) return obj['Long Name'];
+            
+            // Standard IFC property format: IfcSpace.LongName
+            if (obj['IfcSpace.LongName']) return obj['IfcSpace.LongName'];
+            if (obj['Pset_SpaceCommon.LongName']) return obj['Pset_SpaceCommon.LongName'];
             
             // From properties array (PropertySet format from Trimble API)
             // Structure: obj.properties = [{name: "IFC Space", properties: [{name: "Long Name", value: "..."}]}]
             if (obj.properties && Array.isArray(obj.properties)) {
                 for (const pset of obj.properties) {
-                    const psetName = pset.name || pset.Name || '';
+                    const psetName = (pset.name || pset.Name || '').toLowerCase();
                     
-                    // Check in "IFC Space" or "Ifc Space" property set
-                    if (psetName.toLowerCase().includes('ifc') && psetName.toLowerCase().includes('space')) {
+                    // Check in "IFC Space", "Ifc Space", "IfcSpace" or related property sets
+                    if (psetName.includes('ifc') && psetName.includes('space') || 
+                        psetName.includes('pset_spacecommon') ||
+                        psetName.includes('space')) {
+                        
                         if (pset.properties && Array.isArray(pset.properties)) {
                             const longNameProp = pset.properties.find(p => {
                                 const propName = (p.name || p.Name || '').toLowerCase();
-                                return propName === 'long name' || propName === 'longname';
+                                return propName === 'long name' || propName === 'longname' || propName === 'long_name';
                             });
                             if (longNameProp) {
                                 return longNameProp.value || longNameProp.Value;
@@ -1016,15 +1118,23 @@
                     }
                 }
                 
-                // Also check any property set for Long Name
+                // Also check any property set for Long Name (fallback)
                 for (const pset of obj.properties) {
                     if (pset.properties && Array.isArray(pset.properties)) {
                         const longNameProp = pset.properties.find(p => {
                             const propName = (p.name || p.Name || '').toLowerCase();
-                            return propName === 'long name' || propName === 'longname';
+                            return propName === 'long name' || propName === 'longname' || propName === 'long_name';
                         });
                         if (longNameProp) {
                             return longNameProp.value || longNameProp.Value;
+                        }
+                    }
+                    
+                    // Handle flat properties array format
+                    if (typeof pset === 'object' && pset.name) {
+                        const propName = (pset.name || '').toLowerCase();
+                        if (propName === 'long name' || propName === 'longname') {
+                            return pset.value || pset.Value;
                         }
                     }
                 }
@@ -1035,6 +1145,17 @@
                 if (obj.attributes.longName) return obj.attributes.longName;
                 if (obj.attributes.LongName) return obj.attributes.LongName;
                 if (obj.attributes['Long Name']) return obj.attributes['Long Name'];
+            }
+            
+            // From name property (sometimes Long Name is stored as name)
+            // Only use if it looks like a room type name (not a GUID or generic name)
+            if (obj.name && typeof obj.name === 'string' && !obj.name.match(/^[0-9a-f-]{36}$/i)) {
+                // Don't return generic names like "Space" or IFC class names
+                const name = obj.name;
+                if (!name.toLowerCase().startsWith('ifc') && name.length > 2) {
+                    // This might be the Long Name
+                    return name;
+                }
             }
             
             return null;
@@ -1081,15 +1202,34 @@
                 return;
             }
             
+            console.log(`Applying color ${data.color} to ${data.objectIds.length} objects in ${category}`);
+            
             try {
-                if (typeof viewerAPI.setObjectsColor === 'function') {
-                    await viewerAPI.setObjectsColor(data.objectIds, data.color);
-                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
+                // Use API.viewer.setObjectState which is the documented Trimble Connect API method
+                // Format: setObjectState(objects, state) where state includes {color: '#RRGGBB'}
+                if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
+                    // Object IDs are stored as {modelId, objectRuntimeId}
+                    const objectStates = data.objectIds.map(objRef => ({
+                        modelId: objRef.modelId,
+                        objectRuntimeId: objRef.objectRuntimeId,
+                        state: { color: data.color }
+                    }));
+                    
+                    await API.viewer.setObjectState(objectStates);
+                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category} using setObjectState`);
+                } else if (typeof viewerAPI.setObjectsColor === 'function') {
+                    // Fallback: Try direct setObjectsColor method
+                    const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                    await viewerAPI.setObjectsColor(ids, data.color);
+                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category} using setObjectsColor`);
                 } else if (viewerAPI.objects && typeof viewerAPI.objects.setColor === 'function') {
-                    await viewerAPI.objects.setColor(data.objectIds, data.color);
+                    // Fallback: Try objects.setColor
+                    const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                    await viewerAPI.objects.setColor(ids, data.color);
                     console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
                 } else {
-                    console.warn("setObjectsColor method not available");
+                    console.warn("No color method available. Available API.viewer methods:", 
+                        API && API.viewer ? Object.keys(API.viewer).filter(k => typeof API.viewer[k] === 'function') : 'none');
                 }
             } catch (error) {
                 console.error(`Error applying color to ${category}:`, error);
@@ -1104,13 +1244,25 @@
             }
             
             try {
-                if (typeof viewerAPI.resetObjectsColor === 'function') {
-                    await viewerAPI.resetObjectsColor(data.objectIds);
+                // Use setObjectState with color: 'reset' to remove colors
+                if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
+                    const objectStates = data.objectIds.map(objRef => ({
+                        modelId: objRef.modelId,
+                        objectRuntimeId: objRef.objectRuntimeId,
+                        state: { color: 'reset' }
+                    }));
+                    
+                    await API.viewer.setObjectState(objectStates);
+                    console.log(`Reset colors for ${data.objectIds.length} objects in ${category} using setObjectState`);
+                } else if (typeof viewerAPI.resetObjectsColor === 'function') {
+                    const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                    await viewerAPI.resetObjectsColor(ids);
                     console.log(`Reset colors for ${data.objectIds.length} objects in ${category}`);
                 } else if (viewerAPI.objects && typeof viewerAPI.objects.resetColor === 'function') {
-                    await viewerAPI.objects.resetColor(data.objectIds);
+                    const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                    await viewerAPI.objects.resetColor(ids);
                 } else {
-                    console.warn("resetObjectsColor method not available");
+                    console.warn("No reset color method available");
                 }
             } catch (error) {
                 console.error(`Error resetting color for ${category}:`, error);
@@ -1129,8 +1281,8 @@
         }
         
         async function resetAllColors() {
-            if (!viewerAPI) {
-                console.warn("Viewer API not available");
+            if (!API || !API.viewer) {
+                console.warn("API.viewer not available");
                 return;
             }
             
@@ -1143,10 +1295,21 @@
                 ];
                 
                 if (allObjectIds.length > 0) {
-                    if (typeof viewerAPI.resetObjectsColor === 'function') {
-                        await viewerAPI.resetObjectsColor(allObjectIds);
-                    } else if (typeof viewerAPI.resetAllColors === 'function') {
-                        await viewerAPI.resetAllColors();
+                    // Use setObjectState with color: 'reset'
+                    if (typeof API.viewer.setObjectState === 'function') {
+                        const objectStates = allObjectIds.map(objRef => ({
+                            modelId: objRef.modelId,
+                            objectRuntimeId: objRef.objectRuntimeId,
+                            state: { color: 'reset' }
+                        }));
+                        
+                        await API.viewer.setObjectState(objectStates);
+                        console.log(`Reset colors for ${allObjectIds.length} objects using setObjectState`);
+                    } else if (typeof viewerAPI.resetObjectsColor === 'function') {
+                        const ids = allObjectIds.map(ref => ref.objectRuntimeId || ref);
+                        await viewerAPI.resetObjectsColor(ids);
+                    } else if (typeof API.viewer.reset === 'function') {
+                        await API.viewer.reset();
                     }
                 }
                 
@@ -1176,21 +1339,35 @@
             }
             
             try {
-                if (isVisible) {
-                    // Show objects
+                // Use setObjectState with visible property
+                if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
+                    const objectStates = data.objectIds.map(objRef => ({
+                        modelId: objRef.modelId,
+                        objectRuntimeId: objRef.objectRuntimeId,
+                        state: { visible: isVisible }
+                    }));
+                    
+                    await API.viewer.setObjectState(objectStates);
+                    console.log(`${isVisible ? 'Showing' : 'Hiding'} ${data.objectIds.length} objects in ${category} using setObjectState`);
+                } else if (isVisible) {
+                    // Fallback: Show objects
                     if (typeof viewerAPI.showObjects === 'function') {
-                        await viewerAPI.showObjects(data.objectIds);
+                        const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                        await viewerAPI.showObjects(ids);
                         console.log(`Showing ${data.objectIds.length} objects in ${category}`);
                     } else if (viewerAPI.objects && typeof viewerAPI.objects.show === 'function') {
-                        await viewerAPI.objects.show(data.objectIds);
+                        const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                        await viewerAPI.objects.show(ids);
                     }
                 } else {
-                    // Hide objects
+                    // Fallback: Hide objects
                     if (typeof viewerAPI.hideObjects === 'function') {
-                        await viewerAPI.hideObjects(data.objectIds);
+                        const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                        await viewerAPI.hideObjects(ids);
                         console.log(`Hiding ${data.objectIds.length} objects in ${category}`);
                     } else if (viewerAPI.objects && typeof viewerAPI.objects.hide === 'function') {
-                        await viewerAPI.objects.hide(data.objectIds);
+                        const ids = data.objectIds.map(ref => ref.objectRuntimeId || ref);
+                        await viewerAPI.objects.hide(ids);
                     }
                 }
             } catch (error) {
