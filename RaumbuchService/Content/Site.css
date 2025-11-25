@@ -535,23 +535,21 @@ textarea {
     display: flex;
     justify-content: center; /* center the tabs horizontally */
     align-items: center;
-    width: 100%; /* full width */
-    max-width: 100%; /* override parent limits */
-
+    width: 100vw; /* full viewport width */
+    margin-left: calc(-50vw + 50%); /* break out of container */
     background-color: var(--tc-dark-blue);
     padding: 0;
-    margin: 0;
-    border-bottom: 3px solid var(--tc-primary-blue);
+    border-bottom: none;
     height: 60px; /* matches Trimble Connect */
-
-    position: relative; /* prevents shifting inside layouts */
-    left: 0;
-    right: 0;
+    position: relative;
+    box-sizing: border-box;
 }
 
 /* TABS */
 .tc-tab {
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 120px;
+    max-width: 200px;
     display: flex;
     flex-direction: column; /* icon above text */
     align-items: center;
@@ -562,8 +560,11 @@ textarea {
     cursor: pointer;
     user-select: none;
     text-align: center;
-    padding-top: 6px;
+    padding: 6px 20px;
+    height: 100%;
     transition: background-color 0.2s ease;
+    box-sizing: border-box;
+    border-bottom: 3px solid transparent;
 }
 
     /* Hover state = soft lighter blue (same appearance as Trimble Connect) */
@@ -571,11 +572,10 @@ textarea {
         background-color: #1f5d8f; /* close to Trimble Connect hover color */
     }
 
-    /* Active tab = lighter blue + white underline */
+    /* Active tab = white underline only, no background color change */
     .tc-tab.active {
-        background-color: transparent; /* Trimble-like pressed color */
+        background-color: transparent;
         border-bottom: 3px solid white;
-        margin-bottom: -3px; /* prevents layout jump when adding the border */
     }
 
 /* ICONS */
