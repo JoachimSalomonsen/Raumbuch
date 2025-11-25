@@ -637,7 +637,7 @@
                 if (currentConfig.viewerData) {
                     // Use pre-saved viewer data
                     processViewerData(currentConfig.viewerData);
-                } else if (currentConfig.files && currentConfig.files.raumbuch && workspaceToken) {
+                } else if (currentConfig.files && currentConfig.files.raumbuch && (currentConfig.files.raumbuch.id || currentConfig.files.raumbuch) && workspaceToken) {
                     // Load viewer data from Raumbuch file
                     await loadViewerDataFromRaumbuch(currentConfig);
                 } else {
@@ -678,11 +678,15 @@
          * Loads viewer data from Raumbuch file via API
          */
         async function loadViewerDataFromRaumbuch(config) {
-            const raumbuchFileId = config.files?.raumbuch;
+            // config.files.raumbuch is an object with id and name properties
+            const raumbuchFile = config.files?.raumbuch;
+            const raumbuchFileId = raumbuchFile?.id || raumbuchFile;
             
             if (!raumbuchFileId || !workspaceToken) {
                 throw new Error('Raumbuch-Datei ID oder Token fehlt');
             }
+            
+            console.log('Loading viewer data for Raumbuch file:', raumbuchFileId);
             
             const response = await fetch(`${API_RAUMBUCH}/get-viewer-data`, {
                 method: 'POST',
@@ -696,6 +700,8 @@
             });
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API error response:', errorText);
                 throw new Error(`Fehler beim Laden der Viewer-Daten: HTTP ${response.status} ${response.statusText || ''}`);
             }
             
