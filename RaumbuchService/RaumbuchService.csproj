@@ -329,6 +329,7 @@
     <Content Include="Global.asax" />
     <Content Include="Img\analyse.png" />
     <Content Include="Img\book.png" />
+    <Content Include="Img\book_black.png" />
     <Content Include="Img\mail.png" />
     <Content Include="Img\material.png" />
     <Content Include="Img\settings.png" />
