@@ -60,7 +60,7 @@ body {
     color: var(--tc-text-primary);
     line-height: 1.6;
     min-height: 100vh;
-    padding: 20px;
+    padding: 0px;
 }
 
 /* ------------------------------------------------------------
@@ -525,51 +525,68 @@ textarea {
     font-size: 0.9em;
 }
 
+
+
 /* ============================================================
    TRIMBLE CONNECT STYLE - TOP TABS
    ============================================================ */
 
 .tc-tabs {
     display: flex;
+    justify-content: center; /* center the tabs horizontally */
+    align-items: center;
+    width: 100vw; /* full viewport width */
+    margin-left: calc(-50vw + 50%); /* break out of container */
     background-color: var(--tc-dark-blue);
     padding: 0;
-    margin: 0;
-    border-bottom: 3px solid var(--tc-primary-blue);
+    border-bottom: none;
+    height: 60px; /* matches Trimble Connect */
+    position: relative;
+    box-sizing: border-box;
 }
 
+/* TABS */
 .tc-tab {
-    flex: 1;
-    display: flex; /* flex container */
-    flex-direction: column; /* logo above text */
-    align-items: center; /* center horizontal */
-    justify-content: center; /* center vertical */
-    gap: 4px; /* space between icon and text */
-
-    padding: 10px 0;
+    flex: 0 0 auto;
+    min-width: 120px;
+    max-width: 200px;
+    display: flex;
+    flex-direction: column; /* icon above text */
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.2s ease;
     text-align: center;
+    padding: 6px 20px;
+    height: 100%;
+    transition: background-color 0.2s ease;
+    box-sizing: border-box;
+    border-bottom: 3px solid transparent;
 }
 
+    /* Hover state = soft lighter blue (same appearance as Trimble Connect) */
     .tc-tab:hover {
-        background-color: #004b8a;
+        background-color: #1f5d8f; /* close to Trimble Connect hover color */
     }
 
+    /* Active tab = white underline only, no background color change */
     .tc-tab.active {
-        background-color: var(--tc-primary-blue);
+        background-color: transparent;
         border-bottom: 3px solid white;
     }
 
-/* icon style */
+/* ICONS */
 .tc-tab-icon {
-    width: 30px;
-    height: 30px;
+    width: 26px; /* Trimble uses slightly smaller icons */
+    height: 26px;
     object-fit: contain;
+    opacity: 0.9; /* matches the subtle style used in TC */
 }
 
+/* CONTENT */
 .tab-content {
     display: none;
 }
@@ -577,4 +594,275 @@ textarea {
     .tab-content.active {
         display: block;
     }
+
+
+
+/* ============================================================
+   ANALYSE TAB STYLES
+   ============================================================ */
+
+/* KPI Widget */
+.kpi-widget {
+    background: linear-gradient(135deg, var(--tc-dark-blue) 0%, var(--tc-primary-blue) 100%);
+    color: white;
+}
+
+.kpi-widget h2 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.kpi-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.kpi-item {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+}
+
+.kpi-label {
+    display: block;
+    font-size: 0.8em;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.kpi-value {
+    display: block;
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.kpi-status-ok {
+    border-left: 3px solid #2E8540;
+}
+
+.kpi-status-under {
+    border-left: 3px solid #D64545;
+}
+
+.kpi-status-over {
+    border-left: 3px solid #FFBF47;
+}
+
+/* Tolerance Controls */
+.tolerance-controls {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Filter Controls */
+.filter-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px !important;
+    width: auto !important;
+}
+
+.filter-btn.active {
+    background-color: var(--tc-primary-blue) !important;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.search-box input {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Analyse Table */
+.analyse-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--tc-border);
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.analyse-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.analyse-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--tc-bg-card);
+    z-index: 1;
+}
+
+.analyse-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--tc-border);
+    background-color: #f5f5f5;
+    cursor: pointer;
+    user-select: none;
+}
+
+.analyse-table th:hover {
+    background-color: #eee;
+}
+
+.analyse-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--tc-border);
+}
+
+.analyse-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.analyse-row-under {
+    background-color: #fff0f0 !important;
+}
+
+.analyse-row-under:hover {
+    background-color: #ffe0e0 !important;
+}
+
+.analyse-row-ok {
+    background-color: #e8f5e9 !important;
+}
+
+.analyse-row-ok:hover {
+    background-color: #c8e6c9 !important;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-ok {
+    background-color: #dff3e6;
+    color: #2E8540;
+}
+
+.status-under {
+    background-color: #f8d7da;
+    color: #D64545;
+}
+
+.status-over {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar-bg {
+    flex: 1;
+    height: 16px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    min-width: 80px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #333;
+}
+
+.progress-bar-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    min-width: 40px;
+}
+
+/* Comment Input */
+.comment-input {
+    width: 100%;
+    max-width: 150px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--tc-primary-blue);
+}
+
+/* Responsive adjustments for Analyse tab */
+@media (max-width: 768px) {
+    .kpi-container {
+        flex-direction: column;
+    }
+    
+    .kpi-item {
+        min-width: auto;
+    }
+    
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box {
+        max-width: none;
+    }
+    
+    .analyse-table-container {
+        max-height: 300px;
+    }
+    
+    .analyse-table {
+        font-size: 0.8em;
+    }
+    
+    .analyse-table th,
+    .analyse-table td {
+        padding: 6px 4px;
+    }
+}
 

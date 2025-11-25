@@ -21,14 +21,20 @@ async function init() {
 
     console.log("Connected to Workspace API:", API);
 
-    // --- Build Trimble Connect menu ---
-    await API.ui.setMenu({
-        title: "Raumbuch",
-        icon: "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
-        command: "menu_main",
-    });
+    // --- Build Trimble Connect menu (if UI API available) ---
+    if (API && API.ui && typeof API.ui.setMenu === 'function') {
+        await API.ui.setMenu({
+            title: "Raumbuch",
+            icon: "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
+            command: "menu_main",
+        });
 
-    await API.ui.setActiveMenuItem("menu_raumbuch");
+        if (typeof API.ui.setActiveMenuItem === 'function') {
+            await API.ui.setActiveMenuItem("menu_raumbuch");
+        }
+    } else {
+        console.log("UI API not available, skipping menu setup");
+    }
 
     // --- Fetch useful info from Connect ---
     try {
@@ -97,6 +103,10 @@ function handleCommand(command) {
             activateTab("tab-konfig");
             break;
 
+        case "menu_analyse":
+            activateTab("tab-analyse");
+            break;
+
         case "menu_ausstattung":
             activateTab("tab-ausstattung");
             break;
@@ -139,7 +149,7 @@ function activateTab(tabId) {
         });
         
         // Find and activate the corresponding tab button
-        const index = ['tab-konfig', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
+        const index = ['tab-konfig', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
         const tabButtons = document.querySelectorAll('.tc-tab');
         if (tabButtons[index]) {
             tabButtons[index].classList.add('active');

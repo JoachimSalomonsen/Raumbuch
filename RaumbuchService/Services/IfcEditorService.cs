@@ -8,18 +8,22 @@ namespace RaumbuchService.Services
 {
     /// <summary>
     /// IFC editor service for reading and modifying IFC files.
-    /// Supports creating Pset "�berpr�fung der Raumkategorie" on IfcSpace objects.
+    /// Supports creating Pset "Raumbuch" on IfcSpace objects.
     /// Uses GeometryGymIFC 0.1.21
     /// </summary>
     public class IfcEditorService
     {
-        private const string VERIFICATION_PSET_NAME = "�berpr�fung der Raumkategorie";
-        private const string PROP_PERCENTAGE = "Prozentuale Fl�che";
-        private const string PROP_OVER_LIMIT = "�ber angegebener Raumfl�che";
+        private const string VERIFICATION_PSET_NAME = "Überprüfung der Raumkategorie";
+        private const string PROP_PERCENTAGE = "Prozentuale Fläche";
+        private const string PROP_OVER_LIMIT = "Über angegebener Raumfläche";
 
         private const string RAUMBUCH_PSET_NAME = "Raumbuch";
-        private const string PROP_DIFFERENZ = "Differenzfl�che zur Raumkategorie";
-        private const string PROP_GEMAESS_RAUMPROGRAMM = "Gem�ss Raumprogramm";
+        // New property names according to spec
+        private const string PROP_FLAECHE_SOLL = "Fläche SOLL";
+        private const string PROP_ABWEICHUNG_PROZENT = "Abweichung in Prozent";
+        private const string PROP_RAUMPROGRAMM_STATUS = "Raumprogramm Status";
+        private const string PROP_RAUMPROGRAMM_ERFUELLT = "Raumprogramm erfüllt";
+        private const string PROP_KOMMENTAR_RAUMTYP = "Kommentar Raumtyp";
 
         /// <summary>
         /// Reads all IfcSpace objects from an IFC file.
@@ -284,21 +288,46 @@ namespace RaumbuchService.Services
                 // Create new Pset "Raumbuch" (dedicated to this space only)
                 var newPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
 
-                // Add property: Differenzfl�che zum Raumprogramm (IfcAreaMeasure)
-                var propDifferenz = new IfcPropertySingleValue(
+                // Add property: Fläche SOLL (IfcAreaMeasure)
+                var propSoll = new IfcPropertySingleValue(
                     db,
-                    PROP_DIFFERENZ,
-                    new IfcAreaMeasure(data.Differenz)
+                    PROP_FLAECHE_SOLL,
+                    new IfcAreaMeasure(data.SollArea)
                 );
-                newPset.HasProperties[PROP_DIFFERENZ] = propDifferenz;
+                newPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
 
-                // Add property: Gem�ss Raumprogramm (IfcText: "Ja" / "Nein")
-                var propGemaess = new IfcPropertySingleValue(
+                // Add property: Abweichung in Prozent (IfcRatioMeasure)
+                var propAbweichung = new IfcPropertySingleValue(
                     db,
-                    PROP_GEMAESS_RAUMPROGRAMM,
-                    new IfcText(data.GemaessRaumprogramm)
+                    PROP_ABWEICHUNG_PROZENT,
+                    new IfcRatioMeasure(data.Percentage)
                 );
-                newPset.HasProperties[PROP_GEMAESS_RAUMPROGRAMM] = propGemaess;
+                newPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
+
+                // Add property: Raumprogramm Status (IfcLabel: Unterschritten/Überschritten/Erfüllt)
+                var propStatus = new IfcPropertySingleValue(
+                    db,
+                    PROP_RAUMPROGRAMM_STATUS,
+                    new IfcLabel(data.Status)
+                );
+                newPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
+
+                // Add property: Raumprogramm erfüllt (IfcBoolean: true for Erfüllt/Überschritten, false for Unterschritten)
+                bool isErfuellt = data.Status != "Unterschritten";
+                var propErfuellt = new IfcPropertySingleValue(
+                    db,
+                    PROP_RAUMPROGRAMM_ERFUELLT,
+                    new IfcBoolean(isErfuellt)
+                );
+                newPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
+
+                // Add property: Kommentar Raumtyp (IfcText)
+                var propKommentar = new IfcPropertySingleValue(
+                    db,
+                    PROP_KOMMENTAR_RAUMTYP,
+                    new IfcText(data.Kommentar ?? "")
+                );
+                newPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
 
                 // Create NEW relation (dedicated to this space only)
                 var newRel = new IfcRelDefinesByProperties(newPset);
@@ -393,8 +422,14 @@ namespace RaumbuchService.Services
                         if (prop == null) continue;
 
                         // Skip properties we're about to update
-                        if (prop.Name.Equals(PROP_DIFFERENZ, StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals(PROP_GEMAESS_RAUMPROGRAMM, StringComparison.OrdinalIgnoreCase))
+                        if (prop.Name.Equals(PROP_FLAECHE_SOLL, StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals(PROP_ABWEICHUNG_PROZENT, StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals(PROP_RAUMPROGRAMM_STATUS, StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals(PROP_RAUMPROGRAMM_ERFUELLT, StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals(PROP_KOMMENTAR_RAUMTYP, StringComparison.OrdinalIgnoreCase) ||
+                            // Also skip old property names for backward compatibility
+                            prop.Name.Equals("Differenzfläche zur Raumkategorie", StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals("Gemäss Raumprogramm", StringComparison.OrdinalIgnoreCase))
                             continue;
 
                         // Clone other properties
@@ -447,20 +482,42 @@ namespace RaumbuchService.Services
                     newRel.RelatedObjects.Add(space);
                 }
 
-                // Add/Update properties
-                var propDifferenz = new IfcPropertySingleValue(
+                // Add/Update properties with new names
+                var propSoll = new IfcPropertySingleValue(
                     db,
-                    PROP_DIFFERENZ,
-                    new IfcAreaMeasure(data.Differenz)
+                    PROP_FLAECHE_SOLL,
+                    new IfcAreaMeasure(data.SollArea)
                 );
-                targetPset.HasProperties[PROP_DIFFERENZ] = propDifferenz;
+                targetPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
 
-                var propGemaess = new IfcPropertySingleValue(
+                var propAbweichung = new IfcPropertySingleValue(
                     db,
-                    PROP_GEMAESS_RAUMPROGRAMM,
-                    new IfcText(data.GemaessRaumprogramm)
+                    PROP_ABWEICHUNG_PROZENT,
+                    new IfcRatioMeasure(data.Percentage)
                 );
-                targetPset.HasProperties[PROP_GEMAESS_RAUMPROGRAMM] = propGemaess;
+                targetPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
+
+                var propStatus = new IfcPropertySingleValue(
+                    db,
+                    PROP_RAUMPROGRAMM_STATUS,
+                    new IfcLabel(data.Status)
+                );
+                targetPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
+
+                bool isErfuellt = data.Status != "Unterschritten";
+                var propErfuellt = new IfcPropertySingleValue(
+                    db,
+                    PROP_RAUMPROGRAMM_ERFUELLT,
+                    new IfcBoolean(isErfuellt)
+                );
+                targetPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
+
+                var propKommentar = new IfcPropertySingleValue(
+                    db,
+                    PROP_KOMMENTAR_RAUMTYP,
+                    new IfcText(data.Kommentar ?? "")
+                );
+                targetPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
 
                 result.RoomsUpdated++;
             }
@@ -1112,11 +1169,19 @@ namespace RaumbuchService.Services
 
     /// <summary>
     /// Data for Pset "Raumbuch" per room.
+    /// Updated property structure:
+    /// - Fläche SOLL (Numeric)
+    /// - Abweichung in Prozent (Numeric)  
+    /// - Raumprogramm Status (IfcLabel: Unterschritten/Überschritten/Erfüllt)
+    /// - Raumprogramm erfüllt (Boolean: Yes for Erfüllt and Überschritten, No for Unterschritten)
+    /// - Kommentar Raumtyp (Text)
     /// </summary>
     public class RaumbuchPsetData
     {
-        public double Differenz { get; set; }               // Differenzfl�che zum Raumprogramm (m�)
-        public string GemaessRaumprogramm { get; set; }     // "Ja" or "Nein"
+        public double SollArea { get; set; }            // Fläche SOLL (m²)
+        public double Percentage { get; set; }          // Abweichung in Prozent
+        public string Status { get; set; }              // Raumprogramm Status: Unterschritten/Überschritten/Erfüllt
+        public string Kommentar { get; set; }           // Kommentar Raumtyp
     }
 
     public class WritePsetRaumbuchResult
