@@ -194,15 +194,15 @@
                             <span class="kpi-value" id="kpiDeviation">- %</span>
                         </div>
                         <div class="kpi-item kpi-status-ok">
-                            <span class="kpi-label">OK</span>
+                            <span class="kpi-label">Erfüllt</span>
                             <span class="kpi-value" id="kpiOkCount">0</span>
                         </div>
                         <div class="kpi-item kpi-status-under">
-                            <span class="kpi-label">Zu wenig</span>
+                            <span class="kpi-label">Unterschritten</span>
                             <span class="kpi-value" id="kpiUnderCount">0</span>
                         </div>
                         <div class="kpi-item kpi-status-over">
-                            <span class="kpi-label">Zu viel</span>
+                            <span class="kpi-label">Überschritten</span>
                             <span class="kpi-value" id="kpiOverCount">0</span>
                         </div>
                     </div>
@@ -230,12 +230,12 @@
                     <div class="filter-controls">
                         <div class="filter-buttons">
                             <button class="btn btn-secondary filter-btn active" data-filter="all" onclick="filterAnalyseTable('all')">Alle</button>
-                            <button class="btn btn-secondary filter-btn" data-filter="ok" onclick="filterAnalyseTable('ok')">✅ OK</button>
-                            <button class="btn btn-secondary filter-btn" data-filter="under" onclick="filterAnalyseTable('under')">⚠️ Zu wenig</button>
-                            <button class="btn btn-secondary filter-btn" data-filter="over" onclick="filterAnalyseTable('over')">📊 Zu viel</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="ok" onclick="filterAnalyseTable('ok')">✅ Erfüllt</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="under" onclick="filterAnalyseTable('under')">⚠️ Unterschritten</button>
+                            <button class="btn btn-secondary filter-btn" data-filter="over" onclick="filterAnalyseTable('over')">📊 Überschritten</button>
                         </div>
                         <div class="search-box">
-                            <input type="text" id="analyseSearch" class="form-control" placeholder="Suche nach Raumkategorie..." onkeyup="searchAnalyseTable()">
+                            <input type="text" id="analyseSearch" class="form-control" placeholder="Suche nach Raumtyp..." onkeyup="searchAnalyseTable()">
                         </div>
                     </div>
                 </section>
@@ -249,18 +249,17 @@
                         <table class="analyse-table" id="analyseTable">
                             <thead>
                                 <tr>
-                                    <th onclick="sortAnalyseTable(0)">Raumkategorie ↕</th>
+                                    <th onclick="sortAnalyseTable(0)">Raumtyp ↕</th>
                                     <th onclick="sortAnalyseTable(1)">SOLL (m²) ↕</th>
                                     <th onclick="sortAnalyseTable(2)">IST (m²) ↕</th>
-                                    <th onclick="sortAnalyseTable(3)">Prozent (%) ↕</th>
-                                    <th>Visualisierung</th>
-                                    <th onclick="sortAnalyseTable(5)">Status ↕</th>
+                                    <th>Abweichung</th>
+                                    <th onclick="sortAnalyseTable(4)">Status ↕</th>
                                     <th>Kommentar</th>
                                 </tr>
                             </thead>
                             <tbody id="analyseTableBody">
                                 <tr>
-                                    <td colspan="7" style="text-align:center; color:#666;">
+                                    <td colspan="6" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Bitte laden Sie eine Konfiguration oder erstellen Sie ein Raumbuch.
                                     </td>
                                 </tr>
@@ -609,6 +608,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             // activate tab button
             const index = ['tab-konfig', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
             document.querySelectorAll('.tc-tab')[index].classList.add('active');
+            
+            // Auto-load data when Analyse tab is opened
+            if (tabId === 'tab-analyse') {
+                const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
+                if (raumbuchFileId && getToken()) {
+                    loadAnalyseData();
+                }
+            }
         }
 
         // Global configuration object
@@ -625,6 +632,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             bcfAssignees: [],
             // New: Summary data for Analyse tab
             zusammenfassung: [],
+            // Tolerance settings
+            toleranceMin: -10,
+            toleranceMax: 10,
             toleranceProfiles: [
                 { name: 'Strenge Kontrolle (±5%)', min: -5, max: 5 },
                 { name: 'Normal (±10%)', min: -10, max: 10 },
@@ -1073,7 +1083,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 return;
             }
 
-            // Build configuration object
+            // Build configuration object including all user choices
             const config = {
                 projectId: projectId,
                 projectName: configName,
@@ -1085,7 +1095,18 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     ifcModel: getSelectedOption('ifcFile'),
                     raumbuch: getSelectedOption('raumbuchFile')
                 },
-                bcfAssignees: getSelectedUsers()
+                bcfAssignees: getSelectedUsers(),
+                // Analyse tab settings
+                zusammenfassung: currentConfig.zusammenfassung || [],
+                toleranceMin: toleranceSettings.min,
+                toleranceMax: toleranceSettings.max,
+                toleranceProfiles: currentConfig.toleranceProfiles || [],
+                // Ausstattung tab settings
+                inventoryFolder: getSelectedOption('inventoryFolder'),
+                psetPartialName: document.getElementById('psetPartialName')?.value || 'Plancal nova',
+                roomPropertyName: document.getElementById('roomPropertyName')?.value || 'Room Nbr',
+                selectedIfcFiles: getSelectedIfcFiles(),
+                selectedProperties: getSelectedProperties()
             };
 
             try {
@@ -2429,17 +2450,17 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 // Determine status based on tolerance settings
                 const status = getStatus(percentage, sollArea, istArea);
                 const statusClass = getStatusClass(status);
-                const rowClass = status === 'Zu wenig' ? 'analyse-row-under' : '';
+                // Light green for Erfüllt (within tolerance), red for Unterschritten
+                const rowClass = status === 'Unterschritten' ? 'analyse-row-under' : (status === 'Erfüllt' ? 'analyse-row-ok' : '');
                 
                 // Create visual bar
                 const barHtml = createProgressBar(percentage);
                 
                 html += `
-                    <tr class="analyse-row ${rowClass}" data-status="${status.toLowerCase().replace(' ', '-')}" data-index="${index}">
+                    <tr class="analyse-row ${rowClass}" data-status="${status.toLowerCase()}" data-index="${index}">
                         <td>${escapeHtml(category)}</td>
                         <td>${sollArea.toFixed(2)}</td>
                         <td>${istArea.toFixed(2)}</td>
-                        <td>${percentage.toFixed(1)}%</td>
                         <td>${barHtml}</td>
                         <td><span class="status-badge ${statusClass}">${status}</span></td>
                         <td><input type="text" class="comment-input" value="${escapeHtml(comment)}" data-index="${index}" placeholder="Kommentar..."></td>
@@ -2452,20 +2473,21 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         /**
          * Determines the status based on percentage and tolerance settings
+         * Status values: Erfüllt (within tolerance), Unterschritten (IST < SOLL), Überschritten (IST > SOLL)
          */
         function getStatus(percentage, sollArea, istArea) {
             // Handle null/undefined/NaN cases
-            if (percentage == null || isNaN(percentage)) return 'OK';
-            if (sollArea <= 0 && istArea <= 0) return 'OK';
+            if (percentage == null || isNaN(percentage)) return 'Erfüllt';
+            if (sollArea <= 0 && istArea <= 0) return 'Erfüllt';
             
             const deviation = percentage - 100;
             
             if (deviation < toleranceSettings.min) {
-                return 'Zu wenig';
+                return 'Unterschritten';
             } else if (deviation > toleranceSettings.max) {
-                return 'Zu viel';
+                return 'Überschritten';
             }
-            return 'OK';
+            return 'Erfüllt';
         }
 
         /**
@@ -2473,8 +2495,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         function getStatusClass(status) {
             switch(status) {
-                case 'Zu wenig': return 'status-under';
-                case 'Zu viel': return 'status-over';
+                case 'Unterschritten': return 'status-under';
+                case 'Überschritten': return 'status-over';
                 default: return 'status-ok';
             }
         }
@@ -2537,9 +2559,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 totalIst += ist;
                 
                 const status = getStatus(percentage, soll, ist);
-                if (status === 'OK') okCount++;
-                else if (status === 'Zu wenig') underCount++;
-                else if (status === 'Zu viel') overCount++;
+                if (status === 'Erfüllt') okCount++;
+                else if (status === 'Unterschritten') underCount++;
+                else if (status === 'Überschritten') overCount++;
             });
 
             const deviation = totalSoll > 0 ? ((totalIst / totalSoll) * 100 - 100).toFixed(1) : 0;
@@ -2565,15 +2587,22 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         /**
          * Applies tolerance settings and re-renders the table
          */
-        function applyToleranceSettings() {
+        async function applyToleranceSettings() {
             toleranceSettings.min = parseFloat(document.getElementById('toleranceMin').value) || -10;
             toleranceSettings.max = parseFloat(document.getElementById('toleranceMax').value) || 10;
+            
+            // Save tolerance settings to config
+            currentConfig.toleranceMin = toleranceSettings.min;
+            currentConfig.toleranceMax = toleranceSettings.max;
             
             if (analyseData.length > 0) {
                 renderAnalyseTable(analyseData);
                 updateKPIWidget(analyseData);
                 showResult('analyseResult', 'success', '✅ Toleranz-Einstellungen angewendet');
             }
+            
+            // Auto-save config if configName is set
+            await autoSaveConfig();
         }
 
         /**
@@ -2590,11 +2619,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const status = row.dataset.status;
                 if (filter === 'all') {
                     row.style.display = '';
-                } else if (filter === 'ok' && status === 'ok') {
+                } else if (filter === 'ok' && status === 'erfüllt') {
                     row.style.display = '';
-                } else if (filter === 'under' && status === 'zu-wenig') {
+                } else if (filter === 'under' && status === 'unterschritten') {
                     row.style.display = '';
-                } else if (filter === 'over' && status === 'zu-viel') {
+                } else if (filter === 'over' && status === 'überschritten') {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -2679,29 +2708,90 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     return;
                 }
                 
+                // Build full configuration
+                await saveConfig();
+                showResult('analyseResult', 'success', '✅ Änderungen gespeichert');
+            } catch (error) {
+                console.error('Error saving analyse changes:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Auto-save configuration silently when certain actions are performed
+         */
+        async function autoSaveConfig() {
+            const configName = document.getElementById('configName').value.trim();
+            const projectId = getProjectId();
+            
+            if (!configName || !projectId) {
+                console.log('Auto-save skipped: no config name or project ID');
+                return;
+            }
+            
+            try {
+                // Build full configuration including all user choices
+                const config = {
+                    projectId: projectId,
+                    projectName: configName,
+                    lastUpdated: new Date().toISOString(),
+                    targetFolder: getSelectedOption('targetFolder'),
+                    files: {
+                        template: getSelectedOption('templateFile'),
+                        raumprogramm: getSelectedOption('raumprogrammFile'),
+                        ifcModel: getSelectedOption('ifcFile'),
+                        raumbuch: getSelectedOption('raumbuchFile')
+                    },
+                    bcfAssignees: getSelectedUsers(),
+                    zusammenfassung: currentConfig.zusammenfassung || [],
+                    toleranceMin: toleranceSettings.min,
+                    toleranceMax: toleranceSettings.max,
+                    toleranceProfiles: currentConfig.toleranceProfiles || [],
+                    inventoryFolder: getSelectedOption('inventoryFolder'),
+                    psetPartialName: document.getElementById('psetPartialName')?.value || 'Plancal nova',
+                    roomPropertyName: document.getElementById('roomPropertyName')?.value || 'Room Nbr',
+                    selectedIfcFiles: getSelectedIfcFiles(),
+                    selectedProperties: getSelectedProperties()
+                };
+                
+                // Update currentConfig
+                Object.assign(currentConfig, config);
+                
                 const response = await fetch(`${API_PROJECT}/config/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         configName: configName,
-                        configuration: currentConfig
+                        configuration: config
                     })
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        showResult('analyseResult', 'success', '✅ Änderungen gespeichert');
-                    } else {
-                        showResult('analyseResult', 'error', `❌ ${data.message || 'Fehler beim Speichern'}`);
-                    }
-                } else {
-                    showResult('analyseResult', 'error', '❌ Fehler beim Speichern');
+                    console.log('Config auto-saved successfully');
                 }
             } catch (error) {
-                console.error('Error saving analyse changes:', error);
-                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+                console.error('Auto-save error:', error);
             }
+        }
+
+        /**
+         * Gets selected IFC files from checkbox list
+         */
+        function getSelectedIfcFiles() {
+            const checkboxes = document.querySelectorAll('#ifcFilesList input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => ({
+                id: cb.value,
+                name: cb.dataset.name || ''
+            }));
+        }
+
+        /**
+         * Gets selected properties from multi-select
+         */
+        function getSelectedProperties() {
+            const select = document.getElementById('additionalProperties');
+            if (!select) return [];
+            return Array.from(select.selectedOptions).map(opt => opt.value);
         }
 
         /**

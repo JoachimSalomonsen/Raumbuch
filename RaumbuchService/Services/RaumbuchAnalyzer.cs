@@ -90,7 +90,7 @@ namespace RaumbuchService.Services
 
     /// <summary>
     /// SOLL/IST analysis per room category.
-    /// German Raumbuch standard status values: "OK", "Zu wenig", "Zu viel"
+    /// German Raumbuch standard status values: "Erfüllt", "Unterschritten", "Überschritten"
     /// </summary>
     public class RoomCategoryAnalysis
     {
@@ -112,19 +112,19 @@ namespace RaumbuchService.Services
 
         /// <summary>
         /// Returns the German status string according to Raumbuch standard.
-        /// "OK" - IST equals SOLL (within tolerance)
-        /// "Zu wenig" - IST is less than SOLL (needs attention)
-        /// "Zu viel" - IST exceeds SOLL
+        /// "Erfüllt" - IST equals SOLL (within tolerance)
+        /// "Unterschritten" - IST is less than SOLL (needs attention)
+        /// "Überschritten" - IST exceeds SOLL
         /// </summary>
         public string Status
         {
             get
             {
-                if (double.IsNaN(Percentage)) return "OK";
-                if (SollArea <= 0 && IstArea <= 0) return "OK";
-                if (IsUnderLimit) return "Zu wenig";
-                if (IsOverLimit) return "Zu viel";
-                return "OK";
+                if (double.IsNaN(Percentage)) return "Erfüllt";
+                if (SollArea <= 0 && IstArea <= 0) return "Erfüllt";
+                if (IsUnderLimit) return "Unterschritten";
+                if (IsOverLimit) return "Überschritten";
+                return "Erfüllt";
             }
         }
     }

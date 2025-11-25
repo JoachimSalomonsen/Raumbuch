@@ -730,6 +730,14 @@ textarea {
     background-color: #ffe0e0 !important;
 }
 
+.analyse-row-ok {
+    background-color: #e8f5e9 !important;
+}
+
+.analyse-row-ok:hover {
+    background-color: #c8e6c9 !important;
+}
+
 /* Status Badges */
 .status-badge {
     display: inline-block;

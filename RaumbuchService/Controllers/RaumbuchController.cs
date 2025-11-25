@@ -1825,14 +1825,15 @@ namespace RaumbuchService.Controllers
                 // ===== SHEET 2: ZUSAMMENFASSUNG (Summary) =====
                 var summaryWs = wb.Worksheets.Add("Zusammenfassung");
 
-                // Header
-                summaryWs.Cell(1, 1).Value = "Raumkate";
+                // Header - Updated column name from "Raumkate" to "Raumtyp"
+                summaryWs.Cell(1, 1).Value = "Raumtyp";
                 summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
                 summaryWs.Cell(1, 3).Value = "IST Fläche";
-                summaryWs.Cell(1, 4).Value = "Prozent (%)";
+                summaryWs.Cell(1, 4).Value = "Abweichung (%)";
                 summaryWs.Cell(1, 5).Value = "Status";
+                summaryWs.Cell(1, 6).Value = "Kommentar";
 
-                var summaryHeaderRange = summaryWs.Range(1, 1, 1, 5);
+                var summaryHeaderRange = summaryWs.Range(1, 1, 1, 6);
                 summaryHeaderRange.Style.Font.Bold = true;
                 summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
@@ -1853,13 +1854,18 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    // Use new German status values: OK, Zu wenig, Zu viel
+                    // Use new German status values: Erfüllt, Unterschritten, Überschritten
                     summaryWs.Cell(summaryRow, 5).Value = ana.Status;
+                    summaryWs.Cell(summaryRow, 6).Value = ""; // Comment column (empty by default)
 
-                    // Red for "Zu wenig" (IST < SOLL)
+                    // Red for "Unterschritten" (IST < SOLL), Light green for "Erfüllt"
                     if (ana.IsUnderLimit)
                     {
-                        summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
+                        summaryWs.Range(summaryRow, 1, summaryRow, 6).Style.Fill.BackgroundColor = XLColor.LightPink;
+                    }
+                    else if (!ana.IsOverLimit) // Erfüllt
+                    {
+                        summaryWs.Range(summaryRow, 1, summaryRow, 6).Style.Fill.BackgroundColor = XLColor.LightGreen;
                     }
 
                     summaryRow++;
@@ -2242,19 +2248,34 @@ namespace RaumbuchService.Controllers
                 {
                     summaryWs = wb.Worksheets.Add("Zusammenfassung");
                     
-                    // Header
-                    summaryWs.Cell(1, 1).Value = "Raumkate";
+                    // Header - Updated column name from "Raumkate" to "Raumtyp"
+                    summaryWs.Cell(1, 1).Value = "Raumtyp";
                     summaryWs.Cell(1, 2).Value = "SOLL Fläche (m²)";
                     summaryWs.Cell(1, 3).Value = "IST Fläche";
-                    summaryWs.Cell(1, 4).Value = "Prozent (%)";
+                    summaryWs.Cell(1, 4).Value = "Abweichung (%)";
                     summaryWs.Cell(1, 5).Value = "Status";
+                    summaryWs.Cell(1, 6).Value = "Kommentar";
 
-                    var headerRange = summaryWs.Range(1, 1, 1, 5);
+                    var headerRange = summaryWs.Range(1, 1, 1, 6);
                     headerRange.Style.Font.Bold = true;
                     headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
                 }
                 else
                 {
+                    // Update header if needed
+                    if (summaryWs.Cell(1, 1).GetString() == "Raumkate")
+                    {
+                        summaryWs.Cell(1, 1).Value = "Raumtyp";
+                    }
+                    if (summaryWs.Cell(1, 4).GetString() == "Prozent (%)")
+                    {
+                        summaryWs.Cell(1, 4).Value = "Abweichung (%)";
+                    }
+                    if (summaryWs.Cell(1, 6).GetString() == "")
+                    {
+                        summaryWs.Cell(1, 6).Value = "Kommentar";
+                    }
+                    
                     // Clear existing summary data (keep header)
                     var summaryRange = summaryWs.RangeUsed();
                     if (summaryRange != null)
@@ -2285,13 +2306,18 @@ namespace RaumbuchService.Controllers
                         summaryWs.Cell(summaryRow, 4).Value = ana.Percentage;
                     }
                     
-                    // Use new German status values: OK, Zu wenig, Zu viel
+                    // Use new German status values: Erfüllt, Unterschritten, Überschritten
                     summaryWs.Cell(summaryRow, 5).Value = ana.Status;
+                    summaryWs.Cell(summaryRow, 6).Value = ""; // Comment column
 
-                    // Red for "Zu wenig" (IST < SOLL)
+                    // Red for "Unterschritten" (IST < SOLL), Light green for "Erfüllt"
                     if (ana.IsUnderLimit)
                     {
-                        summaryWs.Range(summaryRow, 1, summaryRow, 5).Style.Fill.BackgroundColor = XLColor.LightPink;
+                        summaryWs.Range(summaryRow, 1, summaryRow, 6).Style.Fill.BackgroundColor = XLColor.LightPink;
+                    }
+                    else if (!ana.IsOverLimit) // Erfüllt
+                    {
+                        summaryWs.Range(summaryRow, 1, summaryRow, 6).Style.Fill.BackgroundColor = XLColor.LightGreen;
                     }
 
                     summaryRow++;
@@ -2323,6 +2349,8 @@ namespace RaumbuchService.Controllers
 
         /// <summary>
         /// Parses Raumbuch for Pset data.
+        /// Uses Raumtyp (LongName) to match IfcSpace objects.
+        /// Now includes: SollArea, Percentage, Status, Kommentar
         /// </summary>
         private Dictionary<string, Services.RaumbuchPsetData> ParseRaumbuchForPset(string excelPath)
         {
@@ -2330,33 +2358,43 @@ namespace RaumbuchService.Controllers
 
             using (var wb = new XLWorkbook(excelPath))
             {
-                // Try to get Raumbuch sheet, fallback to first sheet if not found
-                var ws = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch") ?? wb.Worksheet(1);
-                var range = ws.RangeUsed();
-                if (range == null) return result;
-
-                int firstRow = range.FirstRow().RowNumber();
-                int lastRow = range.LastRow().RowNumber();
-
-                // Data starts from row 2 (row 1 is header)
-                for (int r = firstRow + 1; r <= lastRow; r++)
+                // Read from Zusammenfassung sheet for SOLL/IST/Percentage/Status data
+                var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                if (summaryWs != null)
                 {
-                    string raumName = ws.Cell(r, 2).GetString().Trim();
-                    string differenzStr = ws.Cell(r, 9).GetString().Trim();
-
-                    if (string.IsNullOrWhiteSpace(raumName)) continue;
-
-                    if (!double.TryParse(differenzStr, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double differenz))
+                    var summaryRange = summaryWs.RangeUsed();
+                    if (summaryRange != null)
                     {
-                        continue;
+                        int firstRow = summaryRange.FirstRow().RowNumber();
+                        int lastRow = summaryRange.LastRow().RowNumber();
+
+                        // Data starts from row 2 (row 1 is header)
+                        for (int r = firstRow + 1; r <= lastRow; r++)
+                        {
+                            string raumtyp = summaryWs.Cell(r, 1).GetString().Trim(); // Raumtyp (matches LongName)
+                            if (string.IsNullOrWhiteSpace(raumtyp)) continue;
+
+                            double.TryParse(summaryWs.Cell(r, 2).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out double sollArea);
+                            double.TryParse(summaryWs.Cell(r, 4).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out double percentage);
+                            string status = summaryWs.Cell(r, 5).GetString().Trim();
+                            string kommentar = summaryWs.Cell(r, 6)?.GetString().Trim() ?? "";
+
+                            // Ensure status uses new terminology
+                            if (status == "Zu wenig") status = "Unterschritten";
+                            else if (status == "Zu viel") status = "Überschritten";
+                            else if (status == "OK") status = "Erfüllt";
+
+                            result[raumtyp] = new Services.RaumbuchPsetData
+                            {
+                                SollArea = sollArea,
+                                Percentage = percentage,
+                                Status = status,
+                                Kommentar = kommentar
+                            };
+                        }
                     }
-
-                    result[raumName] = new Services.RaumbuchPsetData
-                    {
-                        Differenz = differenz,
-                        GemaessRaumprogramm = (differenz <= 0) ? "Ja" : "Nein"
-                    };
                 }
             }
 
