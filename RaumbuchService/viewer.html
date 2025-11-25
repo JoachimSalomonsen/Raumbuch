@@ -876,11 +876,6 @@
         // ====================================================================
         
         async function findMatchingObjects() {
-            if (!API || !API.viewer) {
-                console.warn("Viewer API not available for object matching");
-                return;
-            }
-            
             console.log("Finding matching objects...");
             console.log("Looking for Raumtypen:", {
                 erfuellt: categoryData.erfuellt.rooms,
@@ -894,84 +889,69 @@
             categoryData.ueberschritten.objectIds = [];
             
             try {
-                // Get loaded models first
-                const loadedModels = await API.viewer.getLoadedModels();
-                console.log("Loaded models:", loadedModels);
+                // Check what API methods are available
+                console.log("API object:", API);
+                console.log("viewerAPI object:", viewerAPI);
                 
-                if (!loadedModels || loadedModels.length === 0) {
-                    console.warn("No models loaded in viewer");
-                    return;
+                // Try to get objects using different API methods
+                let modelObjects = null;
+                
+                // Method 1: Try viewerAPI.objects (from embed.init3DViewer)
+                if (viewerAPI && viewerAPI.objects) {
+                    console.log("Using viewerAPI.objects");
+                    console.log("viewerAPI.objects methods:", Object.keys(viewerAPI.objects));
+                    
+                    // Try getObjects method
+                    if (typeof viewerAPI.objects.getObjects === 'function') {
+                        modelObjects = await viewerAPI.objects.getObjects();
+                        console.log("getObjects result:", modelObjects);
+                    }
+                    
+                    // Try getProperties method
+                    if (typeof viewerAPI.objects.getProperties === 'function') {
+                        const props = await viewerAPI.objects.getProperties();
+                        console.log("getProperties result:", props);
+                        if (props) modelObjects = props;
+                    }
                 }
                 
-                // Process each model
-                for (const model of loadedModels) {
-                    const modelId = model.id || model;
-                    console.log("Processing model:", modelId);
+                // Method 2: Try API.viewer methods
+                if (!modelObjects && API && API.viewer) {
+                    console.log("Trying API.viewer methods");
+                    console.log("API.viewer methods:", Object.keys(API.viewer || {}));
                     
-                    // Get all objects from this model
-                    let allObjects = [];
-                    try {
-                        allObjects = await API.viewer.getAllObjects(modelId);
-                        console.log(`Model ${modelId}: ${allObjects?.length || 0} objects`);
-                    } catch (e) {
-                        console.warn("getAllObjects failed, trying alternative:", e);
-                        continue;
+                    // Try getSelection to see the data structure
+                    if (typeof API.viewer.getSelection === 'function') {
+                        const selection = await API.viewer.getSelection();
+                        console.log("Current selection:", selection);
                     }
-                    
-                    if (!allObjects || allObjects.length === 0) continue;
-                    
-                    // Filter for IfcSpace objects
-                    const ifcSpaces = allObjects.filter(obj => 
-                        obj.class === 'IfcSpace' || 
-                        obj.type === 'IfcSpace' ||
-                        (obj.className && obj.className.includes('IfcSpace'))
-                    );
-                    console.log(`Found ${ifcSpaces.length} IfcSpace objects`);
-                    
-                    if (ifcSpaces.length === 0) {
-                        // Try getting all objects and their properties
-                        console.log("No IfcSpace filter match, getting properties for all objects...");
-                    }
-                    
-                    // Get object IDs to fetch properties
-                    const objectIds = ifcSpaces.length > 0 
-                        ? ifcSpaces.map(obj => obj.id || obj.objectId || obj)
-                        : allObjects.slice(0, 500).map(obj => obj.id || obj.objectId || obj); // Limit to 500
-                    
-                    if (objectIds.length === 0) continue;
-                    
-                    // Get properties for these objects
-                    let objectProperties = [];
-                    try {
-                        objectProperties = await API.viewer.getObjectProperties(modelId, objectIds);
-                        console.log(`Got properties for ${objectProperties?.length || 0} objects`);
-                    } catch (e) {
-                        console.warn("getObjectProperties failed:", e);
-                        continue;
-                    }
-                    
-                    // Match objects by Long Name property
-                    if (objectProperties && objectProperties.length > 0) {
-                        objectProperties.forEach(obj => {
-                            const longName = extractLongName(obj);
-                            const objId = obj.id || obj.objectId;
-                            
-                            if (longName && objId) {
-                                console.log(`Object ${objId}: Long Name = "${longName}"`);
-                                
-                                // Check each category
-                                if (categoryData.erfuellt.rooms.includes(longName)) {
-                                    categoryData.erfuellt.objectIds.push(objId);
-                                }
-                                if (categoryData.unterschritten.rooms.includes(longName)) {
-                                    categoryData.unterschritten.objectIds.push(objId);
-                                }
-                                if (categoryData.ueberschritten.rooms.includes(longName)) {
-                                    categoryData.ueberschritten.objectIds.push(objId);
-                                }
-                            }
-                        });
-                    }
+                }
+                
+                // Method 3: Try API.models
+                if (!modelObjects && API && API.models) {
+                    console.log("Trying API.models methods");
+                    console.log("API.models methods:", Object.keys(API.models || {}));
+                }
+                
+                // Method 4: Try embed API directly
+                if (!modelObjects && API && API.embed) {
+                    console.log("Trying API.embed methods");
+                    console.log("API.embed methods:", Object.keys(API.embed || {}));
+                }
+                
+                // If we got objects, process them
+                if (modelObjects) {
+                    console.log("Processing model objects:", modelObjects);
+                    processModelObjects(modelObjects);
+                } else {
+                    console.warn("Could not retrieve model objects. Available APIs:", {
+                        hasAPI: !!API,
+                        hasViewer: !!(API && API.viewer),
+                        hasModels: !!(API && API.models),
+                        hasEmbed: !!(API && API.embed),
+                        hasViewerAPI: !!viewerAPI,
+                        viewerAPIKeys: viewerAPI ? Object.keys(viewerAPI) : []
+                    });
                 }
                 
                 console.log("Matched object IDs:", {
@@ -983,6 +963,46 @@
             } catch (error) {
                 console.error("Error finding matching objects:", error);
             }
+        }
+        
+        function processModelObjects(modelObjects) {
+            // Handle different data structures
+            let objects = [];
+            
+            if (Array.isArray(modelObjects)) {
+                objects = modelObjects;
+            } else if (modelObjects.objects && Array.isArray(modelObjects.objects)) {
+                objects = modelObjects.objects;
+            } else if (typeof modelObjects === 'object') {
+                // Try to extract objects from the response
+                for (const key in modelObjects) {
+                    if (Array.isArray(modelObjects[key])) {
+                        objects = objects.concat(modelObjects[key]);
+                    }
+                }
+            }
+            
+            console.log(`Processing ${objects.length} objects`);
+            
+            objects.forEach(obj => {
+                const longName = extractLongName(obj);
+                const objId = obj.id || obj.objectId || obj.guid || obj.externalId;
+                
+                if (longName && objId) {
+                    console.log(`Object ${objId}: Long Name = "${longName}"`);
+                    
+                    // Check each category
+                    if (categoryData.erfuellt.rooms.includes(longName)) {
+                        categoryData.erfuellt.objectIds.push(objId);
+                    }
+                    if (categoryData.unterschritten.rooms.includes(longName)) {
+                        categoryData.unterschritten.objectIds.push(objId);
+                    }
+                    if (categoryData.ueberschritten.rooms.includes(longName)) {
+                        categoryData.ueberschritten.objectIds.push(objId);
+                    }
+                }
+            });
         }
         
         function extractLongName(obj) {
