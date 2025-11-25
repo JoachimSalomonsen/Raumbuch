@@ -2051,8 +2051,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             try {
                 // Build the Trimble Connect 3D Viewer URL
-                // Format: https://web.connect.trimble.com/projects/{projectId}/viewer?fileId={fileId}
-                const viewerUrl = `https://web.connect.trimble.com/projects/${projectId}/viewer?fileId=${ifcFileId}`;
+                // Format: https://web.connect.trimble.com/projects/{projectId}/viewer/3d/?modelId={fileId}
+                const viewerUrl = `https://web.connect.trimble.com/projects/${projectId}/viewer/3d/?modelId=${ifcFileId}`;
                 
                 console.log('Opening 3D Viewer:', viewerUrl);
                 

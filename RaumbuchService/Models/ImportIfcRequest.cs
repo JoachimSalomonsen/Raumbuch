@@ -49,6 +49,12 @@ namespace RaumbuchService.Models
     public class RoomCategoryAnalysis
     {
         public string RoomCategory { get; set; }
+        
+        /// <summary>
+        /// Raumkategorie from template Excel (different from RoomCategory/Raumtyp)
+        /// </summary>
+        public string Raumkategorie { get; set; }
+        
         public double SollArea { get; set; }
         public double IstArea { get; set; }
         public double Percentage { get; set; }

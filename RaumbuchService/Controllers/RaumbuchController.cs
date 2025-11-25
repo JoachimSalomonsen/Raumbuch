@@ -869,7 +869,7 @@ namespace RaumbuchService.Controllers
                         int lastRow = range.LastRow().RowNumber();
                         int lastCol = range.LastColumn().ColumnNumber();
                         
-                        // Determine column indices (may vary based on whether Raumkategorie column exists)
+                        // Determine column indices - use more specific patterns
                         int raumtypCol = 1;
                         int raumkategorieCol = -1;
                         int sollCol = 2;
@@ -878,15 +878,15 @@ namespace RaumbuchService.Controllers
                         int statusCol = 5;
                         int commentCol = 6;
                         
-                        // Check headers to find correct columns
+                        // Check headers to find correct columns - most specific patterns first
                         for (int c = 1; c <= lastCol; c++)
                         {
                             string header = summaryWs.Cell(1, c).GetString().Trim().ToLower();
                             if (header.Contains("raumkategorie")) raumkategorieCol = c;
                             else if (header.Contains("raumtyp")) raumtypCol = c;
-                            else if (header.Contains("soll")) sollCol = c;
-                            else if (header.Contains("ist")) istCol = c;
-                            else if (header.Contains("abweichung") || header.Contains("%")) percentCol = c;
+                            else if (header.Contains("soll fläche") || header.Contains("fläche soll") || (header.Contains("soll") && header.Contains("m²") && !header.Contains("/"))) sollCol = c;
+                            else if (header.Contains("ist fläche") || header.Contains("fläche ist") || (header.Contains("ist") && header.Contains("m²") && !header.Contains("/"))) istCol = c;
+                            else if (header.Contains("abweichung") || header.Contains("soll/ist") || header.Contains("%")) percentCol = c;
                             else if (header.Contains("status")) statusCol = c;
                             else if (header.Contains("kommentar")) commentCol = c;
                         }
@@ -970,7 +970,7 @@ namespace RaumbuchService.Controllers
                         int lastRow = range.LastRow().RowNumber();
                         int lastCol = range.LastColumn().ColumnNumber();
                         
-                        // Find column indices from headers
+                        // Find column indices from headers - use more specific patterns
                         int raumtypCol = 1;
                         int raumkategorieCol = -1;
                         int sollCol = -1;
@@ -981,10 +981,11 @@ namespace RaumbuchService.Controllers
                         for (int c = 1; c <= lastCol; c++)
                         {
                             string header = raumbuchWs.Cell(1, c).GetString().Trim().ToLower();
+                            // Check most specific patterns first
                             if (header.Contains("raumkategorie")) raumkategorieCol = c;
                             else if (header.Contains("raumtyp")) raumtypCol = c;
-                            else if (header.Contains("soll")) sollCol = c;
-                            else if (header.Contains("soll/ist") || (header.Contains("%") && !header.Contains("abweichung"))) percentCol = c;
+                            else if (header.Contains("soll/ist") || header.Contains("soll / ist")) percentCol = c;
+                            else if (header.Contains("fläche soll") || header.Contains("soll fläche") || (header.Contains("soll") && header.Contains("m²") && !header.Contains("/"))) sollCol = c;
                             else if (header.Contains("differenz")) diffCol = c;
                             else if (header.Contains("kommentar")) kommentarCol = c;
                         }
@@ -2145,7 +2146,7 @@ namespace RaumbuchService.Controllers
                 int lastRow = range.LastRow().RowNumber();
                 int lastCol = range.LastColumn().ColumnNumber();
 
-                // Detect column layout by reading headers
+                // Detect column layout by reading headers - use specific patterns
                 int raumtypCol = -1;
                 int raumkategorieCol = -1;
                 int sollCol = -1;
@@ -2157,11 +2158,12 @@ namespace RaumbuchService.Controllers
                 for (int c = 1; c <= lastCol; c++)
                 {
                     string header = ws.Cell(1, c).GetString().Trim().ToLower();
+                    // Check most specific patterns first
                     if (header.Contains("raumkategorie")) raumkategorieCol = c;
-                    else if (header.Contains("raumtyp") || header.Contains("kategorie")) raumtypCol = c;
-                    else if (header.Contains("soll")) sollCol = c;
-                    else if (header.Contains("ist")) istCol = c;
-                    else if (header.Contains("abweichung") || header.Contains("%")) percentCol = c;
+                    else if (header.Contains("raumtyp") || header == "kategorie") raumtypCol = c;
+                    else if (header.Contains("soll fläche") || header.Contains("fläche soll") || (header.Contains("soll") && header.Contains("m²") && !header.Contains("/"))) sollCol = c;
+                    else if (header.Contains("ist fläche") || header.Contains("fläche ist") || (header.Contains("ist") && header.Contains("m²") && !header.Contains("/"))) istCol = c;
+                    else if (header.Contains("abweichung") || header.Contains("soll/ist") || (header.Contains("%") && !header.Contains("soll") && !header.Contains("ist"))) percentCol = c;
                     else if (header.Contains("status")) statusCol = c;
                     else if (header.Contains("kommentar")) commentCol = c;
                 }
@@ -2824,6 +2826,14 @@ namespace RaumbuchService.Controllers
             using (var wb = new XLWorkbook(excelPath))
             {
                 // Read from Zusammenfassung sheet for SOLL/IST/Percentage/Status data
+                // Column layout:
+                // Col 1: Raumtyp
+                // Col 2: Raumkategorie
+                // Col 3: SOLL Fläche (m²)
+                // Col 4: IST Fläche (m²)
+                // Col 5: Abweichung (%)
+                // Col 6: Status
+                // Col 7: Kommentar
                 var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
                 if (summaryWs != null)
                 {
@@ -2839,12 +2849,13 @@ namespace RaumbuchService.Controllers
                             string raumtyp = summaryWs.Cell(r, 1).GetString().Trim(); // Raumtyp (matches LongName)
                             if (string.IsNullOrWhiteSpace(raumtyp)) continue;
 
-                            double.TryParse(summaryWs.Cell(r, 2).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                            // Read from correct columns
+                            double.TryParse(summaryWs.Cell(r, 3).GetString().Trim(), System.Globalization.NumberStyles.Any,
                                 System.Globalization.CultureInfo.InvariantCulture, out double sollArea);
-                            double.TryParse(summaryWs.Cell(r, 4).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                            double.TryParse(summaryWs.Cell(r, 5).GetString().Trim(), System.Globalization.NumberStyles.Any,
                                 System.Globalization.CultureInfo.InvariantCulture, out double percentage);
-                            string status = summaryWs.Cell(r, 5).GetString().Trim();
-                            string kommentar = summaryWs.Cell(r, 6)?.GetString().Trim() ?? "";
+                            string status = summaryWs.Cell(r, 6).GetString().Trim();
+                            string kommentar = summaryWs.Cell(r, 7)?.GetString().Trim() ?? "";
 
                             // Ensure status uses new terminology
                             if (status == "Zu wenig") status = "Unterschritten";
@@ -2986,9 +2997,9 @@ namespace RaumbuchService.Controllers
                     .ToDictionary(g => g.Key, g => g.First().RoomCategory, StringComparer.OrdinalIgnoreCase);
 
                 System.Diagnostics.Debug.WriteLine("Reading SOLL data from template with mappings...");
-                // Read SOLL from template using column mappings
-                var sollData = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
-                System.Diagnostics.Debug.WriteLine($"Found {sollData.Count} SOLL categories");
+                // Read SOLL and Raumkategorie from template using column mappings
+                var (sollData, raumkategorieData) = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
+                System.Diagnostics.Debug.WriteLine($"Found {sollData.Count} SOLL categories, {raumkategorieData.Count} Raumkategorie mappings");
 
                 System.Diagnostics.Debug.WriteLine("Analyzing SOLL/IST...");
                 // Analyze SOLL/IST
@@ -2999,7 +3010,7 @@ namespace RaumbuchService.Controllers
                 System.Diagnostics.Debug.WriteLine("Creating Raumbuch Excel...");
                 // Create Raumbuch Excel with enhanced data
                 string raumbuchPath = Path.Combine(_tempFolder, "Raumbuch.xlsx");
-                CreateRaumbuchExcelEnhanced(raumbuchPath, roomData, analysis, sollData);
+                CreateRaumbuchExcelEnhanced(raumbuchPath, roomData, analysis, sollData, raumkategorieData);
 
                 System.Diagnostics.Debug.WriteLine("Uploading Raumbuch to Trimble Connect...");
                 // Upload Raumbuch to Trimble Connect
@@ -3013,10 +3024,11 @@ namespace RaumbuchService.Controllers
 
                 System.Diagnostics.Debug.WriteLine("========== CreateRaumbuch END (Success) ==========");
 
-                // Convert analysis to Models namespace for response
+                // Convert analysis to Models namespace for response, including Raumkategorie
                 var analysisResponse = analysis.Select(a => new Models.RoomCategoryAnalysis
                 {
                     RoomCategory = a.RoomCategory,
+                    Raumkategorie = raumkategorieData.TryGetValue(a.RoomCategory, out string kat) ? kat : "",
                     SollArea = a.SollArea,
                     IstArea = a.IstArea,
                     Percentage = a.Percentage
@@ -3042,19 +3054,21 @@ namespace RaumbuchService.Controllers
         /// <summary>
         /// Reads SOLL data from template using column mappings.
         /// Falls back to IFC LongName for Raumkategorie if not available in template.
+        /// Returns both SOLL areas and Raumkategorie mappings.
         /// </summary>
-        private Dictionary<string, double> ReadSollFromTemplateWithMappings(
+        private (Dictionary<string, double> sollData, Dictionary<string, string> raumkategorieData) ReadSollFromTemplateWithMappings(
             string templatePath, 
             ColumnMappings mappings,
             Dictionary<string, string> ifcRoomsByLongName)
         {
-            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var sollResult = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var raumkategorieResult = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             using (var wb = new XLWorkbook(templatePath))
             {
                 var ws = wb.Worksheet(1);
                 var range = ws.RangeUsed();
-                if (range == null) return result;
+                if (range == null) return (sollResult, raumkategorieResult);
 
                 int firstRow = range.FirstRow().RowNumber();
                 int lastRow = range.LastRow().RowNumber();
@@ -3069,17 +3083,17 @@ namespace RaumbuchService.Controllers
                     string raumtyp = ws.Cell(r, raumtypCol).GetString().Trim();
                     if (string.IsNullOrWhiteSpace(raumtyp)) continue;
 
-                    // Get Raumkategorie from template or fallback to IFC
+                    // Get Raumkategorie from template only (do not fallback to IFC)
                     string raumkategorie = "";
                     if (raumkategorieCol > 0)
                     {
                         raumkategorie = ws.Cell(r, raumkategorieCol).GetString().Trim();
                     }
                     
-                    // If Raumkategorie is empty, try to get from IFC LongName
-                    if (string.IsNullOrWhiteSpace(raumkategorie) && ifcRoomsByLongName.ContainsKey(raumtyp))
+                    // Store Raumkategorie mapping (only from Excel, not from IFC)
+                    if (!string.IsNullOrWhiteSpace(raumkategorie) && !raumkategorieResult.ContainsKey(raumtyp))
                     {
-                        raumkategorie = ifcRoomsByLongName[raumtyp];
+                        raumkategorieResult[raumtyp] = raumkategorie;
                     }
 
                     // Parse Fläche Soll
@@ -3088,15 +3102,15 @@ namespace RaumbuchService.Controllers
                         System.Globalization.CultureInfo.InvariantCulture, out double soll))
                     {
                         // Use Raumtyp as the category key (same as existing logic)
-                        if (!result.ContainsKey(raumtyp))
-                            result[raumtyp] = soll;
+                        if (!sollResult.ContainsKey(raumtyp))
+                            sollResult[raumtyp] = soll;
                         else
-                            result[raumtyp] += soll;
+                            sollResult[raumtyp] += soll;
                     }
                 }
             }
 
-            return result;
+            return (sollResult, raumkategorieResult);
         }
 
         /// <summary>
@@ -3107,9 +3121,14 @@ namespace RaumbuchService.Controllers
             string outputPath, 
             List<Services.RoomData> roomData, 
             List<Services.RoomCategoryAnalysis> analysis,
-            Dictionary<string, double> sollData)
+            Dictionary<string, double> sollData,
+            Dictionary<string, string> raumkategorieData = null)
         {
             var analysisLookup = analysis.ToDictionary(a => a.RoomCategory, a => a, StringComparer.OrdinalIgnoreCase);
+            if (raumkategorieData == null)
+            {
+                raumkategorieData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
 
             using (var wb = new XLWorkbook())
             {
@@ -3140,8 +3159,13 @@ namespace RaumbuchService.Controllers
                     ws.Cell(row, 1).Value = room.RoomCategory;
                     // Raum Name: from IfcSpace.Name
                     ws.Cell(row, 2).Value = room.Name;
-                    // Raumkategorie: leave empty for now, will be filled from Excel only
-                    ws.Cell(row, 3).Value = "";
+                    // Raumkategorie: from template Excel (read via column mapping)
+                    string raumkategorie = "";
+                    if (raumkategorieData.TryGetValue(room.RoomCategory, out string kat))
+                    {
+                        raumkategorie = kat;
+                    }
+                    ws.Cell(row, 3).Value = raumkategorie;
                     // Bodenbelag: empty by default, for manual editing
                     ws.Cell(row, 4).Value = "";
                     // Fläche IST: from IFC
@@ -3213,12 +3237,18 @@ namespace RaumbuchService.Controllers
                 summaryHeaderRange.Style.Font.Bold = true;
                 summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-                // Summary data - Raumkategorie copied from Raumbuch sheet (initially same as Raumtyp)
+                // Summary data - Raumkategorie from template Excel
                 int summaryRow = 2;
                 foreach (var ana in analysis.OrderBy(a => a.RoomCategory))
                 {
                     summaryWs.Cell(summaryRow, 1).Value = ana.RoomCategory; // Raumtyp
-                    summaryWs.Cell(summaryRow, 2).Value = ""; // Raumkategorie - empty, will be copied from Raumbuch sheet
+                    // Raumkategorie from template Excel
+                    string raumkategorie = "";
+                    if (raumkategorieData.TryGetValue(ana.RoomCategory, out string kat))
+                    {
+                        raumkategorie = kat;
+                    }
+                    summaryWs.Cell(summaryRow, 2).Value = raumkategorie;
                     summaryWs.Cell(summaryRow, 3).Value = ana.SollArea;
                     summaryWs.Cell(summaryRow, 4).Value = ana.IstArea;
                     
