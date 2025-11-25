@@ -313,6 +313,7 @@
                     <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
                     <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
                     <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
+                    <button class="btn btn-secondary" onclick="openIn3DViewer()">🔍 In 3D-Viewer öffnen</button>
                     <div id="step4Result" class="result"></div>
                 </section>
 
@@ -2031,6 +2032,40 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
         }
 
+        /**
+         * Opens the IFC file in 3D Viewer using Trimble Connect
+         */
+        async function openIn3DViewer() {
+            const ifcFileId = document.getElementById('ifcFile').value;
+            const projectId = getProjectId();
+
+            if (!ifcFileId) {
+                showResult('step4Result', 'error', '⚠ Bitte IFC-Datei in Einstellungen auswählen');
+                return;
+            }
+
+            if (!projectId) {
+                showResult('step4Result', 'error', '⚠ Projekt-ID nicht verfügbar');
+                return;
+            }
+
+            try {
+                // Build the Trimble Connect 3D Viewer URL
+                // Format: https://web.connect.trimble.com/projects/{projectId}/viewer?fileId={fileId}
+                const viewerUrl = `https://web.connect.trimble.com/projects/${projectId}/viewer?fileId=${ifcFileId}`;
+                
+                console.log('Opening 3D Viewer:', viewerUrl);
+                
+                // Open in new tab
+                window.open(viewerUrl, '_blank');
+                
+                showResult('step4Result', 'success', '✅ 3D-Viewer wird in neuem Tab geöffnet...');
+            } catch (error) {
+                console.error('Error opening 3D Viewer:', error);
+                showResult('step4Result', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
         async function createRoomSheets() {
             const token = getToken();
             const raumbuchFileId = document.getElementById('raumbuchFile').value;
@@ -2519,8 +2554,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 // Determine status based on tolerance settings
                 const status = getStatus(percentage, sollArea, istArea);
                 const statusClass = getStatusClass(status);
-                // Light green for Erfüllt (within tolerance), red for Unterschritten
-                const rowClass = status === 'Unterschritten' ? 'analyse-row-under' : (status === 'Erfüllt' ? 'analyse-row-ok' : '');
+                // Color logic: Red for Unterschritten, Green for Erfüllt, Yellow for Überschritten
+                let rowClass = '';
+                if (status === 'Unterschritten' || sollArea === 0) {
+                    rowClass = 'analyse-row-under';
+                } else if (status === 'Erfüllt') {
+                    rowClass = 'analyse-row-ok';
+                } else if (status === 'Überschritten') {
+                    rowClass = 'analyse-row-over';
+                }
                 
                 // Create visual bar
                 const barHtml = createProgressBar(percentage);
@@ -2548,15 +2590,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         function getStatus(percentage, sollArea, istArea) {
             // Handle null/undefined/NaN cases
             if (percentage == null || isNaN(percentage)) return 'Erfüllt';
+            
+            // SOLL=0 is considered Unterschritten (red)
+            if (sollArea === 0) return 'Unterschritten';
+            
+            // Both zero = Erfüllt
             if (sollArea <= 0 && istArea <= 0) return 'Erfüllt';
             
             const deviation = percentage - 100;
             
+            // IST < SOLL = Unterschritten (red)
             if (deviation < toleranceSettings.min) {
                 return 'Unterschritten';
+            // IST > SOLL = Überschritten (no color in Excel, yellow in UI)
             } else if (deviation > toleranceSettings.max) {
                 return 'Überschritten';
             }
+            // Within tolerance = Erfüllt (green)
             return 'Erfüllt';
         }
 
@@ -3223,7 +3273,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             // Determine status
             const status = getStatus(percentage, sollArea, istArea);
             const statusClass = getStatusClass(status);
-            const rowClass = status === 'Unterschritten' ? 'analyse-row-under' : (status === 'Erfüllt' ? 'analyse-row-ok' : '');
+            
+            // Color logic: Red for Unterschritten, Green for Erfüllt, Yellow for Überschritten
+            let rowClass = '';
+            if (status === 'Unterschritten' || sollArea === 0) {
+                rowClass = 'analyse-row-under';
+            } else if (status === 'Erfüllt') {
+                rowClass = 'analyse-row-ok';
+            } else if (status === 'Überschritten') {
+                rowClass = 'analyse-row-over';
+            }
 
             // Update row class
             row.className = `analyse-row ${rowClass}`;

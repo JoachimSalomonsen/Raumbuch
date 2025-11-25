@@ -233,107 +233,114 @@ namespace RaumbuchService.Services
                 Warnings = new List<string>()
             };
 
-            // Build index: IfcSpace.Name/LongName -> IfcSpace
-            var spaceIndex = new Dictionary<string, IfcSpace>(StringComparer.OrdinalIgnoreCase);
+            // Build index: LongName (category) -> List of IfcSpace objects
+            // This allows writing Pset to ALL spaces in the same category
+            var spacesByCategory = new Dictionary<string, List<IfcSpace>>(StringComparer.OrdinalIgnoreCase);
             foreach (var space in db.OfType<IfcSpace>())
             {
                 if (space == null) continue;
 
-                if (!string.IsNullOrWhiteSpace(space.Name))
-                    spaceIndex[space.Name.Trim()] = space;
-
-                if (!string.IsNullOrWhiteSpace(space.LongName))
-                    spaceIndex[space.LongName.Trim()] = space;
+                string category = space.LongName?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(category))
+                {
+                    if (!spacesByCategory.ContainsKey(category))
+                        spacesByCategory[category] = new List<IfcSpace>();
+                    spacesByCategory[category].Add(space);
+                }
             }
 
-            // Process each room from Raumbuch data
+            // Process each room category from Raumbuch data
             foreach (var kvp in raumbuchData)
             {
-                string raumName = kvp.Key;
+                string raumCategory = kvp.Key;
                 var data = kvp.Value;
 
-                // Find matching space
-                if (!spaceIndex.TryGetValue(raumName, out IfcSpace space))
+                // Find all matching spaces for this category
+                if (!spacesByCategory.TryGetValue(raumCategory, out List<IfcSpace> spaces))
                 {
-                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - �bersprungen");
+                    result.Warnings.Add($"Kategorie '{raumCategory}' nicht in IFC gefunden - übersprungen");
                     result.RoomsSkipped++;
                     continue;
                 }
 
-                // Check if Pset "Raumbuch" already exists
-                bool psetExists = false;
-                foreach (var rel in space.IsDefinedBy.OfType<IfcRelDefinesByProperties>())
+                // Write Pset to EACH space in this category
+                foreach (var space in spaces)
                 {
-                    foreach (var def in rel.RelatingPropertyDefinition)
+                    // Check if Pset "Raumbuch" already exists on this space
+                    bool psetExists = false;
+                    foreach (var rel in space.IsDefinedBy.OfType<IfcRelDefinesByProperties>())
                     {
-                        var pset = def as IfcPropertySet;
-                        if (pset != null && 
-                            pset.Name != null && 
-                            pset.Name.Equals(RAUMBUCH_PSET_NAME, StringComparison.OrdinalIgnoreCase))
+                        foreach (var def in rel.RelatingPropertyDefinition)
                         {
-                            psetExists = true;
-                            break;
+                            var pset = def as IfcPropertySet;
+                            if (pset != null && 
+                                pset.Name != null && 
+                                pset.Name.Equals(RAUMBUCH_PSET_NAME, StringComparison.OrdinalIgnoreCase))
+                            {
+                                psetExists = true;
+                                break;
+                            }
                         }
+                        if (psetExists) break;
                     }
-                    if (psetExists) break;
+
+                    if (psetExists)
+                    {
+                        result.Warnings.Add($"Raum '{space.Name}' (Kategorie '{raumCategory}'): Pset 'Raumbuch' existiert bereits - bitte aktualisieren");
+                        result.RoomsSkipped++;
+                        continue;
+                    }
+
+                    // Create new Pset "Raumbuch" (dedicated to this space only)
+                    var newPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
+
+                    // Add property: Fläche SOLL (IfcAreaMeasure)
+                    var propSoll = new IfcPropertySingleValue(
+                        db,
+                        PROP_FLAECHE_SOLL,
+                        new IfcAreaMeasure(data.SollArea)
+                    );
+                    newPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
+
+                    // Add property: Abweichung in Prozent (IfcRatioMeasure)
+                    var propAbweichung = new IfcPropertySingleValue(
+                        db,
+                        PROP_ABWEICHUNG_PROZENT,
+                        new IfcRatioMeasure(data.Percentage)
+                    );
+                    newPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
+
+                    // Add property: Raumprogramm Status (IfcLabel: Unterschritten/Überschritten/Erfüllt)
+                    var propStatus = new IfcPropertySingleValue(
+                        db,
+                        PROP_RAUMPROGRAMM_STATUS,
+                        new IfcLabel(data.Status)
+                    );
+                    newPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
+
+                    // Add property: Raumprogramm erfüllt (IfcBoolean: true for Erfüllt/Überschritten, false for Unterschritten)
+                    bool isErfuellt = data.Status != "Unterschritten";
+                    var propErfuellt = new IfcPropertySingleValue(
+                        db,
+                        PROP_RAUMPROGRAMM_ERFUELLT,
+                        new IfcBoolean(isErfuellt)
+                    );
+                    newPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
+
+                    // Add property: Kommentar Raumtyp (IfcText)
+                    var propKommentar = new IfcPropertySingleValue(
+                        db,
+                        PROP_KOMMENTAR_RAUMTYP,
+                        new IfcText(data.Kommentar ?? "")
+                    );
+                    newPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
+
+                    // Create NEW relation (dedicated to this space only)
+                    var newRel = new IfcRelDefinesByProperties(newPset);
+                    newRel.RelatedObjects.Add(space);
+
+                    result.RoomsUpdated++;
                 }
-
-                if (psetExists)
-                {
-                    result.Warnings.Add($"Raum '{raumName}': Pset 'Raumbuch' existiert bereits - bitte aktualisieren");
-                    result.RoomsSkipped++;
-                    continue;
-                }
-
-                // Create new Pset "Raumbuch" (dedicated to this space only)
-                var newPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
-
-                // Add property: Fläche SOLL (IfcAreaMeasure)
-                var propSoll = new IfcPropertySingleValue(
-                    db,
-                    PROP_FLAECHE_SOLL,
-                    new IfcAreaMeasure(data.SollArea)
-                );
-                newPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
-
-                // Add property: Abweichung in Prozent (IfcRatioMeasure)
-                var propAbweichung = new IfcPropertySingleValue(
-                    db,
-                    PROP_ABWEICHUNG_PROZENT,
-                    new IfcRatioMeasure(data.Percentage)
-                );
-                newPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
-
-                // Add property: Raumprogramm Status (IfcLabel: Unterschritten/Überschritten/Erfüllt)
-                var propStatus = new IfcPropertySingleValue(
-                    db,
-                    PROP_RAUMPROGRAMM_STATUS,
-                    new IfcLabel(data.Status)
-                );
-                newPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
-
-                // Add property: Raumprogramm erfüllt (IfcBoolean: true for Erfüllt/Überschritten, false for Unterschritten)
-                bool isErfuellt = data.Status != "Unterschritten";
-                var propErfuellt = new IfcPropertySingleValue(
-                    db,
-                    PROP_RAUMPROGRAMM_ERFUELLT,
-                    new IfcBoolean(isErfuellt)
-                );
-                newPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
-
-                // Add property: Kommentar Raumtyp (IfcText)
-                var propKommentar = new IfcPropertySingleValue(
-                    db,
-                    PROP_KOMMENTAR_RAUMTYP,
-                    new IfcText(data.Kommentar ?? "")
-                );
-                newPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
-
-                // Create NEW relation (dedicated to this space only)
-                var newRel = new IfcRelDefinesByProperties(newPset);
-                newRel.RelatedObjects.Add(space);
-
-                result.RoomsUpdated++;
             }
 
             db.WriteFile(outputPath);
@@ -346,6 +353,7 @@ namespace RaumbuchService.Services
         /// Overwrites existing properties if Pset exists.
         /// Creates NEW Pset if it doesn't exist.
         /// Each space gets its own dedicated Pset (no shared relations).
+        /// Updates ALL spaces in the same category.
         /// </summary>
         public WritePsetRaumbuchResult UpdatePsetRaumbuch(
             string ifcFilePath,
@@ -360,166 +368,173 @@ namespace RaumbuchService.Services
                 Warnings = new List<string>()
             };
 
-            // Build index: IfcSpace.Name/LongName -> IfcSpace
-            var spaceIndex = new Dictionary<string, IfcSpace>(StringComparer.OrdinalIgnoreCase);
+            // Build index: LongName (category) -> List of IfcSpace objects
+            // This allows updating Pset on ALL spaces in the same category
+            var spacesByCategory = new Dictionary<string, List<IfcSpace>>(StringComparer.OrdinalIgnoreCase);
             foreach (var space in db.OfType<IfcSpace>())
             {
                 if (space == null) continue;
 
-                if (!string.IsNullOrWhiteSpace(space.Name))
-                    spaceIndex[space.Name.Trim()] = space;
-
-                if (!string.IsNullOrWhiteSpace(space.LongName))
-                    spaceIndex[space.LongName.Trim()] = space;
+                string category = space.LongName?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(category))
+                {
+                    if (!spacesByCategory.ContainsKey(category))
+                        spacesByCategory[category] = new List<IfcSpace>();
+                    spacesByCategory[category].Add(space);
+                }
             }
 
-            // Process each room from Raumbuch data
+            // Process each room category from Raumbuch data
             foreach (var kvp in raumbuchData)
             {
-                string raumName = kvp.Key;
+                string raumCategory = kvp.Key;
                 var data = kvp.Value;
 
-                // Find matching space
-                if (!spaceIndex.TryGetValue(raumName, out IfcSpace space))
+                // Find all matching spaces for this category
+                if (!spacesByCategory.TryGetValue(raumCategory, out List<IfcSpace> spaces))
                 {
-                    result.Warnings.Add($"Raum '{raumName}' nicht in IFC gefunden - �bersprugen");
+                    result.Warnings.Add($"Kategorie '{raumCategory}' nicht in IFC gefunden - übersprungen");
                     result.RoomsSkipped++;
                     continue;
                 }
 
-                // Find existing Pset "Raumbuch"
-                IfcPropertySet existingPset = null;
-                IfcRelDefinesByProperties existingRel = null;
-
-                foreach (var rel in space.IsDefinedBy.OfType<IfcRelDefinesByProperties>())
+                // Update Pset on EACH space in this category
+                foreach (var space in spaces)
                 {
-                    foreach (var def in rel.RelatingPropertyDefinition)
+                    // Find existing Pset "Raumbuch"
+                    IfcPropertySet existingPset = null;
+                    IfcRelDefinesByProperties existingRel = null;
+
+                    foreach (var rel in space.IsDefinedBy.OfType<IfcRelDefinesByProperties>())
                     {
-                        var pset = def as IfcPropertySet;
-                        if (pset != null && 
-                            pset.Name != null && 
-                            pset.Name.Equals(RAUMBUCH_PSET_NAME, StringComparison.OrdinalIgnoreCase))
+                        foreach (var def in rel.RelatingPropertyDefinition)
                         {
-                            existingPset = pset;
-                            existingRel = rel;
-                            break;
+                            var pset = def as IfcPropertySet;
+                            if (pset != null && 
+                                pset.Name != null && 
+                                pset.Name.Equals(RAUMBUCH_PSET_NAME, StringComparison.OrdinalIgnoreCase))
+                            {
+                                existingPset = pset;
+                                existingRel = rel;
+                                break;
+                            }
                         }
+                        if (existingPset != null) break;
                     }
-                    if (existingPset != null) break;
+
+                    IfcPropertySet targetPset;
+
+                    if (existingPset != null)
+                    {
+                        // CLONE existing Pset to avoid shared relations
+                        targetPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
+
+                        // Copy existing properties (if any) that are NOT being updated
+                        foreach (var kvpProp in existingPset.HasProperties)
+                        {
+                            var prop = kvpProp.Value as IfcPropertySingleValue;
+                            if (prop == null) continue;
+
+                            // Skip properties we're about to update
+                            if (prop.Name.Equals(PROP_FLAECHE_SOLL, StringComparison.OrdinalIgnoreCase) ||
+                                prop.Name.Equals(PROP_ABWEICHUNG_PROZENT, StringComparison.OrdinalIgnoreCase) ||
+                                prop.Name.Equals(PROP_RAUMPROGRAMM_STATUS, StringComparison.OrdinalIgnoreCase) ||
+                                prop.Name.Equals(PROP_RAUMPROGRAMM_ERFUELLT, StringComparison.OrdinalIgnoreCase) ||
+                                prop.Name.Equals(PROP_KOMMENTAR_RAUMTYP, StringComparison.OrdinalIgnoreCase) ||
+                                // Also skip old property names for backward compatibility
+                                prop.Name.Equals("Differenzfläche zur Raumkategorie", StringComparison.OrdinalIgnoreCase) ||
+                                prop.Name.Equals("Gemäss Raumprogramm", StringComparison.OrdinalIgnoreCase))
+                                continue;
+
+                            // Clone other properties
+                            var clonedProp = ClonePropertySingleValue(prop, db);
+                            if (clonedProp != null)
+                            {
+                                targetPset.HasProperties[clonedProp.Name] = clonedProp;
+                            }
+                        }
+
+                        // Remove space from old relation
+                        if (existingRel != null)
+                        {
+                            existingRel.RelatedObjects.Remove(space);
+
+                            // Remove empty relation
+                            if (existingRel.RelatedObjects.Count == 0)
+                            {
+                                existingRel.Dispose(false);
+                            }
+                        }
+
+                        // Check if old Pset is still used
+                        bool psetStillUsed = false;
+                        foreach (var rel in db.OfType<IfcRelDefinesByProperties>())
+                        {
+                            if (rel.RelatingPropertyDefinition.Contains(existingPset))
+                            {
+                                psetStillUsed = true;
+                                break;
+                            }
+                        }
+
+                        if (!psetStillUsed)
+                        {
+                            existingPset.Dispose(false);
+                        }
+
+                        // Create NEW relation for cloned Pset
+                        var newRel = new IfcRelDefinesByProperties(targetPset);
+                        newRel.RelatedObjects.Add(space);
+                    }
+                    else
+                    {
+                        // Create NEW Pset if it doesn't exist
+                        targetPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
+
+                        // Create NEW relation
+                        var newRel = new IfcRelDefinesByProperties(targetPset);
+                        newRel.RelatedObjects.Add(space);
+                    }
+
+                    // Add/Update properties with new names
+                    var propSoll = new IfcPropertySingleValue(
+                        db,
+                        PROP_FLAECHE_SOLL,
+                        new IfcAreaMeasure(data.SollArea)
+                    );
+                    targetPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
+
+                    var propAbweichung = new IfcPropertySingleValue(
+                        db,
+                        PROP_ABWEICHUNG_PROZENT,
+                        new IfcRatioMeasure(data.Percentage)
+                    );
+                    targetPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
+
+                    var propStatus = new IfcPropertySingleValue(
+                        db,
+                        PROP_RAUMPROGRAMM_STATUS,
+                        new IfcLabel(data.Status)
+                    );
+                    targetPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
+
+                    bool isErfuellt = data.Status != "Unterschritten";
+                    var propErfuellt = new IfcPropertySingleValue(
+                        db,
+                        PROP_RAUMPROGRAMM_ERFUELLT,
+                        new IfcBoolean(isErfuellt)
+                    );
+                    targetPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
+
+                    var propKommentar = new IfcPropertySingleValue(
+                        db,
+                        PROP_KOMMENTAR_RAUMTYP,
+                        new IfcText(data.Kommentar ?? "")
+                    );
+                    targetPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
+
+                    result.RoomsUpdated++;
                 }
-
-                IfcPropertySet targetPset;
-
-                if (existingPset != null)
-                {
-                    // CLONE existing Pset to avoid shared relations
-                    targetPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
-
-                    // Copy existing properties (if any) that are NOT being updated
-                    foreach (var kvpProp in existingPset.HasProperties)
-                    {
-                        var prop = kvpProp.Value as IfcPropertySingleValue;
-                        if (prop == null) continue;
-
-                        // Skip properties we're about to update
-                        if (prop.Name.Equals(PROP_FLAECHE_SOLL, StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals(PROP_ABWEICHUNG_PROZENT, StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals(PROP_RAUMPROGRAMM_STATUS, StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals(PROP_RAUMPROGRAMM_ERFUELLT, StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals(PROP_KOMMENTAR_RAUMTYP, StringComparison.OrdinalIgnoreCase) ||
-                            // Also skip old property names for backward compatibility
-                            prop.Name.Equals("Differenzfläche zur Raumkategorie", StringComparison.OrdinalIgnoreCase) ||
-                            prop.Name.Equals("Gemäss Raumprogramm", StringComparison.OrdinalIgnoreCase))
-                            continue;
-
-                        // Clone other properties
-                        var clonedProp = ClonePropertySingleValue(prop, db);
-                        if (clonedProp != null)
-                        {
-                            targetPset.HasProperties[clonedProp.Name] = clonedProp;
-                        }
-                    }
-
-                    // Remove space from old relation
-                    if (existingRel != null)
-                    {
-                        existingRel.RelatedObjects.Remove(space);
-
-                        // Remove empty relation
-                        if (existingRel.RelatedObjects.Count == 0)
-                        {
-                            existingRel.Dispose(false);
-                        }
-                    }
-
-                    // Check if old Pset is still used
-                    bool psetStillUsed = false;
-                    foreach (var rel in db.OfType<IfcRelDefinesByProperties>())
-                    {
-                        if (rel.RelatingPropertyDefinition.Contains(existingPset))
-                        {
-                            psetStillUsed = true;
-                            break;
-                        }
-                    }
-
-                    if (!psetStillUsed)
-                    {
-                        existingPset.Dispose(false);
-                    }
-
-                    // Create NEW relation for cloned Pset
-                    var newRel = new IfcRelDefinesByProperties(targetPset);
-                    newRel.RelatedObjects.Add(space);
-                }
-                else
-                {
-                    // Create NEW Pset if it doesn't exist
-                    targetPset = new IfcPropertySet(db, RAUMBUCH_PSET_NAME);
-
-                    // Create NEW relation
-                    var newRel = new IfcRelDefinesByProperties(targetPset);
-                    newRel.RelatedObjects.Add(space);
-                }
-
-                // Add/Update properties with new names
-                var propSoll = new IfcPropertySingleValue(
-                    db,
-                    PROP_FLAECHE_SOLL,
-                    new IfcAreaMeasure(data.SollArea)
-                );
-                targetPset.HasProperties[PROP_FLAECHE_SOLL] = propSoll;
-
-                var propAbweichung = new IfcPropertySingleValue(
-                    db,
-                    PROP_ABWEICHUNG_PROZENT,
-                    new IfcRatioMeasure(data.Percentage)
-                );
-                targetPset.HasProperties[PROP_ABWEICHUNG_PROZENT] = propAbweichung;
-
-                var propStatus = new IfcPropertySingleValue(
-                    db,
-                    PROP_RAUMPROGRAMM_STATUS,
-                    new IfcLabel(data.Status)
-                );
-                targetPset.HasProperties[PROP_RAUMPROGRAMM_STATUS] = propStatus;
-
-                bool isErfuellt = data.Status != "Unterschritten";
-                var propErfuellt = new IfcPropertySingleValue(
-                    db,
-                    PROP_RAUMPROGRAMM_ERFUELLT,
-                    new IfcBoolean(isErfuellt)
-                );
-                targetPset.HasProperties[PROP_RAUMPROGRAMM_ERFUELLT] = propErfuellt;
-
-                var propKommentar = new IfcPropertySingleValue(
-                    db,
-                    PROP_KOMMENTAR_RAUMTYP,
-                    new IfcText(data.Kommentar ?? "")
-                );
-                targetPset.HasProperties[PROP_KOMMENTAR_RAUMTYP] = propKommentar;
-
-                result.RoomsUpdated++;
             }
 
             db.WriteFile(outputPath);

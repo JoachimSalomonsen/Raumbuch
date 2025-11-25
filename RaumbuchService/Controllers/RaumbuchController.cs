@@ -3101,6 +3101,7 @@ namespace RaumbuchService.Controllers
 
         /// <summary>
         /// Creates enhanced Raumbuch Excel with Raumkategorie column.
+        /// Column order: Raumtyp, Raum Name, Raumkategorie, Bodenbelag, Fläche IST (m²), Fläche SOLL (m²), SOLL/IST (%), Differenz (m²), Kommentar
         /// </summary>
         private void CreateRaumbuchExcelEnhanced(
             string outputPath, 
@@ -3115,20 +3116,19 @@ namespace RaumbuchService.Controllers
                 // ===== SHEET 1: RAUMBUCH (Room Data) =====
                 var ws = wb.Worksheets.Add("Raumbuch");
 
-                // Header with Raumkategorie column
+                // Header with correct column order per requirements
+                // Raumtyp, Raum Name, Raumkategorie, Bodenbelag, Fläche IST (m²), Fläche SOLL (m²), SOLL/IST (%), Differenz (m²), Kommentar
                 ws.Cell(1, 1).Value = "Raumtyp";
-                ws.Cell(1, 2).Value = "Raumkategorie";
-                ws.Cell(1, 3).Value = "Raum Name";
-                ws.Cell(1, 4).Value = "Fläche IST (m²)";
-                ws.Cell(1, 5).Value = "SIA d0165";
-                ws.Cell(1, 6).Value = "FloorCovering";
-                ws.Cell(1, 7).Value = "Category";
-                ws.Cell(1, 8).Value = "SOLL Fläche (m²)";
-                ws.Cell(1, 9).Value = "SOLL/IST (%)";
-                ws.Cell(1, 10).Value = "Differenz (m²)";
-                ws.Cell(1, 11).Value = "Kommentar";
+                ws.Cell(1, 2).Value = "Raum Name";
+                ws.Cell(1, 3).Value = "Raumkategorie";
+                ws.Cell(1, 4).Value = "Bodenbelag";
+                ws.Cell(1, 5).Value = "Fläche IST (m²)";
+                ws.Cell(1, 6).Value = "Fläche SOLL (m²)";
+                ws.Cell(1, 7).Value = "SOLL/IST (%)";
+                ws.Cell(1, 8).Value = "Differenz (m²)";
+                ws.Cell(1, 9).Value = "Kommentar";
 
-                var headerRange = ws.Range(1, 1, 1, 11);
+                var headerRange = ws.Range(1, 1, 1, 9);
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
@@ -3136,47 +3136,60 @@ namespace RaumbuchService.Controllers
                 int row = 2;
                 foreach (var room in roomData.OrderBy(r => r.RoomCategory).ThenBy(r => r.Name))
                 {
-                    ws.Cell(row, 1).Value = room.RoomCategory; // Raumtyp
-                    ws.Cell(row, 2).Value = room.RoomCategory; // Raumkategorie (same as Raumtyp initially, from LongName)
-                    ws.Cell(row, 3).Value = room.Name;
-                    ws.Cell(row, 4).Value = room.Area;
-                    ws.Cell(row, 5).Value = room.SiaCategory;
-                    ws.Cell(row, 6).Value = room.FloorCovering;
-                    ws.Cell(row, 7).Value = room.SpaceCategory;
+                    // Raumtyp: from RoomCategory (LongName from IFC), can be extended from template
+                    ws.Cell(row, 1).Value = room.RoomCategory;
+                    // Raum Name: from IfcSpace.Name
+                    ws.Cell(row, 2).Value = room.Name;
+                    // Raumkategorie: leave empty for now, will be filled from Excel only
+                    ws.Cell(row, 3).Value = "";
+                    // Bodenbelag: empty by default, for manual editing
+                    ws.Cell(row, 4).Value = "";
+                    // Fläche IST: from IFC
+                    ws.Cell(row, 5).Value = room.Area;
 
                     if (analysisLookup.TryGetValue(room.RoomCategory, out var ana))
                     {
-                        ws.Cell(row, 8).Value = ana.SollArea;
+                        // Fläche SOLL
+                        ws.Cell(row, 6).Value = ana.SollArea;
                         
+                        // SOLL/IST (%)
                         if (double.IsNaN(ana.Percentage) || double.IsInfinity(ana.Percentage))
                         {
-                            ws.Cell(row, 9).Value = "-";
+                            ws.Cell(row, 7).Value = "-";
                         }
                         else
                         {
-                            ws.Cell(row, 9).Value = ana.Percentage;
+                            ws.Cell(row, 7).Value = ana.Percentage;
                         }
                         
+                        // Differenz
                         double diff = ana.IstArea - ana.SollArea;
                         if (double.IsNaN(diff) || double.IsInfinity(diff))
                         {
-                            ws.Cell(row, 10).Value = "-";
+                            ws.Cell(row, 8).Value = "-";
                         }
                         else
                         {
-                            ws.Cell(row, 10).Value = diff;
+                            ws.Cell(row, 8).Value = diff;
                         }
 
-                        // Color logic: Red for IST < SOLL (Unterschritten), Light green for Erfüllt
-                        if (ana.IsUnderLimit)
+                        // Color logic:
+                        // SOLL=0 or IST < SOLL: Red (Unterschritten)
+                        // IST ≈ SOLL (within tolerance): Green (Erfüllt)
+                        // IST > SOLL: No color (Überschritten)
+                        if (ana.SollArea == 0 || ana.IsUnderLimit)
                         {
-                            ws.Range(row, 1, row, 11).Style.Fill.BackgroundColor = XLColor.LightPink;
+                            ws.Range(row, 1, row, 9).Style.Fill.BackgroundColor = XLColor.LightPink;
                         }
-                        else if (!ana.IsOverLimit) // Erfüllt
+                        else if (!ana.IsOverLimit) // Erfüllt (within tolerance)
                         {
-                            ws.Range(row, 1, row, 11).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                            ws.Range(row, 1, row, 9).Style.Fill.BackgroundColor = XLColor.LightGreen;
                         }
+                        // No color for Überschritten
                     }
+                    
+                    // Kommentar: empty by default
+                    ws.Cell(row, 9).Value = "";
 
                     row++;
                 }
@@ -3187,11 +3200,11 @@ namespace RaumbuchService.Controllers
                 // ===== SHEET 2: ZUSAMMENFASSUNG (Summary) =====
                 var summaryWs = wb.Worksheets.Add("Zusammenfassung");
 
-                // Header with Raumkategorie column
+                // Header - matching the analysis table UI
                 summaryWs.Cell(1, 1).Value = "Raumtyp";
                 summaryWs.Cell(1, 2).Value = "Raumkategorie";
                 summaryWs.Cell(1, 3).Value = "SOLL Fläche (m²)";
-                summaryWs.Cell(1, 4).Value = "IST Fläche";
+                summaryWs.Cell(1, 4).Value = "IST Fläche (m²)";
                 summaryWs.Cell(1, 5).Value = "Abweichung (%)";
                 summaryWs.Cell(1, 6).Value = "Status";
                 summaryWs.Cell(1, 7).Value = "Kommentar";
@@ -3200,12 +3213,12 @@ namespace RaumbuchService.Controllers
                 summaryHeaderRange.Style.Font.Bold = true;
                 summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-                // Summary data
+                // Summary data - Raumkategorie copied from Raumbuch sheet (initially same as Raumtyp)
                 int summaryRow = 2;
                 foreach (var ana in analysis.OrderBy(a => a.RoomCategory))
                 {
                     summaryWs.Cell(summaryRow, 1).Value = ana.RoomCategory; // Raumtyp
-                    summaryWs.Cell(summaryRow, 2).Value = ana.RoomCategory; // Raumkategorie (same initially)
+                    summaryWs.Cell(summaryRow, 2).Value = ""; // Raumkategorie - empty, will be copied from Raumbuch sheet
                     summaryWs.Cell(summaryRow, 3).Value = ana.SollArea;
                     summaryWs.Cell(summaryRow, 4).Value = ana.IstArea;
                     
@@ -3221,8 +3234,11 @@ namespace RaumbuchService.Controllers
                     summaryWs.Cell(summaryRow, 6).Value = ana.Status;
                     summaryWs.Cell(summaryRow, 7).Value = ""; // Comment column
 
-                    // Color logic: Red for Unterschritten, Light green for Erfüllt, no color for Überschritten
-                    if (ana.IsUnderLimit)
+                    // Color logic:
+                    // SOLL=0 or IST < SOLL: Red (Unterschritten)
+                    // IST ≈ SOLL (within tolerance): Green (Erfüllt)
+                    // IST > SOLL: No color (Überschritten)
+                    if (ana.SollArea == 0 || ana.IsUnderLimit)
                     {
                         summaryWs.Range(summaryRow, 1, summaryRow, 7).Style.Fill.BackgroundColor = XLColor.LightPink;
                     }

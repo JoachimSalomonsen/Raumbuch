@@ -67,8 +67,8 @@ body {
    CONTAINER
    ------------------------------------------------------------ */
 .container {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: calc(100vw - 40px);
+    margin: 0 20px;
     background: var(--tc-bg-card);
     border-radius: 6px;
     box-shadow: var(--tc-shadow-lg);
@@ -756,6 +756,14 @@ textarea {
 
 .analyse-row-ok:hover {
     background-color: #c8e6c9 !important;
+}
+
+.analyse-row-over {
+    background-color: #fff8e1 !important;
+}
+
+.analyse-row-over:hover {
+    background-color: #ffecb3 !important;
 }
 
 /* Status Badges */
