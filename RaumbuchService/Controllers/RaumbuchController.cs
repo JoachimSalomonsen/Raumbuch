@@ -728,6 +728,122 @@ namespace RaumbuchService.Controllers
             }
         }
 
+        // --------------------------------------------------------------------
+        //  GET VIEWER DATA - Get rooms grouped by status for 3D Viewer
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Gets rooms grouped by status (Erfüllt, Unterschritten, Überschritten) for 3D Viewer.
+        /// Swiss German: Holt Räume gruppiert nach Status für den 3D Viewer.
+        /// </summary>
+        [HttpPost]
+        [Route("get-viewer-data")]
+        public async Task<IHttpActionResult> GetViewerData([FromBody] GetViewerDataRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId))
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken und RaumbuchFileId sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+
+                // Download Raumbuch Excel
+                string raumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch.xlsx"
+                );
+
+                // Read rooms grouped by status
+                var viewerData = ReadRoomsGroupedByStatus(raumbuchPath, request.ToleranceMin, request.ToleranceMax);
+
+                // Cleanup
+                File.Delete(raumbuchPath);
+
+                return Ok(new GetViewerDataResponse
+                {
+                    Success = true,
+                    Message = $"Erfüllt: {viewerData.Erfuellt.Count}, Unterschritten: {viewerData.Unterschritten.Count}, Überschritten: {viewerData.Ueberschritten.Count}",
+                    Erfuellt = viewerData.Erfuellt,
+                    Unterschritten = viewerData.Unterschritten,
+                    Ueberschritten = viewerData.Ueberschritten
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetViewerData: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Laden der Viewer-Daten: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Reads rooms from Raumbuch Excel and groups them by status based on tolerance settings.
+        /// </summary>
+        private GetViewerDataResponse ReadRoomsGroupedByStatus(string excelPath, double toleranceMin, double toleranceMax)
+        {
+            var result = new GetViewerDataResponse
+            {
+                Erfuellt = new List<string>(),
+                Unterschritten = new List<string>(),
+                Ueberschritten = new List<string>()
+            };
+
+            using (var wb = new XLWorkbook(excelPath))
+            {
+                // Read from Zusammenfassung sheet to get category-level percentage data
+                // Raumtyp (category) matches IfcSpace LongName
+                var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
+                
+                if (summaryWs == null)
+                {
+                    return result;
+                }
+
+                // Read categories and their percentages from Zusammenfassung
+                // Raumtyp matches IfcSpace.LongName
+                var summaryRange = summaryWs.RangeUsed();
+                if (summaryRange != null)
+                {
+                    int lastRow = summaryRange.LastRow().RowNumber();
+                    for (int r = 2; r <= lastRow; r++)
+                    {
+                        // Column 1 = Raumtyp (matches IfcSpace.LongName)
+                        string raumtyp = summaryWs.Cell(r, ZUSAMMENFASSUNG_COL_CATEGORY).GetString().Trim();
+                        if (string.IsNullOrWhiteSpace(raumtyp)) continue;
+                        
+                        double.TryParse(summaryWs.Cell(r, ZUSAMMENFASSUNG_COL_PERCENT).GetString().Trim(), 
+                            System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out double percentage);
+                        
+                        // Determine status based on tolerance
+                        double deviation = percentage - 100;
+                        
+                        if (deviation < toleranceMin)
+                        {
+                            // Unterschritten (IST < SOLL)
+                            result.Unterschritten.Add(raumtyp);
+                        }
+                        else if (deviation > toleranceMax)
+                        {
+                            // Überschritten (IST > SOLL)
+                            result.Ueberschritten.Add(raumtyp);
+                        }
+                        else
+                        {
+                            // Erfüllt (within tolerance)
+                            result.Erfuellt.Add(raumtyp);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Updates Zusammenfassung sheet with comments and status colors.
         /// Also updates Raumbuch sheet with comments per Raumtyp.

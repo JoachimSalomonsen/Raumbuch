@@ -329,6 +329,7 @@
     <Content Include="Global.asax" />
     <Content Include="Img\analyse.png" />
     <Content Include="Img\book.png" />
+    <Content Include="Img\book_black.png" />
     <Content Include="Img\mail.png" />
     <Content Include="Img\material.png" />
     <Content Include="Img\settings.png" />
@@ -368,6 +369,8 @@
     <Content Include="COLOR_FIX_SUMMARY.md" />
     <Content Include="get_token.ps1" />
     <Content Include="RaumbuchManager.json" />
+    <Content Include="Raumbuch3DViewer.json" />
+    <Content Include="viewer.html" />
     <None Include="Scripts\jquery-3.7.0.intellisense.js" />
     <Content Include="Scripts\jquery-3.7.0.js" />
     <Content Include="Scripts\jquery-3.7.0.min.js" />
