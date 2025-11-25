@@ -331,6 +331,7 @@
     <Content Include="Img\book.png" />
     <Content Include="Img\mail.png" />
     <Content Include="Img\material.png" />
+    <Content Include="Img\settings.png" />
     <Content Include="index.html" />
     <Content Include="Scripts\app.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />

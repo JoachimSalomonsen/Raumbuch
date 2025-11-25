@@ -60,7 +60,7 @@ body {
     color: var(--tc-text-primary);
     line-height: 1.6;
     min-height: 100vh;
-    padding: 20px;
+    padding: 0px;
 }
 
 /* ------------------------------------------------------------
@@ -525,51 +525,68 @@ textarea {
     font-size: 0.9em;
 }
 
+
+
 /* ============================================================
    TRIMBLE CONNECT STYLE - TOP TABS
    ============================================================ */
 
 .tc-tabs {
     display: flex;
+    justify-content: center; /* center the tabs horizontally */
+    align-items: center;
+    width: 100%; /* full width */
+    max-width: 100%; /* override parent limits */
+
     background-color: var(--tc-dark-blue);
     padding: 0;
     margin: 0;
     border-bottom: 3px solid var(--tc-primary-blue);
+    height: 60px; /* matches Trimble Connect */
+
+    position: relative; /* prevents shifting inside layouts */
+    left: 0;
+    right: 0;
 }
 
+/* TABS */
 .tc-tab {
     flex: 1;
-    display: flex; /* flex container */
-    flex-direction: column; /* logo above text */
-    align-items: center; /* center horizontal */
-    justify-content: center; /* center vertical */
-    gap: 4px; /* space between icon and text */
-
-    padding: 10px 0;
+    display: flex;
+    flex-direction: column; /* icon above text */
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.2s ease;
     text-align: center;
+    padding-top: 6px;
+    transition: background-color 0.2s ease;
 }
 
+    /* Hover state = soft lighter blue (same appearance as Trimble Connect) */
     .tc-tab:hover {
-        background-color: #004b8a;
+        background-color: #1f5d8f; /* close to Trimble Connect hover color */
     }
 
+    /* Active tab = lighter blue + white underline */
     .tc-tab.active {
-        background-color: var(--tc-primary-blue);
+        background-color: transparent; /* Trimble-like pressed color */
         border-bottom: 3px solid white;
+        margin-bottom: -3px; /* prevents layout jump when adding the border */
     }
 
-/* icon style */
+/* ICONS */
 .tc-tab-icon {
-    width: 30px;
-    height: 30px;
+    width: 26px; /* Trimble uses slightly smaller icons */
+    height: 26px;
     object-fit: contain;
+    opacity: 0.9; /* matches the subtle style used in TC */
 }
 
+/* CONTENT */
 .tab-content {
     display: none;
 }
@@ -577,6 +594,8 @@ textarea {
     .tab-content.active {
         display: block;
     }
+
+
 
 /* ============================================================
    ANALYSE TAB STYLES
