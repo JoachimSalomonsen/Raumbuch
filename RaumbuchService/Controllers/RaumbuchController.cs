@@ -846,13 +846,20 @@ namespace RaumbuchService.Controllers
 
         /// <summary>
         /// Updates Zusammenfassung sheet with comments and status colors.
-        /// Also updates Raumbuch sheet with comments per Raumtyp.
+        /// Also updates Raumbuch sheet with all analysis data (SOLL, percentage, status, comments) per Raumtyp.
+        /// Color logic: Red for Unterschritten, Light green for Erfüllt, no color for Überschritten.
         /// </summary>
         private void UpdateZusammenfassungExcel(string excelPath, List<ZusammenfassungItem> data, double toleranceMin, double toleranceMax)
         {
             using (var wb = new XLWorkbook(excelPath))
             {
-                // Update Zusammenfassung sheet
+                // Build lookup by Raumtyp/RoomCategory
+                var dataLookup = data.ToDictionary(
+                    d => d.Raumtyp ?? d.RoomCategory ?? "", 
+                    d => d, 
+                    StringComparer.OrdinalIgnoreCase);
+
+                // ===== Update Zusammenfassung sheet =====
                 var summaryWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Zusammenfassung");
                 if (summaryWs != null)
                 {
@@ -860,56 +867,100 @@ namespace RaumbuchService.Controllers
                     if (range != null)
                     {
                         int lastRow = range.LastRow().RowNumber();
+                        int lastCol = range.LastColumn().ColumnNumber();
                         
-                        // Update header if needed
-                        if (summaryWs.Cell(1, 6).GetString() != "Kommentar")
+                        // Determine column indices (may vary based on whether Raumkategorie column exists)
+                        int raumtypCol = 1;
+                        int raumkategorieCol = -1;
+                        int sollCol = 2;
+                        int istCol = 3;
+                        int percentCol = 4;
+                        int statusCol = 5;
+                        int commentCol = 6;
+                        
+                        // Check headers to find correct columns
+                        for (int c = 1; c <= lastCol; c++)
                         {
-                            summaryWs.Cell(1, 6).Value = "Kommentar";
+                            string header = summaryWs.Cell(1, c).GetString().Trim().ToLower();
+                            if (header.Contains("raumkategorie")) raumkategorieCol = c;
+                            else if (header.Contains("raumtyp")) raumtypCol = c;
+                            else if (header.Contains("soll")) sollCol = c;
+                            else if (header.Contains("ist")) istCol = c;
+                            else if (header.Contains("abweichung") || header.Contains("%")) percentCol = c;
+                            else if (header.Contains("status")) statusCol = c;
+                            else if (header.Contains("kommentar")) commentCol = c;
                         }
 
-                        // Match data by Raumtyp and update
-                        for (int r = 2; r <= lastRow; r++)
+                        // Clear existing data rows and rewrite from analyseData
+                        // First, delete all data rows
+                        if (lastRow > 1)
                         {
-                            string raumtyp = summaryWs.Cell(r, 1).GetString().Trim();
-                            var item = data.FirstOrDefault(d => 
-                                (d.RoomCategory ?? "").Equals(raumtyp, StringComparison.OrdinalIgnoreCase));
-                            
-                            if (item != null)
-                            {
-                                // Update status
-                                string status = item.Status ?? "Erfüllt";
-                                summaryWs.Cell(r, 5).Value = status;
-                                
-                                // Update comment
-                                summaryWs.Cell(r, 6).Value = item.Comment ?? "";
-                                
-                                // Apply colors based on tolerance
-                                double percentage = item.Percentage;
-                                double deviation = percentage - 100;
-                                
-                                // Clear existing background
-                                summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.NoColor;
-                                
-                                if (deviation < toleranceMin)
-                                {
-                                    // Unterschritten - Red
-                                    summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.LightPink;
-                                }
-                                else if (deviation > toleranceMax)
-                                {
-                                    // Überschritten - No color (or could use light yellow)
-                                }
-                                else
-                                {
-                                    // Erfüllt - Light green
-                                    summaryWs.Range(r, 1, r, 6).Style.Fill.BackgroundColor = XLColor.LightGreen;
-                                }
-                            }
+                            summaryWs.Rows(2, lastRow).Delete();
                         }
+
+                        // Write new data from analyseData
+                        int summaryRow = 2;
+                        foreach (var item in data.OrderBy(d => d.Raumtyp ?? d.RoomCategory))
+                        {
+                            string raumtyp = item.Raumtyp ?? item.RoomCategory ?? "";
+                            if (string.IsNullOrWhiteSpace(raumtyp)) continue;
+
+                            summaryWs.Cell(summaryRow, raumtypCol).Value = raumtyp;
+                            if (raumkategorieCol > 0)
+                            {
+                                summaryWs.Cell(summaryRow, raumkategorieCol).Value = item.Raumkategorie ?? raumtyp;
+                            }
+                            summaryWs.Cell(summaryRow, sollCol).Value = item.SollArea;
+                            summaryWs.Cell(summaryRow, istCol).Value = item.IstArea;
+                            
+                            if (double.IsNaN(item.Percentage) || double.IsInfinity(item.Percentage))
+                            {
+                                summaryWs.Cell(summaryRow, percentCol).Value = "-";
+                            }
+                            else
+                            {
+                                summaryWs.Cell(summaryRow, percentCol).Value = item.Percentage;
+                            }
+                            
+                            // Calculate status based on tolerance
+                            double deviation = item.Percentage - 100;
+                            string status;
+                            if (deviation < toleranceMin)
+                            {
+                                status = "Unterschritten";
+                            }
+                            else if (deviation > toleranceMax)
+                            {
+                                status = "Überschritten";
+                            }
+                            else
+                            {
+                                status = "Erfüllt";
+                            }
+                            
+                            summaryWs.Cell(summaryRow, statusCol).Value = status;
+                            summaryWs.Cell(summaryRow, commentCol).Value = item.Comment ?? "";
+                            
+                            // Apply colors: Red for Unterschritten, Light green for Erfüllt, no color for Überschritten
+                            int colCount = Math.Max(commentCol, raumkategorieCol > 0 ? 7 : 6);
+                            if (deviation < toleranceMin)
+                            {
+                                summaryWs.Range(summaryRow, 1, summaryRow, colCount).Style.Fill.BackgroundColor = XLColor.LightPink;
+                            }
+                            else if (deviation <= toleranceMax)
+                            {
+                                summaryWs.Range(summaryRow, 1, summaryRow, colCount).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                            }
+                            // No color for Überschritten
+
+                            summaryRow++;
+                        }
+                        
+                        summaryWs.Columns().AdjustToContents();
                     }
                 }
 
-                // Update Raumbuch sheet with comments per Raumtyp
+                // ===== Update Raumbuch sheet with all analysis data per room =====
                 var raumbuchWs = wb.Worksheets.FirstOrDefault(s => s.Name == "Raumbuch");
                 if (raumbuchWs != null)
                 {
@@ -919,37 +970,138 @@ namespace RaumbuchService.Controllers
                         int lastRow = range.LastRow().RowNumber();
                         int lastCol = range.LastColumn().ColumnNumber();
                         
-                        // Check if Kommentar column exists, if not add it
+                        // Find column indices from headers
+                        int raumtypCol = 1;
+                        int raumkategorieCol = -1;
+                        int sollCol = -1;
+                        int percentCol = -1;
+                        int diffCol = -1;
                         int kommentarCol = -1;
+                        
                         for (int c = 1; c <= lastCol; c++)
                         {
-                            if (raumbuchWs.Cell(1, c).GetString().Trim() == "Kommentar")
-                            {
-                                kommentarCol = c;
-                                break;
-                            }
+                            string header = raumbuchWs.Cell(1, c).GetString().Trim().ToLower();
+                            if (header.Contains("raumkategorie")) raumkategorieCol = c;
+                            else if (header.Contains("raumtyp")) raumtypCol = c;
+                            else if (header.Contains("soll")) sollCol = c;
+                            else if (header.Contains("soll/ist") || (header.Contains("%") && !header.Contains("abweichung"))) percentCol = c;
+                            else if (header.Contains("differenz")) diffCol = c;
+                            else if (header.Contains("kommentar")) kommentarCol = c;
                         }
                         
+                        // Add Raumkategorie column if missing
+                        if (raumkategorieCol == -1)
+                        {
+                            // Insert after Raumtyp
+                            raumkategorieCol = raumtypCol + 1;
+                            raumbuchWs.Column(raumkategorieCol).InsertColumnsBefore(1);
+                            raumbuchWs.Cell(1, raumkategorieCol).Value = "Raumkategorie";
+                            raumbuchWs.Cell(1, raumkategorieCol).Style.Font.Bold = true;
+                            raumbuchWs.Cell(1, raumkategorieCol).Style.Fill.BackgroundColor = XLColor.LightGray;
+                            lastCol++;
+                            // Shift column indices
+                            if (sollCol >= raumkategorieCol) sollCol++;
+                            if (percentCol >= raumkategorieCol) percentCol++;
+                            if (diffCol >= raumkategorieCol) diffCol++;
+                            if (kommentarCol >= raumkategorieCol) kommentarCol++;
+                        }
+                        
+                        // Add Kommentar column if missing
                         if (kommentarCol == -1)
                         {
                             kommentarCol = lastCol + 1;
                             raumbuchWs.Cell(1, kommentarCol).Value = "Kommentar";
                             raumbuchWs.Cell(1, kommentarCol).Style.Font.Bold = true;
                             raumbuchWs.Cell(1, kommentarCol).Style.Fill.BackgroundColor = XLColor.LightGray;
+                            lastCol++;
                         }
                         
-                        // Update comments for each row based on Raumtyp (column 1)
+                        // Update each row based on Raumtyp (repeating info from analysis)
                         for (int r = 2; r <= lastRow; r++)
                         {
-                            string raumtyp = raumbuchWs.Cell(r, 1).GetString().Trim();
-                            var item = data.FirstOrDefault(d => 
-                                (d.RoomCategory ?? "").Equals(raumtyp, StringComparison.OrdinalIgnoreCase));
+                            string raumtyp = raumbuchWs.Cell(r, raumtypCol).GetString().Trim();
+                            if (string.IsNullOrWhiteSpace(raumtyp)) continue;
                             
-                            if (item != null && !string.IsNullOrEmpty(item.Comment))
+                            // Find matching item in data
+                            ZusammenfassungItem item = null;
+                            foreach (var d in data)
                             {
-                                raumbuchWs.Cell(r, kommentarCol).Value = item.Comment;
+                                string key = d.Raumtyp ?? d.RoomCategory ?? "";
+                                if (key.Equals(raumtyp, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    item = d;
+                                    break;
+                                }
+                            }
+                            
+                            if (item != null)
+                            {
+                                // Update Raumkategorie
+                                if (raumkategorieCol > 0)
+                                {
+                                    raumbuchWs.Cell(r, raumkategorieCol).Value = item.Raumkategorie ?? raumtyp;
+                                }
+                                
+                                // Update SOLL
+                                if (sollCol > 0)
+                                {
+                                    raumbuchWs.Cell(r, sollCol).Value = item.SollArea;
+                                }
+                                
+                                // Update Percentage
+                                if (percentCol > 0)
+                                {
+                                    if (double.IsNaN(item.Percentage) || double.IsInfinity(item.Percentage))
+                                    {
+                                        raumbuchWs.Cell(r, percentCol).Value = "-";
+                                    }
+                                    else
+                                    {
+                                        raumbuchWs.Cell(r, percentCol).Value = item.Percentage;
+                                    }
+                                }
+                                
+                                // Update Differenz
+                                if (diffCol > 0)
+                                {
+                                    double diff = item.IstArea - item.SollArea;
+                                    if (double.IsNaN(diff) || double.IsInfinity(diff))
+                                    {
+                                        raumbuchWs.Cell(r, diffCol).Value = "-";
+                                    }
+                                    else
+                                    {
+                                        raumbuchWs.Cell(r, diffCol).Value = diff;
+                                    }
+                                }
+                                
+                                // Update Kommentar
+                                if (kommentarCol > 0 && !string.IsNullOrEmpty(item.Comment))
+                                {
+                                    raumbuchWs.Cell(r, kommentarCol).Value = item.Comment;
+                                }
+                                
+                                // Apply row colors based on tolerance
+                                double deviation = item.Percentage - 100;
+                                if (deviation < toleranceMin)
+                                {
+                                    // Unterschritten - Red
+                                    raumbuchWs.Range(r, 1, r, lastCol).Style.Fill.BackgroundColor = XLColor.LightPink;
+                                }
+                                else if (deviation <= toleranceMax)
+                                {
+                                    // Erfüllt - Light green
+                                    raumbuchWs.Range(r, 1, r, lastCol).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                                }
+                                else
+                                {
+                                    // Überschritten - No color (clear any existing)
+                                    raumbuchWs.Range(r, 1, r, lastCol).Style.Fill.BackgroundColor = XLColor.NoColor;
+                                }
                             }
                         }
+                        
+                        raumbuchWs.Columns().AdjustToContents();
                     }
                 }
 
@@ -1963,7 +2115,7 @@ namespace RaumbuchService.Controllers
             return result;
         }
 
-        // Column indices for Zusammenfassung sheet
+        // Column indices for Zusammenfassung sheet (old format without Raumkategorie)
         private const int ZUSAMMENFASSUNG_COL_CATEGORY = 1;
         private const int ZUSAMMENFASSUNG_COL_SOLL = 2;
         private const int ZUSAMMENFASSUNG_COL_IST = 3;
@@ -1974,6 +2126,7 @@ namespace RaumbuchService.Controllers
         /// <summary>
         /// Reads Zusammenfassung data from Raumbuch Excel.
         /// Returns the summary sheet data as ZusammenfassungItem list.
+        /// Supports both old format (without Raumkategorie) and new format (with Raumkategorie).
         /// </summary>
         private List<ZusammenfassungItem> ReadZusammenfassungFromExcel(string excelPath)
         {
@@ -1995,31 +2148,64 @@ namespace RaumbuchService.Controllers
 
                 int firstRow = range.FirstRow().RowNumber();
                 int lastRow = range.LastRow().RowNumber();
+                int lastCol = range.LastColumn().ColumnNumber();
+
+                // Detect column layout by reading headers
+                int raumtypCol = -1;
+                int raumkategorieCol = -1;
+                int sollCol = -1;
+                int istCol = -1;
+                int percentCol = -1;
+                int statusCol = -1;
+                int commentCol = -1;
+
+                for (int c = 1; c <= lastCol; c++)
+                {
+                    string header = ws.Cell(1, c).GetString().Trim().ToLower();
+                    if (header.Contains("raumkategorie")) raumkategorieCol = c;
+                    else if (header.Contains("raumtyp") || header.Contains("kategorie")) raumtypCol = c;
+                    else if (header.Contains("soll")) sollCol = c;
+                    else if (header.Contains("ist")) istCol = c;
+                    else if (header.Contains("abweichung") || header.Contains("%")) percentCol = c;
+                    else if (header.Contains("status")) statusCol = c;
+                    else if (header.Contains("kommentar")) commentCol = c;
+                }
+
+                // Fallback to old column positions if headers not found
+                if (raumtypCol == -1) raumtypCol = ZUSAMMENFASSUNG_COL_CATEGORY;
+                if (sollCol == -1) sollCol = ZUSAMMENFASSUNG_COL_SOLL;
+                if (istCol == -1) istCol = ZUSAMMENFASSUNG_COL_IST;
+                if (percentCol == -1) percentCol = ZUSAMMENFASSUNG_COL_PERCENT;
+                if (statusCol == -1) statusCol = ZUSAMMENFASSUNG_COL_STATUS;
+                if (commentCol == -1) commentCol = ZUSAMMENFASSUNG_COL_COMMENT;
 
                 // Data starts from row 2 (row 1 is header)
                 for (int r = firstRow + 1; r <= lastRow; r++)
                 {
-                    string category = ws.Cell(r, ZUSAMMENFASSUNG_COL_CATEGORY).GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(category)) continue;
+                    string raumtyp = ws.Cell(r, raumtypCol).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(raumtyp)) continue;
 
-                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_SOLL).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    string raumkategorie = raumkategorieCol > 0 ? ws.Cell(r, raumkategorieCol).GetString().Trim() : "";
+
+                    double.TryParse(ws.Cell(r, sollCol).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double sollArea);
-                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_IST).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    double.TryParse(ws.Cell(r, istCol).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double istArea);
-                    double.TryParse(ws.Cell(r, ZUSAMMENFASSUNG_COL_PERCENT).GetString().Trim(), System.Globalization.NumberStyles.Any,
+                    double.TryParse(ws.Cell(r, percentCol).GetString().Trim(), System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out double percentage);
-                    string status = ws.Cell(r, ZUSAMMENFASSUNG_COL_STATUS).GetString().Trim();
+                    string status = ws.Cell(r, statusCol).GetString().Trim();
                     
                     // Check if there's a comment column
                     string comment = "";
-                    if (ws.Cell(r, ZUSAMMENFASSUNG_COL_COMMENT) != null)
+                    if (commentCol > 0 && ws.Cell(r, commentCol) != null)
                     {
-                        comment = ws.Cell(r, ZUSAMMENFASSUNG_COL_COMMENT).GetString().Trim();
+                        comment = ws.Cell(r, commentCol).GetString().Trim();
                     }
 
                     result.Add(new ZusammenfassungItem
                     {
-                        RoomCategory = category,
+                        Raumtyp = raumtyp,
+                        Raumkategorie = string.IsNullOrEmpty(raumkategorie) ? raumtyp : raumkategorie,
                         SollArea = sollArea,
                         IstArea = istArea,
                         Percentage = percentage,
@@ -2683,6 +2869,440 @@ namespace RaumbuchService.Controllers
             }
 
             return result;
+        }
+
+        // --------------------------------------------------------------------
+        //  GET TEMPLATE HEADERS (for column mapping)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Gets headers (first row) from template Excel file for column mapping.
+        /// </summary>
+        [HttpPost]
+        [Route("get-template-headers")]
+        public async Task<IHttpActionResult> GetTemplateHeaders([FromBody] GetTemplateHeadersRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.TemplateFileId))
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken und TemplateFileId sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+
+                // Download template
+                string templatePath = await tcService.DownloadFileAsync(
+                    request.TemplateFileId,
+                    _tempFolder,
+                    "Template.xlsx"
+                );
+
+                var headers = new List<string>();
+
+                using (var wb = new XLWorkbook(templatePath))
+                {
+                    var ws = wb.Worksheet(1);
+                    var range = ws.RangeUsed();
+                    if (range != null)
+                    {
+                        int lastCol = range.LastColumn().ColumnNumber();
+                        for (int c = 1; c <= lastCol; c++)
+                        {
+                            string header = ws.Cell(1, c).GetString().Trim();
+                            headers.Add(string.IsNullOrEmpty(header) ? $"Spalte {c}" : header);
+                        }
+                    }
+                }
+
+                // Cleanup
+                File.Delete(templatePath);
+
+                return Ok(new GetTemplateHeadersResponse
+                {
+                    Success = true,
+                    Message = $"{headers.Count} Spalten gefunden.",
+                    Headers = headers
+                });
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(new Exception($"Fehler beim Laden der Spaltenüberschriften: {ex.Message}", ex));
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  CREATE RAUMBUCH (directly from template with column mappings)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Creates Raumbuch directly from template file using column mappings.
+        /// If Raumkategorie is missing in template, uses LongName from IFC.
+        /// </summary>
+        [HttpPost]
+        [Route("create-raumbuch")]
+        public async Task<IHttpActionResult> CreateRaumbuch([FromBody] CreateRaumbuchRequest request)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("========== CreateRaumbuch START ==========");
+                
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.TemplateFileId) ||
+                    string.IsNullOrWhiteSpace(request.IfcFileId) ||
+                    string.IsNullOrWhiteSpace(request.TargetFolderId) ||
+                    request.ColumnMappings == null)
+                {
+                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+                var ifcEditor = new IfcEditorService();
+                var analyzer = new RaumbuchAnalyzer();
+
+                System.Diagnostics.Debug.WriteLine("Downloading template file...");
+                // Download template
+                string templatePath = await tcService.DownloadFileAsync(
+                    request.TemplateFileId,
+                    _tempFolder,
+                    "Template.xlsx"
+                );
+
+                System.Diagnostics.Debug.WriteLine("Downloading IFC file...");
+                // Download IFC
+                string ifcPath = await tcService.DownloadFileAsync(
+                    request.IfcFileId,
+                    _tempFolder,
+                    "Model.ifc"
+                );
+
+                System.Diagnostics.Debug.WriteLine("Reading spaces from IFC...");
+                // Read spaces from IFC (IST)
+                var roomData = ifcEditor.ReadSpaces(ifcPath);
+                System.Diagnostics.Debug.WriteLine($"Found {roomData.Count} spaces in IFC");
+
+                // Build lookup of IFC rooms by LongName for fallback Raumkategorie
+                var ifcRoomsByLongName = roomData
+                    .Where(r => !string.IsNullOrWhiteSpace(r.Name))
+                    .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First().RoomCategory, StringComparer.OrdinalIgnoreCase);
+
+                System.Diagnostics.Debug.WriteLine("Reading SOLL data from template with mappings...");
+                // Read SOLL from template using column mappings
+                var sollData = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
+                System.Diagnostics.Debug.WriteLine($"Found {sollData.Count} SOLL categories");
+
+                System.Diagnostics.Debug.WriteLine("Analyzing SOLL/IST...");
+                // Analyze SOLL/IST
+                var istData = roomData.Select(r => (r.RoomCategory, r.Area)).ToList();
+                var analysis = analyzer.Analyze(sollData, istData);
+                System.Diagnostics.Debug.WriteLine($"Analysis complete: {analysis.Count} categories");
+
+                System.Diagnostics.Debug.WriteLine("Creating Raumbuch Excel...");
+                // Create Raumbuch Excel with enhanced data
+                string raumbuchPath = Path.Combine(_tempFolder, "Raumbuch.xlsx");
+                CreateRaumbuchExcelEnhanced(raumbuchPath, roomData, analysis, sollData);
+
+                System.Diagnostics.Debug.WriteLine("Uploading Raumbuch to Trimble Connect...");
+                // Upload Raumbuch to Trimble Connect
+                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, raumbuchPath);
+                System.Diagnostics.Debug.WriteLine($"Uploaded with file ID: {fileId}");
+
+                // Cleanup
+                File.Delete(templatePath);
+                File.Delete(ifcPath);
+                File.Delete(raumbuchPath);
+
+                System.Diagnostics.Debug.WriteLine("========== CreateRaumbuch END (Success) ==========");
+
+                // Convert analysis to Models namespace for response
+                var analysisResponse = analysis.Select(a => new Models.RoomCategoryAnalysis
+                {
+                    RoomCategory = a.RoomCategory,
+                    SollArea = a.SollArea,
+                    IstArea = a.IstArea,
+                    Percentage = a.Percentage
+                }).ToList();
+
+                return Ok(new CreateRaumbuchResponse
+                {
+                    Success = true,
+                    Message = "Raumbuch wurde erfolgreich erstellt.",
+                    RaumbuchFileId = fileId,
+                    RaumbuchFileName = "Raumbuch.xlsx",
+                    Analysis = analysisResponse
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in CreateRaumbuch: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return InternalServerError(new Exception($"Fehler beim Erstellen des Raumbuchs: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Reads SOLL data from template using column mappings.
+        /// Falls back to IFC LongName for Raumkategorie if not available in template.
+        /// </summary>
+        private Dictionary<string, double> ReadSollFromTemplateWithMappings(
+            string templatePath, 
+            ColumnMappings mappings,
+            Dictionary<string, string> ifcRoomsByLongName)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+            using (var wb = new XLWorkbook(templatePath))
+            {
+                var ws = wb.Worksheet(1);
+                var range = ws.RangeUsed();
+                if (range == null) return result;
+
+                int firstRow = range.FirstRow().RowNumber();
+                int lastRow = range.LastRow().RowNumber();
+
+                // Column indices are 0-based from UI, need to add 1 for Excel (1-based)
+                int raumtypCol = mappings.RaumtypColumn + 1;
+                int raumkategorieCol = mappings.RaumkategorieColumn >= 0 ? mappings.RaumkategorieColumn + 1 : -1;
+                int flaecheSollCol = mappings.FlaecheSollColumn + 1;
+
+                for (int r = firstRow + 1; r <= lastRow; r++) // Skip header row
+                {
+                    string raumtyp = ws.Cell(r, raumtypCol).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(raumtyp)) continue;
+
+                    // Get Raumkategorie from template or fallback to IFC
+                    string raumkategorie = "";
+                    if (raumkategorieCol > 0)
+                    {
+                        raumkategorie = ws.Cell(r, raumkategorieCol).GetString().Trim();
+                    }
+                    
+                    // If Raumkategorie is empty, try to get from IFC LongName
+                    if (string.IsNullOrWhiteSpace(raumkategorie) && ifcRoomsByLongName.ContainsKey(raumtyp))
+                    {
+                        raumkategorie = ifcRoomsByLongName[raumtyp];
+                    }
+
+                    // Parse Fläche Soll
+                    string sollStr = ws.Cell(r, flaecheSollCol).GetString().Trim();
+                    if (double.TryParse(sollStr, System.Globalization.NumberStyles.Any, 
+                        System.Globalization.CultureInfo.InvariantCulture, out double soll))
+                    {
+                        // Use Raumtyp as the category key (same as existing logic)
+                        if (!result.ContainsKey(raumtyp))
+                            result[raumtyp] = soll;
+                        else
+                            result[raumtyp] += soll;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates enhanced Raumbuch Excel with Raumkategorie column.
+        /// </summary>
+        private void CreateRaumbuchExcelEnhanced(
+            string outputPath, 
+            List<Services.RoomData> roomData, 
+            List<Services.RoomCategoryAnalysis> analysis,
+            Dictionary<string, double> sollData)
+        {
+            var analysisLookup = analysis.ToDictionary(a => a.RoomCategory, a => a, StringComparer.OrdinalIgnoreCase);
+
+            using (var wb = new XLWorkbook())
+            {
+                // ===== SHEET 1: RAUMBUCH (Room Data) =====
+                var ws = wb.Worksheets.Add("Raumbuch");
+
+                // Header with Raumkategorie column
+                ws.Cell(1, 1).Value = "Raumtyp";
+                ws.Cell(1, 2).Value = "Raumkategorie";
+                ws.Cell(1, 3).Value = "Raum Name";
+                ws.Cell(1, 4).Value = "Fläche IST (m²)";
+                ws.Cell(1, 5).Value = "SIA d0165";
+                ws.Cell(1, 6).Value = "FloorCovering";
+                ws.Cell(1, 7).Value = "Category";
+                ws.Cell(1, 8).Value = "SOLL Fläche (m²)";
+                ws.Cell(1, 9).Value = "SOLL/IST (%)";
+                ws.Cell(1, 10).Value = "Differenz (m²)";
+                ws.Cell(1, 11).Value = "Kommentar";
+
+                var headerRange = ws.Range(1, 1, 1, 11);
+                headerRange.Style.Font.Bold = true;
+                headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+                // Data rows
+                int row = 2;
+                foreach (var room in roomData.OrderBy(r => r.RoomCategory).ThenBy(r => r.Name))
+                {
+                    ws.Cell(row, 1).Value = room.RoomCategory; // Raumtyp
+                    ws.Cell(row, 2).Value = room.RoomCategory; // Raumkategorie (same as Raumtyp initially, from LongName)
+                    ws.Cell(row, 3).Value = room.Name;
+                    ws.Cell(row, 4).Value = room.Area;
+                    ws.Cell(row, 5).Value = room.SiaCategory;
+                    ws.Cell(row, 6).Value = room.FloorCovering;
+                    ws.Cell(row, 7).Value = room.SpaceCategory;
+
+                    if (analysisLookup.TryGetValue(room.RoomCategory, out var ana))
+                    {
+                        ws.Cell(row, 8).Value = ana.SollArea;
+                        
+                        if (double.IsNaN(ana.Percentage) || double.IsInfinity(ana.Percentage))
+                        {
+                            ws.Cell(row, 9).Value = "-";
+                        }
+                        else
+                        {
+                            ws.Cell(row, 9).Value = ana.Percentage;
+                        }
+                        
+                        double diff = ana.IstArea - ana.SollArea;
+                        if (double.IsNaN(diff) || double.IsInfinity(diff))
+                        {
+                            ws.Cell(row, 10).Value = "-";
+                        }
+                        else
+                        {
+                            ws.Cell(row, 10).Value = diff;
+                        }
+
+                        // Color logic: Red for IST < SOLL (Unterschritten), Light green for Erfüllt
+                        if (ana.IsUnderLimit)
+                        {
+                            ws.Range(row, 1, row, 11).Style.Fill.BackgroundColor = XLColor.LightPink;
+                        }
+                        else if (!ana.IsOverLimit) // Erfüllt
+                        {
+                            ws.Range(row, 1, row, 11).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                        }
+                    }
+
+                    row++;
+                }
+
+                // Auto-fit columns
+                ws.Columns().AdjustToContents();
+
+                // ===== SHEET 2: ZUSAMMENFASSUNG (Summary) =====
+                var summaryWs = wb.Worksheets.Add("Zusammenfassung");
+
+                // Header with Raumkategorie column
+                summaryWs.Cell(1, 1).Value = "Raumtyp";
+                summaryWs.Cell(1, 2).Value = "Raumkategorie";
+                summaryWs.Cell(1, 3).Value = "SOLL Fläche (m²)";
+                summaryWs.Cell(1, 4).Value = "IST Fläche";
+                summaryWs.Cell(1, 5).Value = "Abweichung (%)";
+                summaryWs.Cell(1, 6).Value = "Status";
+                summaryWs.Cell(1, 7).Value = "Kommentar";
+
+                var summaryHeaderRange = summaryWs.Range(1, 1, 1, 7);
+                summaryHeaderRange.Style.Font.Bold = true;
+                summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+                // Summary data
+                int summaryRow = 2;
+                foreach (var ana in analysis.OrderBy(a => a.RoomCategory))
+                {
+                    summaryWs.Cell(summaryRow, 1).Value = ana.RoomCategory; // Raumtyp
+                    summaryWs.Cell(summaryRow, 2).Value = ana.RoomCategory; // Raumkategorie (same initially)
+                    summaryWs.Cell(summaryRow, 3).Value = ana.SollArea;
+                    summaryWs.Cell(summaryRow, 4).Value = ana.IstArea;
+                    
+                    if (double.IsNaN(ana.Percentage) || double.IsInfinity(ana.Percentage))
+                    {
+                        summaryWs.Cell(summaryRow, 5).Value = "-";
+                    }
+                    else
+                    {
+                        summaryWs.Cell(summaryRow, 5).Value = ana.Percentage;
+                    }
+                    
+                    summaryWs.Cell(summaryRow, 6).Value = ana.Status;
+                    summaryWs.Cell(summaryRow, 7).Value = ""; // Comment column
+
+                    // Color logic: Red for Unterschritten, Light green for Erfüllt, no color for Überschritten
+                    if (ana.IsUnderLimit)
+                    {
+                        summaryWs.Range(summaryRow, 1, summaryRow, 7).Style.Fill.BackgroundColor = XLColor.LightPink;
+                    }
+                    else if (!ana.IsOverLimit) // Erfüllt
+                    {
+                        summaryWs.Range(summaryRow, 1, summaryRow, 7).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                    }
+
+                    summaryRow++;
+                }
+
+                // Auto-fit columns
+                summaryWs.Columns().AdjustToContents();
+
+                wb.SaveAs(outputPath);
+            }
+        }
+
+        // --------------------------------------------------------------------
+        //  GET IST FROM IFC (for updating IST values in Analysis)
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Gets IST values from IFC file grouped by room category (LongName).
+        /// </summary>
+        [HttpPost]
+        [Route("get-ist-from-ifc")]
+        public async Task<IHttpActionResult> GetIstFromIfc([FromBody] GetIstFromIfcRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.IfcFileId))
+                {
+                    return BadRequest("Ungültige Anfrage. AccessToken und IfcFileId sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+                var ifcEditor = new IfcEditorService();
+
+                // Download IFC
+                string ifcPath = await tcService.DownloadFileAsync(
+                    request.IfcFileId,
+                    _tempFolder,
+                    "Model.ifc"
+                );
+
+                // Read spaces from IFC
+                var roomData = ifcEditor.ReadSpaces(ifcPath);
+
+                // Group by RoomCategory (LongName) and sum areas
+                var istByCategory = roomData
+                    .Where(r => !string.IsNullOrWhiteSpace(r.RoomCategory))
+                    .GroupBy(r => r.RoomCategory, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        g => g.Key, 
+                        g => g.Sum(r => r.Area),
+                        StringComparer.OrdinalIgnoreCase
+                    );
+
+                // Cleanup
+                File.Delete(ifcPath);
+
+                return Ok(new GetIstFromIfcResponse
+                {
+                    Success = true,
+                    Message = $"{istByCategory.Count} Kategorien gefunden.",
+                    IstByCategory = istByCategory
+                });
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(new Exception($"Fehler beim Lesen der IST-Werte: {ex.Message}", ex));
+            }
         }
 
         // --------------------------------------------------------------------

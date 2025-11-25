@@ -537,6 +537,7 @@ textarea {
     align-items: center;
     width: 100vw; /* full viewport width */
     margin-left: calc(-50vw + 50%); /* break out of container */
+    margin-top: 3px; /* thin top margin per requirement */
     background-color: var(--tc-dark-blue);
     padding: 0;
     border-bottom: none;
