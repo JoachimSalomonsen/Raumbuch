@@ -3301,6 +3301,125 @@ namespace RaumbuchService.Controllers
         }
 
         // --------------------------------------------------------------------
+        //  UPDATE RAUMBUCH WITH MAPPINGS
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Updates existing Raumbuch with new data from template file using column mappings.
+        /// </summary>
+        [HttpPost]
+        [Route("update-raumbuch-with-mappings")]
+        public async Task<IHttpActionResult> UpdateRaumbuchWithMappings([FromBody] UpdateRaumbuchWithMappingsRequest request)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("========== UpdateRaumbuchWithMappings START ==========");
+                
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.AccessToken) ||
+                    string.IsNullOrWhiteSpace(request.RaumbuchFileId) ||
+                    string.IsNullOrWhiteSpace(request.TemplateFileId) ||
+                    string.IsNullOrWhiteSpace(request.IfcFileId) ||
+                    string.IsNullOrWhiteSpace(request.TargetFolderId) ||
+                    request.ColumnMappings == null)
+                {
+                    return BadRequest("Ungültige Anfrage. Alle Felder sind erforderlich.");
+                }
+
+                var tcService = new TrimbleConnectService(request.AccessToken);
+                var ifcEditor = new IfcEditorService();
+                var analyzer = new RaumbuchAnalyzer();
+
+                // Download existing Raumbuch
+                string existingRaumbuchPath = await tcService.DownloadFileAsync(
+                    request.RaumbuchFileId,
+                    _tempFolder,
+                    "Raumbuch_Existing.xlsx"
+                );
+
+                // Download template
+                string templatePath = await tcService.DownloadFileAsync(
+                    request.TemplateFileId,
+                    _tempFolder,
+                    "Template.xlsx"
+                );
+
+                // Download IFC
+                string ifcPath = await tcService.DownloadFileAsync(
+                    request.IfcFileId,
+                    _tempFolder,
+                    "Model.ifc"
+                );
+
+                // Read spaces from IFC (IST)
+                var roomData = ifcEditor.ReadSpaces(ifcPath);
+
+                // Build lookup of IFC rooms by LongName for fallback Raumkategorie
+                var ifcRoomsByLongName = roomData
+                    .Where(r => !string.IsNullOrWhiteSpace(r.Name))
+                    .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First().RoomCategory, StringComparer.OrdinalIgnoreCase);
+
+                // Read SOLL from template using column mappings
+                var sollData = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
+
+                // Analyze SOLL/IST
+                var istData = roomData.Select(r => (r.RoomCategory, r.Area)).ToList();
+                var analysis = analyzer.Analyze(sollData, istData);
+
+                // Read existing Raumbuch data
+                var existingData = ReadExistingRaumbuchData(existingRaumbuchPath);
+
+                // Update Raumbuch Excel
+                string updatedRaumbuchPath = Path.Combine(_tempFolder, "Raumbuch.xlsx");
+                var updateResult = UpdateRaumbuchExcel(
+                    existingRaumbuchPath,
+                    updatedRaumbuchPath,
+                    roomData,
+                    analysis,
+                    existingData
+                );
+
+                // Upload to Trimble Connect
+                string fileId = await tcService.UploadFileAsync(request.TargetFolderId, updatedRaumbuchPath);
+
+                // Cleanup
+                File.Delete(templatePath);
+                File.Delete(ifcPath);
+                File.Delete(existingRaumbuchPath);
+                File.Delete(updatedRaumbuchPath);
+
+                System.Diagnostics.Debug.WriteLine("========== UpdateRaumbuchWithMappings END (Success) ==========");
+
+                // Convert analysis to Models namespace for response
+                var analysisResponse = analysis.Select(a => new Models.RoomCategoryAnalysis
+                {
+                    RoomCategory = a.RoomCategory,
+                    SollArea = a.SollArea,
+                    IstArea = a.IstArea,
+                    Percentage = a.Percentage
+                }).ToList();
+
+                return Ok(new Models.UpdateRaumbuchResponse
+                {
+                    Success = true,
+                    Message = "Raumbuch wurde erfolgreich aktualisiert.",
+                    RaumbuchFileId = fileId,
+                    RaumbuchFileName = "Raumbuch.xlsx",
+                    Analysis = analysisResponse,
+                    RoomsUpdated = updateResult.Updated,
+                    RoomsAdded = updateResult.Added,
+                    RoomsUnchanged = updateResult.Unchanged
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in UpdateRaumbuchWithMappings: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Aktualisieren des Raumbuchs: {ex.Message}", ex));
+            }
+        }
+
+        // --------------------------------------------------------------------
         //  HELPER CLASSES
         // --------------------------------------------------------------------
 

@@ -944,11 +944,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const templateSelect = document.getElementById('templateFile');
                     templateSelect.innerHTML = '<option value="">-- Vorlage auswählen --</option>';
 
-                    // Populate raumprogramm dropdown (Step 3)
-                    const raumprogrammSelect = document.getElementById('raumprogrammFile');
-                    raumprogrammSelect.innerHTML = '<option value="">-- Raumprogramm auswählen --</option>';
-
-                    // Populate raumbuch dropdown (Step 4)
+                    // Populate raumbuch dropdown
                     const raumbuchSelect = document.getElementById('raumbuchFile');
                     raumbuchSelect.innerHTML = '<option value="">-- Raumbuch auswählen --</option>';
 
@@ -965,14 +961,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                             templateOption.dataset.name = file.name;
                             templateOption.dataset.versionId = file.versionId;
                             templateSelect.appendChild(templateOption);
-
-                            // Add to raumprogramm dropdown
-                            const raumprogrammOption = document.createElement('option');
-                            raumprogrammOption.value = file.id;
-                            raumprogrammOption.textContent = file.name;
-                            raumprogrammOption.dataset.name = file.name;
-                            raumprogrammOption.dataset.versionId = file.versionId;
-                            raumprogrammSelect.appendChild(raumprogrammOption);
 
                             // Add to raumbuch dropdown (used by both Step 3 update and Step 4 pset operations)
                             const raumbuchOption = document.createElement('option');
@@ -1125,7 +1113,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 targetFolder: getSelectedOption('targetFolder'),
                 files: {
                     template: getSelectedOption('templateFile'),
-                    raumprogramm: getSelectedOption('raumprogrammFile'),
                     ifcModel: getSelectedOption('ifcFile'),
                     raumbuch: getSelectedOption('raumbuchFile')
                 },
@@ -1324,11 +1311,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 setSelectValue('templateFile', config.files.template.id, config.files.template.name);
             }
 
-            // Fill Raumprogramm (changed from readonly to dropdown)
-            if (config.files?.raumprogramm) {
-                setSelectValue('raumprogrammFile', config.files.raumprogramm.id, config.files.raumprogramm.name);
-            }
-
             // Fill IFC
             if (config.files?.ifcModel) {
                 setSelectValue('ifcFile', config.files.ifcModel.id, config.files.ifcModel.name);
@@ -1380,6 +1362,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         function getSelectedOption(selectId) {
             const select = document.getElementById(selectId);
+            if (!select) return null;
             const option = select.options[select.selectedIndex];
             if (!option || !option.value) return null;
 
@@ -1407,6 +1390,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         function setSelectValue(selectId, value, name) {
             const select = document.getElementById(selectId);
+            if (!select) {
+                console.log(`Select element ${selectId} not found, skipping`);
+                return;
+            }
             let found = false;
 
             // Try to find existing option
@@ -1498,6 +1485,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         function updateDropdownWithFile(selectId, file) {
             const select = document.getElementById(selectId);
+            if (!select) {
+                console.log(`Dropdown ${selectId} not found, skipping update`);
+                return;
+            }
 
             // Check if file already exists in dropdown
             let optionExists = false;
@@ -1814,28 +1805,38 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const token = getToken();
             const projectId = getProjectId();
             const ifcFileId = document.getElementById('ifcFile').value;
-            const raumprogrammFileId = document.getElementById('raumprogrammFile').value;
-            const existingRaumbuchFileId = document.getElementById('raumbuchFile').value; // Use Step 4 dropdown
+            const templateFileId = document.getElementById('templateFile').value;
+            const existingRaumbuchFileId = document.getElementById('raumbuchFile').value;
             const targetFolder = getTargetFolder();
+
+            // Get column mappings
+            const raumtypCol = document.getElementById('mappingRaumtyp').value;
+            const raumkategorieCol = document.getElementById('mappingRaumkategorie').value;
+            const flaecheSollCol = document.getElementById('mappingFlaecheSoll').value;
 
             console.log('updateRaumbuch() called');
             console.log('Token length:', token ? token.length : 0);
             console.log('ProjectId:', projectId);
             console.log('IFC File ID:', ifcFileId);
-            console.log('Raumprogramm File ID:', raumprogrammFileId);
+            console.log('Template File ID:', templateFileId);
             console.log('Existing Raumbuch File ID:', existingRaumbuchFileId);
             console.log('Target Folder:', targetFolder);
 
-            if (!token || !projectId || !ifcFileId || !raumprogrammFileId || !existingRaumbuchFileId || !targetFolder) {
+            if (!token || !projectId || !ifcFileId || !templateFileId || !existingRaumbuchFileId || !targetFolder) {
                 let missingFields = [];
                 if (!token) missingFields.push('Token');
                 if (!projectId) missingFields.push('Project ID');
                 if (!ifcFileId) missingFields.push('IFC File');
-                if (!raumprogrammFileId) missingFields.push('Raumprogramm File');
-                if (!existingRaumbuchFileId) missingFields.push('Raumbuch File (siehe Schritt 4)');
+                if (!templateFileId) missingFields.push('Vorlagendatei');
+                if (!existingRaumbuchFileId) missingFields.push('Raumbuch File');
                 if (!targetFolder) missingFields.push('Target Folder');
 
                 showResult('step3Result', 'error', `⚠ Bitte alle Felder ausfüllen. Fehlende Felder: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            if (!raumtypCol || !flaecheSollCol) {
+                showResult('step3Result', 'error', '⚠ Bitte laden Sie die Vorlage und wählen Sie mindestens Raumtyp und Fläche Soll Spalten aus');
                 return;
             }
 
@@ -1846,14 +1847,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     accessToken: token,
                     projectId: projectId,
                     raumbuchFileId: existingRaumbuchFileId,
+                    templateFileId: templateFileId,
                     ifcFileId: ifcFileId,
-                    raumprogrammFileId: raumprogrammFileId,
-                    targetFolderId: targetFolder
+                    targetFolderId: targetFolder,
+                    columnMappings: {
+                        raumtypColumn: parseInt(raumtypCol),
+                        raumkategorieColumn: raumkategorieCol ? parseInt(raumkategorieCol) : -1,
+                        flaecheSollColumn: parseInt(flaecheSollCol)
+                    }
                 };
 
                 console.log('Sending request body:', requestBody);
 
-                const response = await fetch(`${API_BASE}/update-raumbuch`, {
+                const response = await fetch(`${API_BASE}/update-raumbuch-with-mappings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
@@ -2862,7 +2868,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     targetFolder: getSelectedOption('targetFolder'),
                     files: {
                         template: getSelectedOption('templateFile'),
-                        raumprogramm: getSelectedOption('raumprogrammFile'),
                         ifcModel: getSelectedOption('ifcFile'),
                         raumbuch: getSelectedOption('raumbuchFile')
                     },

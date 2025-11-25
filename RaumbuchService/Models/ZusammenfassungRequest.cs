@@ -228,4 +228,18 @@ namespace RaumbuchService.Models
         /// </summary>
         public Dictionary<string, double> IstByCategory { get; set; }
     }
+    
+    /// <summary>
+    /// Request for updating Raumbuch with column mappings from template.
+    /// </summary>
+    public class UpdateRaumbuchWithMappingsRequest
+    {
+        public string AccessToken { get; set; }
+        public string ProjectId { get; set; }
+        public string RaumbuchFileId { get; set; }
+        public string TemplateFileId { get; set; }
+        public string IfcFileId { get; set; }
+        public string TargetFolderId { get; set; }
+        public ColumnMappings ColumnMappings { get; set; }
+    }
 }
