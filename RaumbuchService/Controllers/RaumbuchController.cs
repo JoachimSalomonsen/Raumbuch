@@ -3407,7 +3407,7 @@ namespace RaumbuchService.Controllers
                     .ToDictionary(g => g.Key, g => g.First().RoomCategory, StringComparer.OrdinalIgnoreCase);
 
                 // Read SOLL from template using column mappings
-                var sollData = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
+                var (sollData, raumkategorieData) = ReadSollFromTemplateWithMappings(templatePath, request.ColumnMappings, ifcRoomsByLongName);
 
                 // Analyze SOLL/IST
                 var istData = roomData.Select(r => (r.RoomCategory, r.Area)).ToList();
