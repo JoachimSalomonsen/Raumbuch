@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raumbuch 3D Viewer Extension</title>
+    <link rel="stylesheet" href="Content/Site.css">
+    <!-- Trimble Workspace API -->
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <style>
+        /* Additional styles for 3D Viewer extension */
+        .viewer-container {
+            padding: 15px;
+        }
+        
+        .category-section {
+            background: var(--tc-bg-card);
+            border: 1px solid var(--tc-border);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .category-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .color-green { background-color: #2E8540; }
+        .color-yellow { background-color: #FFBF47; }
+        .color-red { background-color: #D64545; }
+        
+        .category-title {
+            font-weight: 600;
+            color: var(--tc-text-primary);
+            flex: 1;
+        }
+        
+        .category-count {
+            font-size: 0.85em;
+            color: var(--tc-text-muted);
+            padding: 2px 8px;
+            background: var(--tc-bg-neutral);
+            border-radius: 10px;
+        }
+        
+        .toggle-controls {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+        
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9em;
+            color: var(--tc-text-secondary);
+        }
+        
+        .toggle-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--tc-primary-blue);
+            cursor: pointer;
+        }
+        
+        .toggle-item label {
+            cursor: pointer;
+            font-weight: 400;
+            margin: 0;
+        }
+        
+        .file-input-section {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        .file-input-section .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        #jsonFileInput {
+            max-width: none;
+            width: 100%;
+        }
+        
+        .room-list {
+            margin-top: 8px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 0.85em;
+            color: var(--tc-text-muted);
+            padding: 8px;
+            background: var(--tc-bg-neutral);
+            border-radius: 4px;
+        }
+        
+        .room-list-item {
+            padding: 2px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-connected { background-color: #2E8540; }
+        .status-disconnected { background-color: #D64545; }
+        .status-connecting { background-color: #FFBF47; }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--tc-bg-neutral);
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+        }
+        
+        .btn-reset {
+            background-color: var(--tc-text-muted);
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background-color: #6a6e72;
+        }
+        
+        .expand-toggle {
+            cursor: pointer;
+            font-size: 0.85em;
+            color: var(--tc-primary-blue);
+            display: inline-block;
+            margin-top: 4px;
+        }
+        
+        .expand-toggle:hover {
+            text-decoration: underline;
+        }
+        
+        .room-list.collapsed {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-indicator status-connecting" id="statusIndicator"></span>
+            <span id="statusText">Verbinde mit 3D Viewer...</span>
+        </div>
+
+        <!-- File Selection Section -->
+        <section class="card">
+            <h2>📁 JSON Konfiguration laden</h2>
+            <p>Wählen Sie eine JSON-Datei mit Raumkategorien (Erfüllt, Unterschritten, Überschritten).</p>
+            
+            <div class="file-input-section">
+                <div class="form-group">
+                    <label for="jsonFileInput">JSON Datei:</label>
+                    <input type="file" id="jsonFileInput" class="form-control" accept=".json">
+                </div>
+                <button class="btn btn-primary" id="loadBtn" onclick="loadConfiguration()">📥 Laden</button>
+            </div>
+            
+            <div id="loadResult" class="result"></div>
+        </section>
+
+        <!-- Category Sections -->
+        <section class="card" id="categoriesSection" style="display: none;">
+            <h2>🎨 Raumkategorien</h2>
+            <p>Steuern Sie Farben und Sichtbarkeit der IfcSpace-Objekte nach Kategorie.</p>
+            
+            <!-- Erfüllt (Green) -->
+            <div class="category-section" id="categoryErfuellt">
+                <div class="category-header">
+                    <div class="category-color color-green"></div>
+                    <span class="category-title">✅ Erfüllt</span>
+                    <span class="category-count" id="countErfuellt">0 Räume</span>
+                </div>
+                <div class="toggle-controls">
+                    <div class="toggle-item">
+                        <input type="checkbox" id="colorErfuellt" checked onchange="toggleColor('erfuellt')">
+                        <label for="colorErfuellt">Farbe anzeigen</label>
+                    </div>
+                    <div class="toggle-item">
+                        <input type="checkbox" id="visibilityErfuellt" checked onchange="toggleVisibility('erfuellt')">
+                        <label for="visibilityErfuellt">Sichtbar</label>
+                    </div>
+                </div>
+                <span class="expand-toggle" onclick="toggleRoomList('erfuellt')">▶ Räume anzeigen</span>
+                <div class="room-list collapsed" id="roomListErfuellt">
+                    <!-- Room list will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Unterschritten (Yellow) -->
+            <div class="category-section" id="categoryUnterschritten">
+                <div class="category-header">
+                    <div class="category-color color-yellow"></div>
+                    <span class="category-title">⚠️ Unterschritten</span>
+                    <span class="category-count" id="countUnterschritten">0 Räume</span>
+                </div>
+                <div class="toggle-controls">
+                    <div class="toggle-item">
+                        <input type="checkbox" id="colorUnterschritten" checked onchange="toggleColor('unterschritten')">
+                        <label for="colorUnterschritten">Farbe anzeigen</label>
+                    </div>
+                    <div class="toggle-item">
+                        <input type="checkbox" id="visibilityUnterschritten" checked onchange="toggleVisibility('unterschritten')">
+                        <label for="visibilityUnterschritten">Sichtbar</label>
+                    </div>
+                </div>
+                <span class="expand-toggle" onclick="toggleRoomList('unterschritten')">▶ Räume anzeigen</span>
+                <div class="room-list collapsed" id="roomListUnterschritten">
+                    <!-- Room list will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Überschritten (Red) -->
+            <div class="category-section" id="categoryUeberschritten">
+                <div class="category-header">
+                    <div class="category-color color-red"></div>
+                    <span class="category-title">🔴 Überschritten</span>
+                    <span class="category-count" id="countUeberschritten">0 Räume</span>
+                </div>
+                <div class="toggle-controls">
+                    <div class="toggle-item">
+                        <input type="checkbox" id="colorUeberschritten" checked onchange="toggleColor('ueberschritten')">
+                        <label for="colorUeberschritten">Farbe anzeigen</label>
+                    </div>
+                    <div class="toggle-item">
+                        <input type="checkbox" id="visibilityUeberschritten" checked onchange="toggleVisibility('ueberschritten')">
+                        <label for="visibilityUeberschritten">Sichtbar</label>
+                    </div>
+                </div>
+                <span class="expand-toggle" onclick="toggleRoomList('ueberschritten')">▶ Räume anzeigen</span>
+                <div class="room-list collapsed" id="roomListUeberschritten">
+                    <!-- Room list will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div style="margin-top: 16px;">
+                <button class="btn btn-reset" onclick="resetAllColors()">🔄 Alle Farben zurücksetzen</button>
+            </div>
+        </section>
+
+        <footer>
+            <p>Raumbuch 3D Viewer Extension v1.0 - Buildingpoint Schweiz AG</p>
+        </footer>
+    </div>
+
+    <script>
+        // ====================================================================
+        // TRIMBLE CONNECT 3D VIEWER EXTENSION
+        // ====================================================================
+        
+        // API reference and state
+        let API = null;
+        let viewerAPI = null;
+        let isConnected = false;
+        
+        // Category data structure
+        let categoryData = {
+            erfuellt: { rooms: [], objectIds: [], color: '#2E8540' },
+            unterschritten: { rooms: [], objectIds: [], color: '#FFBF47' },
+            ueberschritten: { rooms: [], objectIds: [], color: '#D64545' }
+        };
+        
+        // All IfcSpace objects from the model
+        let allIfcSpaces = [];
+        
+        // ====================================================================
+        // INITIALIZATION
+        // ====================================================================
+        
+        async function init() {
+            console.log("Initializing Raumbuch 3D Viewer Extension...");
+            updateConnectionStatus('connecting', 'Verbinde mit 3D Viewer...');
+            
+            try {
+                // Connect to Trimble Workspace API
+                API = await window.TrimbleConnectWorkspace.connect(
+                    window.parent,
+                    eventHandler,
+                    30000
+                );
+                
+                console.log("Connected to Workspace API:", API);
+                
+                // Initialize 3D Viewer
+                if (API && API.embed && typeof API.embed.init3DViewer === 'function') {
+                    viewerAPI = await API.embed.init3DViewer({});
+                    console.log("3D Viewer initialized:", viewerAPI);
+                    
+                    isConnected = true;
+                    updateConnectionStatus('connected', 'Verbunden mit 3D Viewer');
+                    
+                    // Load all IfcSpace objects
+                    await loadIfcSpaces();
+                } else if (API && API.viewer) {
+                    // Alternative: viewer might be directly available
+                    viewerAPI = API.viewer;
+                    console.log("Viewer API obtained directly:", viewerAPI);
+                    
+                    isConnected = true;
+                    updateConnectionStatus('connected', 'Verbunden mit 3D Viewer');
+                    
+                    await loadIfcSpaces();
+                } else {
+                    console.warn("embed.init3DViewer not available, trying alternative methods...");
+                    // Try to use the viewer API directly if available
+                    viewerAPI = API;
+                    isConnected = true;
+                    updateConnectionStatus('connected', 'Verbunden (eingeschränkter Modus)');
+                }
+                
+            } catch (error) {
+                console.error("Error initializing extension:", error);
+                updateConnectionStatus('disconnected', 'Fehler: ' + error.message);
+            }
+        }
+        
+        function eventHandler(event, args) {
+            console.log("Workspace event:", event, args);
+            
+            if (event === "extension.command") {
+                handleCommand(args.data);
+            }
+            if (event === "extension.accessToken") {
+                console.log("Access token event received");
+            }
+            if (event === "viewer.selectionChanged") {
+                console.log("Selection changed:", args);
+            }
+        }
+        
+        function handleCommand(command) {
+            console.log("Command received:", command);
+        }
+        
+        // ====================================================================
+        // CONNECTION STATUS
+        // ====================================================================
+        
+        function updateConnectionStatus(status, message) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator';
+            
+            switch(status) {
+                case 'connected':
+                    indicator.classList.add('status-connected');
+                    break;
+                case 'disconnected':
+                    indicator.classList.add('status-disconnected');
+                    break;
+                case 'connecting':
+                    indicator.classList.add('status-connecting');
+                    break;
+            }
+            
+            text.textContent = message;
+        }
+        
+        // ====================================================================
+        // LOAD IFC SPACES
+        // ====================================================================
+        
+        async function loadIfcSpaces() {
+            try {
+                console.log("Loading IfcSpace objects...");
+                
+                // Get all objects from the viewer
+                if (viewerAPI && typeof viewerAPI.getObjects === 'function') {
+                    const allObjects = await viewerAPI.getObjects();
+                    console.log("All objects loaded:", allObjects?.length || 0);
+                    
+                    // Filter for IfcSpace objects
+                    if (allObjects && Array.isArray(allObjects)) {
+                        allIfcSpaces = allObjects.filter(obj => 
+                            obj.class === 'IfcSpace' || 
+                            obj.type === 'IfcSpace' ||
+                            (obj.className && obj.className.includes('IfcSpace'))
+                        );
+                        console.log("IfcSpace objects found:", allIfcSpaces.length);
+                    }
+                } else if (viewerAPI && typeof viewerAPI.objects === 'object') {
+                    // Alternative method using objects property
+                    const objectsResult = await viewerAPI.objects.getAll();
+                    if (objectsResult && Array.isArray(objectsResult)) {
+                        allIfcSpaces = objectsResult.filter(obj => 
+                            obj.class === 'IfcSpace' || obj.type === 'IfcSpace'
+                        );
+                    }
+                }
+                
+                console.log("IfcSpace objects loaded:", allIfcSpaces.length);
+                
+            } catch (error) {
+                console.error("Error loading IfcSpace objects:", error);
+            }
+        }
+        
+        // ====================================================================
+        // FILE LOADING
+        // ====================================================================
+        
+        function showResult(elementId, type, message) {
+            const el = document.getElementById(elementId);
+            el.className = `result ${type}`;
+            el.innerHTML = message;
+        }
+        
+        async function loadConfiguration() {
+            const fileInput = document.getElementById('jsonFileInput');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showResult('loadResult', 'error', '⚠️ Bitte wählen Sie eine JSON-Datei aus.');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            showResult('loadResult', 'loading', '⏳ Lade JSON-Konfiguration...');
+            
+            try {
+                const text = await file.text();
+                const config = JSON.parse(text);
+                
+                console.log("Loaded configuration:", config);
+                
+                // Validate and process configuration
+                processConfiguration(config);
+                
+                // Show categories section
+                document.getElementById('categoriesSection').style.display = 'block';
+                
+                // Apply colors to 3D viewer
+                await applyAllColors();
+                
+                showResult('loadResult', 'success', 
+                    `✅ Konfiguration geladen!<br>` +
+                    `Erfüllt: ${categoryData.erfuellt.rooms.length} Räume<br>` +
+                    `Unterschritten: ${categoryData.unterschritten.rooms.length} Räume<br>` +
+                    `Überschritten: ${categoryData.ueberschritten.rooms.length} Räume`
+                );
+                
+            } catch (error) {
+                console.error("Error loading configuration:", error);
+                showResult('loadResult', 'error', '❌ Fehler beim Laden: ' + error.message);
+            }
+        }
+        
+        function processConfiguration(config) {
+            // Reset category data
+            categoryData = {
+                erfuellt: { rooms: [], objectIds: [], color: '#2E8540' },
+                unterschritten: { rooms: [], objectIds: [], color: '#FFBF47' },
+                ueberschritten: { rooms: [], objectIds: [], color: '#D64545' }
+            };
+            
+            // Process each category
+            // Support multiple JSON formats
+            
+            // Format 1: Direct arrays
+            if (Array.isArray(config.Erfuellt) || Array.isArray(config.erfuellt)) {
+                categoryData.erfuellt.rooms = config.Erfuellt || config.erfuellt || [];
+            }
+            if (Array.isArray(config.Unterschritten) || Array.isArray(config.unterschritten)) {
+                categoryData.unterschritten.rooms = config.Unterschritten || config.unterschritten || [];
+            }
+            if (Array.isArray(config.Ueberschritten) || Array.isArray(config.ueberschritten) || 
+                Array.isArray(config.Überschritten) || Array.isArray(config.überschritten)) {
+                categoryData.ueberschritten.rooms = 
+                    config.Ueberschritten || config.ueberschritten || 
+                    config.Überschritten || config.überschritten || [];
+            }
+            
+            // Format 2: Categories with rooms property
+            if (config.categories) {
+                if (config.categories.Erfuellt) {
+                    categoryData.erfuellt.rooms = config.categories.Erfuellt.rooms || config.categories.Erfuellt || [];
+                }
+                if (config.categories.Unterschritten) {
+                    categoryData.unterschritten.rooms = config.categories.Unterschritten.rooms || config.categories.Unterschritten || [];
+                }
+                if (config.categories.Ueberschritten || config.categories.Überschritten) {
+                    categoryData.ueberschritten.rooms = 
+                        (config.categories.Ueberschritten || config.categories.Überschritten).rooms || 
+                        config.categories.Ueberschritten || config.categories.Überschritten || [];
+                }
+            }
+            
+            // Format 3: Array of items with status/category property
+            if (Array.isArray(config.rooms) || Array.isArray(config.items) || Array.isArray(config.data)) {
+                const items = config.rooms || config.items || config.data;
+                items.forEach(item => {
+                    const name = item.name || item.longName || item.LongName || item.roomName || item.RoomName;
+                    const status = item.status || item.Status || item.category || item.Category;
+                    
+                    if (name && status) {
+                        const statusLower = status.toLowerCase();
+                        if (statusLower.includes('erfüllt') || statusLower.includes('erfullt') || statusLower === 'ok') {
+                            categoryData.erfuellt.rooms.push(name);
+                        } else if (statusLower.includes('unterschritten') || statusLower === 'under' || statusLower === 'zu wenig') {
+                            categoryData.unterschritten.rooms.push(name);
+                        } else if (statusLower.includes('überschritten') || statusLower.includes('uberschritten') || statusLower === 'over' || statusLower === 'zu viel') {
+                            categoryData.ueberschritten.rooms.push(name);
+                        }
+                    }
+                });
+            }
+            
+            // Extract LongName values if rooms contain objects
+            ['erfuellt', 'unterschritten', 'ueberschritten'].forEach(category => {
+                categoryData[category].rooms = categoryData[category].rooms.map(room => {
+                    if (typeof room === 'object') {
+                        return room.longName || room.LongName || room.name || room.Name || room.roomName || room.RoomName || JSON.stringify(room);
+                    }
+                    return room;
+                });
+            });
+            
+            // Update UI counts
+            updateCategoryCounts();
+            
+            // Find matching object IDs
+            findMatchingObjects();
+        }
+        
+        function updateCategoryCounts() {
+            document.getElementById('countErfuellt').textContent = 
+                `${categoryData.erfuellt.rooms.length} Räume`;
+            document.getElementById('countUnterschritten').textContent = 
+                `${categoryData.unterschritten.rooms.length} Räume`;
+            document.getElementById('countUeberschritten').textContent = 
+                `${categoryData.ueberschritten.rooms.length} Räume`;
+            
+            // Update room lists
+            updateRoomList('erfuellt', categoryData.erfuellt.rooms);
+            updateRoomList('unterschritten', categoryData.unterschritten.rooms);
+            updateRoomList('ueberschritten', categoryData.ueberschritten.rooms);
+        }
+        
+        function updateRoomList(category, rooms) {
+            const listId = 'roomList' + category.charAt(0).toUpperCase() + category.slice(1);
+            const listEl = document.getElementById(listId);
+            
+            if (rooms.length === 0) {
+                listEl.innerHTML = '<div class="room-list-item">Keine Räume in dieser Kategorie</div>';
+            } else {
+                listEl.innerHTML = rooms.map(room => 
+                    `<div class="room-list-item">• ${escapeHtml(room)}</div>`
+                ).join('');
+            }
+        }
+        
+        function toggleRoomList(category) {
+            const listId = 'roomList' + category.charAt(0).toUpperCase() + category.slice(1);
+            const listEl = document.getElementById(listId);
+            const toggleEl = listEl.previousElementSibling;
+            
+            if (listEl.classList.contains('collapsed')) {
+                listEl.classList.remove('collapsed');
+                toggleEl.textContent = '▼ Räume ausblenden';
+            } else {
+                listEl.classList.add('collapsed');
+                toggleEl.textContent = '▶ Räume anzeigen';
+            }
+        }
+        
+        // ====================================================================
+        // OBJECT MATCHING
+        // ====================================================================
+        
+        async function findMatchingObjects() {
+            if (!viewerAPI) {
+                console.warn("Viewer API not available for object matching");
+                return;
+            }
+            
+            console.log("Finding matching objects...");
+            
+            // Reset object IDs
+            categoryData.erfuellt.objectIds = [];
+            categoryData.unterschritten.objectIds = [];
+            categoryData.ueberschritten.objectIds = [];
+            
+            try {
+                // Get all object properties
+                let objectsWithProperties = [];
+                
+                if (typeof viewerAPI.getObjectProperties === 'function') {
+                    // Get properties for all objects
+                    objectsWithProperties = await viewerAPI.getObjectProperties();
+                } else if (typeof viewerAPI.objects?.getProperties === 'function') {
+                    objectsWithProperties = await viewerAPI.objects.getProperties();
+                } else if (allIfcSpaces.length > 0) {
+                    // Use pre-loaded IfcSpace objects
+                    objectsWithProperties = allIfcSpaces;
+                }
+                
+                console.log("Objects with properties:", objectsWithProperties?.length || 0);
+                
+                if (!objectsWithProperties || objectsWithProperties.length === 0) {
+                    console.warn("No objects with properties found");
+                    return;
+                }
+                
+                // Match each room to objects by LongName property
+                objectsWithProperties.forEach(obj => {
+                    const longName = extractLongName(obj);
+                    
+                    if (longName) {
+                        const objId = obj.id || obj.objectId || obj.guid;
+                        
+                        // Check each category
+                        if (categoryData.erfuellt.rooms.includes(longName)) {
+                            categoryData.erfuellt.objectIds.push(objId);
+                        }
+                        if (categoryData.unterschritten.rooms.includes(longName)) {
+                            categoryData.unterschritten.objectIds.push(objId);
+                        }
+                        if (categoryData.ueberschritten.rooms.includes(longName)) {
+                            categoryData.ueberschritten.objectIds.push(objId);
+                        }
+                    }
+                });
+                
+                console.log("Matched object IDs:", {
+                    erfuellt: categoryData.erfuellt.objectIds.length,
+                    unterschritten: categoryData.unterschritten.objectIds.length,
+                    ueberschritten: categoryData.ueberschritten.objectIds.length
+                });
+                
+            } catch (error) {
+                console.error("Error finding matching objects:", error);
+            }
+        }
+        
+        function extractLongName(obj) {
+            // Try different ways to extract LongName from object properties
+            
+            // Direct property
+            if (obj.longName) return obj.longName;
+            if (obj.LongName) return obj.LongName;
+            if (obj['Long Name']) return obj['Long Name'];
+            
+            // From properties array (PropertySet format)
+            if (obj.properties && Array.isArray(obj.properties)) {
+                for (const pset of obj.properties) {
+                    // Check if this is the IfcSpace property set
+                    const psetName = pset.name || pset.Name || '';
+                    if (psetName.toLowerCase().includes('ifcspace') || 
+                        psetName.toLowerCase().includes('ifc space') ||
+                        psetName.toLowerCase().includes('pset_spacecommon')) {
+                        
+                        // Look for LongName property
+                        if (pset.properties && Array.isArray(pset.properties)) {
+                            const longNameProp = pset.properties.find(p => 
+                                (p.name || p.Name || '').toLowerCase() === 'longname' ||
+                                (p.name || p.Name || '').toLowerCase() === 'long name'
+                            );
+                            if (longNameProp) {
+                                return longNameProp.value || longNameProp.Value;
+                            }
+                        }
+                    }
+                    
+                    // Also check in any property set
+                    if (pset.properties && Array.isArray(pset.properties)) {
+                        const longNameProp = pset.properties.find(p => 
+                            (p.name || p.Name || '').toLowerCase() === 'longname' ||
+                            (p.name || p.Name || '').toLowerCase() === 'long name'
+                        );
+                        if (longNameProp) {
+                            return longNameProp.value || longNameProp.Value;
+                        }
+                    }
+                }
+            }
+            
+            // From nested attributes
+            if (obj.attributes) {
+                if (obj.attributes.longName) return obj.attributes.longName;
+                if (obj.attributes.LongName) return obj.attributes.LongName;
+            }
+            
+            // Try name as fallback
+            if (obj.name) return obj.name;
+            if (obj.Name) return obj.Name;
+            
+            return null;
+        }
+        
+        // ====================================================================
+        // COLOR MANAGEMENT
+        // ====================================================================
+        
+        async function applyAllColors() {
+            if (!viewerAPI) {
+                console.warn("Viewer API not available for color application");
+                return;
+            }
+            
+            try {
+                // Apply colors for each category if enabled
+                const colorErfuellt = document.getElementById('colorErfuellt').checked;
+                const colorUnterschritten = document.getElementById('colorUnterschritten').checked;
+                const colorUeberschritten = document.getElementById('colorUeberschritten').checked;
+                
+                if (colorErfuellt) {
+                    await applyColorToCategory('erfuellt');
+                }
+                if (colorUnterschritten) {
+                    await applyColorToCategory('unterschritten');
+                }
+                if (colorUeberschritten) {
+                    await applyColorToCategory('ueberschritten');
+                }
+                
+                console.log("All colors applied");
+                
+            } catch (error) {
+                console.error("Error applying colors:", error);
+            }
+        }
+        
+        async function applyColorToCategory(category) {
+            const data = categoryData[category];
+            
+            if (!data.objectIds || data.objectIds.length === 0) {
+                console.log(`No objects to color for category: ${category}`);
+                return;
+            }
+            
+            try {
+                if (typeof viewerAPI.setObjectsColor === 'function') {
+                    await viewerAPI.setObjectsColor(data.objectIds, data.color);
+                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
+                } else if (viewerAPI.objects && typeof viewerAPI.objects.setColor === 'function') {
+                    await viewerAPI.objects.setColor(data.objectIds, data.color);
+                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
+                } else {
+                    console.warn("setObjectsColor method not available");
+                }
+            } catch (error) {
+                console.error(`Error applying color to ${category}:`, error);
+            }
+        }
+        
+        async function removeColorFromCategory(category) {
+            const data = categoryData[category];
+            
+            if (!data.objectIds || data.objectIds.length === 0) {
+                return;
+            }
+            
+            try {
+                if (typeof viewerAPI.resetObjectsColor === 'function') {
+                    await viewerAPI.resetObjectsColor(data.objectIds);
+                    console.log(`Reset colors for ${data.objectIds.length} objects in ${category}`);
+                } else if (viewerAPI.objects && typeof viewerAPI.objects.resetColor === 'function') {
+                    await viewerAPI.objects.resetColor(data.objectIds);
+                } else {
+                    console.warn("resetObjectsColor method not available");
+                }
+            } catch (error) {
+                console.error(`Error resetting color for ${category}:`, error);
+            }
+        }
+        
+        async function toggleColor(category) {
+            const checkboxId = 'color' + category.charAt(0).toUpperCase() + category.slice(1);
+            const isEnabled = document.getElementById(checkboxId).checked;
+            
+            if (isEnabled) {
+                await applyColorToCategory(category);
+            } else {
+                await removeColorFromCategory(category);
+            }
+        }
+        
+        async function resetAllColors() {
+            if (!viewerAPI) {
+                console.warn("Viewer API not available");
+                return;
+            }
+            
+            try {
+                // Collect all object IDs
+                const allObjectIds = [
+                    ...categoryData.erfuellt.objectIds,
+                    ...categoryData.unterschritten.objectIds,
+                    ...categoryData.ueberschritten.objectIds
+                ];
+                
+                if (allObjectIds.length > 0) {
+                    if (typeof viewerAPI.resetObjectsColor === 'function') {
+                        await viewerAPI.resetObjectsColor(allObjectIds);
+                    } else if (typeof viewerAPI.resetAllColors === 'function') {
+                        await viewerAPI.resetAllColors();
+                    }
+                }
+                
+                // Uncheck all color checkboxes
+                document.getElementById('colorErfuellt').checked = false;
+                document.getElementById('colorUnterschritten').checked = false;
+                document.getElementById('colorUeberschritten').checked = false;
+                
+                console.log("All colors reset");
+                
+            } catch (error) {
+                console.error("Error resetting colors:", error);
+            }
+        }
+        
+        // ====================================================================
+        // VISIBILITY MANAGEMENT
+        // ====================================================================
+        
+        async function toggleVisibility(category) {
+            const checkboxId = 'visibility' + category.charAt(0).toUpperCase() + category.slice(1);
+            const isVisible = document.getElementById(checkboxId).checked;
+            const data = categoryData[category];
+            
+            if (!data.objectIds || data.objectIds.length === 0) {
+                return;
+            }
+            
+            try {
+                if (isVisible) {
+                    // Show objects
+                    if (typeof viewerAPI.showObjects === 'function') {
+                        await viewerAPI.showObjects(data.objectIds);
+                        console.log(`Showing ${data.objectIds.length} objects in ${category}`);
+                    } else if (viewerAPI.objects && typeof viewerAPI.objects.show === 'function') {
+                        await viewerAPI.objects.show(data.objectIds);
+                    }
+                } else {
+                    // Hide objects
+                    if (typeof viewerAPI.hideObjects === 'function') {
+                        await viewerAPI.hideObjects(data.objectIds);
+                        console.log(`Hiding ${data.objectIds.length} objects in ${category}`);
+                    } else if (viewerAPI.objects && typeof viewerAPI.objects.hide === 'function') {
+                        await viewerAPI.objects.hide(data.objectIds);
+                    }
+                }
+            } catch (error) {
+                console.error(`Error toggling visibility for ${category}:`, error);
+            }
+        }
+        
+        // ====================================================================
+        // UTILITY FUNCTIONS
+        // ====================================================================
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ====================================================================
+        // INITIALIZE ON LOAD
+        // ====================================================================
+        
+        init();
+    </script>
+</body>
+</html>

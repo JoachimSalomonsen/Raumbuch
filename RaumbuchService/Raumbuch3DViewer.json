@@ -1,0 +1,7 @@
+{
+  "title": "Raumbuch 3D Viewer",
+  "icon": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/Img/book.png",
+  "url": "https://raumbuch-a5h4f2bhd5dnhhhq.swedencentral-01.azurewebsites.net/viewer.html",
+  "description": "Visualisierung von Raumbuch-Analyse: Färbt IfcSpace-Objekte nach Status (Erfüllt, Unterschritten, Überschritten)",
+  "enabled": true
+}
