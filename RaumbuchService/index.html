@@ -415,6 +415,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         <footer>
             <p>Raumbuch Manager v2.1 - Buildingpoint Schweiz AG</p>
+            <p id="apiEndpoint" style="display: none;"></p>
         </footer>
     </div>
 
@@ -423,7 +424,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         const API_BASE = '/api/raumbuch';
         const API_PROJECT = '/api/project';
 
-        // Display the current API endpoint in footer (if element exists)
+        // Display the current API endpoint in footer (hidden element for debugging)
         const apiEndpointEl = document.getElementById('apiEndpoint');
         if (apiEndpointEl) {
             apiEndpointEl.textContent = `API: ${window.location.origin}`;
