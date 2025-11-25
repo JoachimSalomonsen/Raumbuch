@@ -876,12 +876,17 @@
         // ====================================================================
         
         async function findMatchingObjects() {
-            if (!viewerAPI) {
+            if (!API || !API.viewer) {
                 console.warn("Viewer API not available for object matching");
                 return;
             }
             
             console.log("Finding matching objects...");
+            console.log("Looking for Raumtypen:", {
+                erfuellt: categoryData.erfuellt.rooms,
+                unterschritten: categoryData.unterschritten.rooms,
+                ueberschritten: categoryData.ueberschritten.rooms
+            });
             
             // Reset object IDs
             categoryData.erfuellt.objectIds = [];
@@ -889,45 +894,85 @@
             categoryData.ueberschritten.objectIds = [];
             
             try {
-                // Get all object properties
-                let objectsWithProperties = [];
+                // Get loaded models first
+                const loadedModels = await API.viewer.getLoadedModels();
+                console.log("Loaded models:", loadedModels);
                 
-                if (typeof viewerAPI.getObjectProperties === 'function') {
-                    // Get properties for all objects
-                    objectsWithProperties = await viewerAPI.getObjectProperties();
-                } else if (typeof viewerAPI.objects?.getProperties === 'function') {
-                    objectsWithProperties = await viewerAPI.objects.getProperties();
-                } else if (allIfcSpaces.length > 0) {
-                    // Use pre-loaded IfcSpace objects
-                    objectsWithProperties = allIfcSpaces;
-                }
-                
-                console.log("Objects with properties:", objectsWithProperties?.length || 0);
-                
-                if (!objectsWithProperties || objectsWithProperties.length === 0) {
-                    console.warn("No objects with properties found");
+                if (!loadedModels || loadedModels.length === 0) {
+                    console.warn("No models loaded in viewer");
                     return;
                 }
                 
-                // Match each room to objects by LongName property
-                objectsWithProperties.forEach(obj => {
-                    const longName = extractLongName(obj);
+                // Process each model
+                for (const model of loadedModels) {
+                    const modelId = model.id || model;
+                    console.log("Processing model:", modelId);
                     
-                    if (longName) {
-                        const objId = obj.id || obj.objectId || obj.guid;
-                        
-                        // Check each category
-                        if (categoryData.erfuellt.rooms.includes(longName)) {
-                            categoryData.erfuellt.objectIds.push(objId);
-                        }
-                        if (categoryData.unterschritten.rooms.includes(longName)) {
-                            categoryData.unterschritten.objectIds.push(objId);
-                        }
-                        if (categoryData.ueberschritten.rooms.includes(longName)) {
-                            categoryData.ueberschritten.objectIds.push(objId);
-                        }
+                    // Get all objects from this model
+                    let allObjects = [];
+                    try {
+                        allObjects = await API.viewer.getAllObjects(modelId);
+                        console.log(`Model ${modelId}: ${allObjects?.length || 0} objects`);
+                    } catch (e) {
+                        console.warn("getAllObjects failed, trying alternative:", e);
+                        continue;
                     }
-                });
+                    
+                    if (!allObjects || allObjects.length === 0) continue;
+                    
+                    // Filter for IfcSpace objects
+                    const ifcSpaces = allObjects.filter(obj => 
+                        obj.class === 'IfcSpace' || 
+                        obj.type === 'IfcSpace' ||
+                        (obj.className && obj.className.includes('IfcSpace'))
+                    );
+                    console.log(`Found ${ifcSpaces.length} IfcSpace objects`);
+                    
+                    if (ifcSpaces.length === 0) {
+                        // Try getting all objects and their properties
+                        console.log("No IfcSpace filter match, getting properties for all objects...");
+                    }
+                    
+                    // Get object IDs to fetch properties
+                    const objectIds = ifcSpaces.length > 0 
+                        ? ifcSpaces.map(obj => obj.id || obj.objectId || obj)
+                        : allObjects.slice(0, 500).map(obj => obj.id || obj.objectId || obj); // Limit to 500
+                    
+                    if (objectIds.length === 0) continue;
+                    
+                    // Get properties for these objects
+                    let objectProperties = [];
+                    try {
+                        objectProperties = await API.viewer.getObjectProperties(modelId, objectIds);
+                        console.log(`Got properties for ${objectProperties?.length || 0} objects`);
+                    } catch (e) {
+                        console.warn("getObjectProperties failed:", e);
+                        continue;
+                    }
+                    
+                    // Match objects by Long Name property
+                    if (objectProperties && objectProperties.length > 0) {
+                        objectProperties.forEach(obj => {
+                            const longName = extractLongName(obj);
+                            const objId = obj.id || obj.objectId;
+                            
+                            if (longName && objId) {
+                                console.log(`Object ${objId}: Long Name = "${longName}"`);
+                                
+                                // Check each category
+                                if (categoryData.erfuellt.rooms.includes(longName)) {
+                                    categoryData.erfuellt.objectIds.push(objId);
+                                }
+                                if (categoryData.unterschritten.rooms.includes(longName)) {
+                                    categoryData.unterschritten.objectIds.push(objId);
+                                }
+                                if (categoryData.ueberschritten.rooms.includes(longName)) {
+                                    categoryData.ueberschritten.objectIds.push(objId);
+                                }
+                            }
+                        });
+                    }
+                }
                 
                 console.log("Matched object IDs:", {
                     erfuellt: categoryData.erfuellt.objectIds.length,
@@ -948,33 +993,33 @@
             if (obj.LongName) return obj.LongName;
             if (obj['Long Name']) return obj['Long Name'];
             
-            // From properties array (PropertySet format)
+            // From properties array (PropertySet format from Trimble API)
+            // Structure: obj.properties = [{name: "IFC Space", properties: [{name: "Long Name", value: "..."}]}]
             if (obj.properties && Array.isArray(obj.properties)) {
                 for (const pset of obj.properties) {
-                    // Check if this is the IfcSpace property set
                     const psetName = pset.name || pset.Name || '';
-                    if (psetName.toLowerCase().includes('ifcspace') || 
-                        psetName.toLowerCase().includes('ifc space') ||
-                        psetName.toLowerCase().includes('pset_spacecommon')) {
-                        
-                        // Look for LongName property
+                    
+                    // Check in "IFC Space" or "Ifc Space" property set
+                    if (psetName.toLowerCase().includes('ifc') && psetName.toLowerCase().includes('space')) {
                         if (pset.properties && Array.isArray(pset.properties)) {
-                            const longNameProp = pset.properties.find(p => 
-                                (p.name || p.Name || '').toLowerCase() === 'longname' ||
-                                (p.name || p.Name || '').toLowerCase() === 'long name'
-                            );
+                            const longNameProp = pset.properties.find(p => {
+                                const propName = (p.name || p.Name || '').toLowerCase();
+                                return propName === 'long name' || propName === 'longname';
+                            });
                             if (longNameProp) {
                                 return longNameProp.value || longNameProp.Value;
                             }
                         }
                     }
-                    
-                    // Also check in any property set
+                }
+                
+                // Also check any property set for Long Name
+                for (const pset of obj.properties) {
                     if (pset.properties && Array.isArray(pset.properties)) {
-                        const longNameProp = pset.properties.find(p => 
-                            (p.name || p.Name || '').toLowerCase() === 'longname' ||
-                            (p.name || p.Name || '').toLowerCase() === 'long name'
-                        );
+                        const longNameProp = pset.properties.find(p => {
+                            const propName = (p.name || p.Name || '').toLowerCase();
+                            return propName === 'long name' || propName === 'longname';
+                        });
                         if (longNameProp) {
                             return longNameProp.value || longNameProp.Value;
                         }
@@ -986,11 +1031,8 @@
             if (obj.attributes) {
                 if (obj.attributes.longName) return obj.attributes.longName;
                 if (obj.attributes.LongName) return obj.attributes.LongName;
+                if (obj.attributes['Long Name']) return obj.attributes['Long Name'];
             }
-            
-            // Try name as fallback
-            if (obj.name) return obj.name;
-            if (obj.Name) return obj.Name;
             
             return null;
         }
