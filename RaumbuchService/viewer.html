@@ -368,8 +368,11 @@
         const API_RAUMBUCH = '/api/raumbuch';
         
         // Configuration constants
-        const FALLBACK_BATCH_SIZE = 50;  // Max objects to fetch one-by-one in fallback approach
-        const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;  // Matches standard UUIDs with/without hyphens
+        // FALLBACK_BATCH_SIZE: Balance between getting enough data for functionality
+        // while avoiding API rate limits and keeping load times reasonable
+        const FALLBACK_BATCH_SIZE = 50;
+        // UUID_PATTERN: Matches standard UUIDs with or without hyphens
+        const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
         
         // API reference and state
         let API = null;
@@ -1103,6 +1106,16 @@
             // From properties array (PropertySet format from Trimble API)
             // Structure: obj.properties = [{name: "IFC Space", properties: [{name: "Long Name", value: "..."}]}]
             if (obj.properties && Array.isArray(obj.properties)) {
+                // Helper function to find Long Name in a properties array
+                const findLongNameInProps = (propsArray) => {
+                    if (!propsArray || !Array.isArray(propsArray)) return null;
+                    const longNameProp = propsArray.find(p => {
+                        const propName = (p.name || p.Name || '').toLowerCase();
+                        return propName === 'long name' || propName === 'longname' || propName === 'long_name';
+                    });
+                    return longNameProp ? (longNameProp.value || longNameProp.Value) : null;
+                };
+                
                 // First, look for specific IFC Space property sets
                 for (const pset of obj.properties) {
                     const psetName = (pset.name || pset.Name || '').toLowerCase();
@@ -1111,35 +1124,20 @@
                     // These are the standard IFC property set names for space properties
                     if ((psetName.includes('ifc') && psetName.includes('space')) || 
                         psetName.includes('pset_spacecommon')) {
-                        
-                        if (pset.properties && Array.isArray(pset.properties)) {
-                            const longNameProp = pset.properties.find(p => {
-                                const propName = (p.name || p.Name || '').toLowerCase();
-                                return propName === 'long name' || propName === 'longname' || propName === 'long_name';
-                            });
-                            if (longNameProp) {
-                                return longNameProp.value || longNameProp.Value;
-                            }
-                        }
+                        const value = findLongNameInProps(pset.properties);
+                        if (value) return value;
                     }
                 }
                 
                 // Also check any property set for Long Name (fallback)
                 for (const pset of obj.properties) {
-                    if (pset.properties && Array.isArray(pset.properties)) {
-                        const longNameProp = pset.properties.find(p => {
-                            const propName = (p.name || p.Name || '').toLowerCase();
-                            return propName === 'long name' || propName === 'longname' || propName === 'long_name';
-                        });
-                        if (longNameProp) {
-                            return longNameProp.value || longNameProp.Value;
-                        }
-                    }
+                    const value = findLongNameInProps(pset.properties);
+                    if (value) return value;
                     
                     // Handle flat properties array format
                     if (typeof pset === 'object' && pset.name) {
                         const propName = (pset.name || '').toLowerCase();
-                        if (propName === 'long name' || propName === 'longname') {
+                        if (propName === 'long name' || propName === 'longname' || propName === 'long_name') {
                             return pset.value || pset.Value;
                         }
                     }
