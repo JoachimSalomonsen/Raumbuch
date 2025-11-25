@@ -2502,12 +2502,13 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             let html = '';
             data.forEach((item, index) => {
-                const percentage = item.percentage || item.Percentage || 0;
-                const sollArea = item.sollArea || item.SollArea || 0;
-                const istArea = item.istArea || item.IstArea || 0;
-                const raumtyp = item.raumtyp || item.Raumtyp || item.roomCategory || item.RoomCategory || '-';
-                const raumkategorie = item.raumkategorie || item.Raumkategorie || '';
-                const comment = item.comment || item.Comment || '';
+                const percentage = getItemProp(item, 'percentage', 'Percentage', 0);
+                const sollArea = getItemProp(item, 'sollArea', 'SollArea', 0);
+                const istArea = getItemProp(item, 'istArea', 'IstArea', 0);
+                const raumtyp = getItemProp(item, 'raumtyp', 'Raumtyp', null) || 
+                               getItemProp(item, 'roomCategory', 'RoomCategory', '-');
+                const raumkategorie = getItemProp(item, 'raumkategorie', 'Raumkategorie', '');
+                const comment = getItemProp(item, 'comment', 'Comment', '');
                 
                 // Determine status based on tolerance settings
                 const status = getStatus(percentage, sollArea, istArea);
@@ -2614,9 +2615,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             let overCount = 0;
 
             data.forEach(item => {
-                const soll = item.sollArea || item.SollArea || 0;
-                const ist = item.istArea || item.IstArea || 0;
-                const percentage = item.percentage || item.Percentage || 0;
+                const soll = getItemProp(item, 'sollArea', 'SollArea', 0);
+                const ist = getItemProp(item, 'istArea', 'IstArea', 0);
+                const percentage = getItemProp(item, 'percentage', 'Percentage', 0);
                 
                 totalSoll += soll;
                 totalIst += ist;
@@ -2927,6 +2928,18 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             return div.innerHTML;
         }
 
+        /**
+         * Helper function to get property from item with both camelCase and PascalCase fallback
+         * @param {object} item - The data item
+         * @param {string} camelCase - Property name in camelCase (e.g., 'sollArea')
+         * @param {string} pascalCase - Property name in PascalCase (e.g., 'SollArea')
+         * @param {*} defaultValue - Default value if property not found
+         */
+        function getItemProp(item, camelCase, pascalCase, defaultValue) {
+            if (!item) return defaultValue;
+            return item[camelCase] ?? item[pascalCase] ?? defaultValue;
+        }
+
         // Store column mappings
         let columnMappings = {
             raumtyp: '',
@@ -2981,21 +2994,36 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         }
                     });
 
-                    // Set default mappings based on requirements: A=Raumtyp, F=Raumkategorie, G=Fläche Soll
-                    if (templateHeaders.length > 0) {
+                    // Set default mappings if columns exist - with validation
+                    // Default: A=Raumtyp, F=Raumkategorie, G=Fläche Soll
+                    if (templateHeaders.length >= 1) {
                         document.getElementById('mappingRaumtyp').value = '0'; // Column A
                     }
-                    if (templateHeaders.length > 5) {
+                    if (templateHeaders.length >= 6) {
                         document.getElementById('mappingRaumkategorie').value = '5'; // Column F
+                    } else {
+                        // Leave Raumkategorie unmapped if not enough columns - will use IFC LongName
+                        console.log('Template has fewer than 6 columns - Raumkategorie will be derived from IFC');
                     }
-                    if (templateHeaders.length > 6) {
+                    if (templateHeaders.length >= 7) {
                         document.getElementById('mappingFlaecheSoll').value = '6'; // Column G
+                    } else if (templateHeaders.length >= 4) {
+                        // Fallback: try column D for Fläche Soll (older format)
+                        document.getElementById('mappingFlaecheSoll').value = '3'; // Column D
+                        console.log('Template has fewer than 7 columns - using column D for Fläche Soll');
                     }
 
                     // Show mapping table
                     document.getElementById('mappingTableContainer').style.display = 'block';
 
-                    showResult('step1Result', 'success', `✅ ${templateHeaders.length} Spalten geladen. Bitte Zuordnung prüfen.`);
+                    // Show helpful message with validation info
+                    let message = `✅ ${templateHeaders.length} Spalten geladen.`;
+                    if (templateHeaders.length < 7) {
+                        message += ` Hinweis: Weniger als 7 Spalten gefunden - bitte Zuordnung prüfen.`;
+                    } else {
+                        message += ` Bitte Zuordnung prüfen.`;
+                    }
+                    showResult('step1Result', 'success', message);
                 } else {
                     const errorMsg = data.message || 'Fehler beim Laden';
                     showResult('step1Result', 'error', `❌ ${errorMsg}`);

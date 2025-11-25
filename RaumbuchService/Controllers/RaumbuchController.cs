@@ -1022,16 +1022,11 @@ namespace RaumbuchService.Controllers
                             string raumtyp = raumbuchWs.Cell(r, raumtypCol).GetString().Trim();
                             if (string.IsNullOrWhiteSpace(raumtyp)) continue;
                             
-                            // Find matching item in data
+                            // Use dataLookup for O(1) lookup instead of O(n) loop
                             ZusammenfassungItem item = null;
-                            foreach (var d in data)
+                            if (dataLookup.TryGetValue(raumtyp, out item))
                             {
-                                string key = d.Raumtyp ?? d.RoomCategory ?? "";
-                                if (key.Equals(raumtyp, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    item = d;
-                                    break;
-                                }
+                                // Found via dataLookup
                             }
                             
                             if (item != null)
