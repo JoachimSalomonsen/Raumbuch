@@ -71,12 +71,16 @@
 
                     <div class="form-group">
                         <label for="configName">Konfigurationsname:</label>
-                        <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
-                        <small>Geben Sie einen Namen ein (wird beim ersten Speichern verwendet)</small>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
+                            </select>                            <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
+                            <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
+                        </div>
+                        <small>Geben Sie einen Namen für die Konfigurationsdatei an.</small>
                     </div>
 
                     <div class="form-group">
-                        <label>Gespeicherte Konfigurationen (Azure):</label>
+                        <label>Gespeicherte Konfigurationen:</label>
                         <div style="display:flex; gap:10px; align-items:flex-start;">
                             <select id="savedConfigs" class="form-control" style="flex:1;">
                                 <option value="">-- Laden Sie Projektdaten um Konfigurationen zu sehen --</option>
@@ -84,27 +88,23 @@
                             <button class="btn btn-secondary" onclick="loadConfigFromAzure()">📥 Laden</button>
                             <button class="btn btn-danger" onclick="deleteConfigFromAzure()">🗑️ Löschen</button>
                         </div>
-                        <small>Konfigurationen werden in Azure Blob Storage gespeichert</small>
                     </div>
-
-                    <div class="form-group">
-                        <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
-                        <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
-                    </div>
-
                     <hr>
 
                     <!-- Target Folder -->
                     <div class="form-group">
                         <label for="targetFolder">Zielordner:</label>
-                        <select id="targetFolder" class="form-control">
-                            <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
-                        </select>
-                        <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <select id="targetFolder" class="form-control">
+                                <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
+                            <button class="btn btn-secondary" onclick="window.open('https://web.connect.trimble.com/projects/y7-N0uBcXNI/data/folder/syZ23DptUaQ', '_blank')">📁 Zielordner öffnen</button>
+                        </div>
                     </div>
 
-                    <div id="connectionResult" class="result"></div>
-                </section>
+                        <div id="connectionResult" class="result"></div>
+</section>
 
 
                 <!-- =============================== -->
@@ -112,7 +112,7 @@
                 <!-- =============================== -->
                 <section class="card">
                     <h2>Raumbuch</h2>
-                    <p>Vorlage laden und Raumbuch erzeugen/aktualisieren</p>
+                    <p>Vorlage laden und Raumbuch erzeugen oder aktualisieren</p>
 
                     <!-- TEMPLATE -->
                     <div class="form-group">
@@ -207,7 +207,7 @@
 
                 <!-- KPI Summary Widget -->
                 <section class="card kpi-widget">
-                    <h2>📊 Übersicht</h2>
+                    <h2>Übersicht</h2>
                     <div class="kpi-container">
                         <div class="kpi-item">
                             <span class="kpi-label">SOLL Gesamt</span>
@@ -238,7 +238,7 @@
 
                 <!-- Tolerance Configuration -->
                 <section class="card">
-                    <h2>⚙️ Toleranz-Einstellungen</h2>
+                    <h2>Toleranz-Einstellungen</h2>
                     <div class="tolerance-controls">
                         <div class="form-group" style="display:inline-block; margin-right:20px;">
                             <label for="toleranceMin">Minimum Toleranz (%):</label>
@@ -254,7 +254,7 @@
 
                 <!-- Filter and Search Controls -->
                 <section class="card">
-                    <h2>🔍 Filter & Suche</h2>
+                    <h2>Filter & Suche</h2>
                     <div class="filter-controls">
                         <div class="filter-buttons">
                             <button class="btn btn-secondary filter-btn active" data-filter="all" onclick="filterAnalyseTable('all')">Alle</button>
@@ -270,7 +270,7 @@
 
                 <!-- Zusammenfassung Table -->
                 <section class="card">
-                    <h2>📋 Zusammenfassung (SOLL/IST-Analyse)</h2>
+                    <h2>Analysetabelle</h2>
                     <p>Übersicht der Flächenanalyse nach Raumkategorie</p>
                     
                     <div class="analyse-table-container">
@@ -307,10 +307,10 @@
 
                 <!-- Soll/Ist-Prüfung (moved from Raumbuch tab) -->
                 <section class="card">
-                    <h2>Soll/Ist-Prüfung</h2>
+                    <h2>Pset Raumbuch </h2>
                     <p>Die Differenz in der Fläche zwischen Raumprogramm (SOLL) und Raumbuch (IST) wird für jede Raumkategorie in Pset Raumbuch geschrieben.</p>
 
-                    <button class="btn btn-primary" onclick="writePset()">📝 Pset schreiben</button>
+                    <button class="btn btn-primary" onclick="writePset()">📝 Pset erstellen</button>
                     <button class="btn btn-secondary" onclick="updatePset()">🔄 Pset aktualisieren</button>
                     <button class="btn btn-secondary" onclick="deletePset()">🗑️ Pset löschen</button>
                     <button class="btn btn-secondary" onclick="openIn3DViewer()">🔍 In 3D-Viewer öffnen</button>
