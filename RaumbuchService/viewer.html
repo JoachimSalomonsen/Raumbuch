@@ -372,6 +372,8 @@
         const BATCH_SIZE = 1000;
         // UUID_PATTERN: Matches standard UUIDs with or without hyphens
         const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+        // TARGET_PSETS: Property set names to search for LongName (in order of priority)
+        const TARGET_PSETS = ['pset_spacecommon', 'attributes', 'ifcspace', 'ifc space'];
         
         // API reference and state
         let API = null;
@@ -948,8 +950,13 @@
                             const longName = extractLongNameFromProperties(objProps);
                             
                             if (longName) {
-                                // Get the object's runtime ID
+                                // Get the object's runtime ID - validate that we have a valid ID
                                 const objectId = objProps.id || objProps.runtimeId || objProps.objectId;
+                                
+                                if (objectId === undefined || objectId === null) {
+                                    console.warn(`Found LongName "${longName}" but could not determine object ID`);
+                                    continue;
+                                }
                                 
                                 console.log(`Found LongName "${longName}" for object ${objectId}`);
                                 
@@ -968,6 +975,7 @@
                         
                     } catch (batchError) {
                         console.error(`Error processing batch ${batchNumber}:`, batchError);
+                        // Continue processing other batches even if one fails
                     }
                 }
                 
@@ -993,15 +1001,12 @@
                 return null;
             }
             
-            // Property set names to look for (in order of priority)
-            const targetPsets = ['pset_spacecommon', 'attributes', 'ifcspace', 'ifc space'];
-            
-            // First, search in the target property sets
+            // First, search in the target property sets (defined in TARGET_PSETS constant)
             for (const pset of objProps.properties) {
                 const psetName = (pset.name || pset.Name || '').toLowerCase();
                 
                 // Check if this is one of our target property sets
-                const isTargetPset = targetPsets.some(target => psetName.includes(target));
+                const isTargetPset = TARGET_PSETS.some(target => psetName.includes(target));
                 
                 if (isTargetPset && pset.properties && Array.isArray(pset.properties)) {
                     // Look for LongName property within this property set
