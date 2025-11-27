@@ -327,6 +327,7 @@
     <Content Include="Content\bootstrap.rtl.min.css" />
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
+    <Content Include="TrimbleAPI.html" />
     <Content Include="Img\analyse.png" />
     <Content Include="Img\book.png" />
     <Content Include="Img\book_black.png" />

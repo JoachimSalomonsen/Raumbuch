@@ -367,6 +367,14 @@
         const API_PROJECT = '/api/project';
         const API_RAUMBUCH = '/api/raumbuch';
         
+        // Configuration constants
+        // BATCH_SIZE: Number of object IDs to process per batch when calling getObjectProperties
+        const BATCH_SIZE = 1000;
+        // UUID_PATTERN: Matches standard UUIDs with or without hyphens
+        const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+        // TARGET_PSETS: Property set names to search for LongName (in order of priority)
+        const TARGET_PSETS = ['pset_spacecommon', 'attributes', 'ifcspace', 'ifc space'];
+        
         // API reference and state
         let API = null;
         let viewerAPI = null;
@@ -682,6 +690,17 @@
             const raumbuchFile = config.files?.raumbuch;
             const raumbuchFileId = raumbuchFile?.id || raumbuchFile;
             
+            // Refresh token before making API call to avoid INVALID_SESSION errors
+            try {
+                if (API && API.extension && typeof API.extension.requestPermission === 'function') {
+                    console.log('Refreshing access token...');
+                    workspaceToken = await API.extension.requestPermission("accesstoken");
+                    console.log('Access token refreshed');
+                }
+            } catch (tokenError) {
+                console.warn('Could not refresh token:', tokenError);
+            }
+            
             if (!raumbuchFileId || !workspaceToken) {
                 throw new Error('Raumbuch-Datei ID oder Token fehlt');
             }
@@ -871,296 +890,210 @@
             }
         }
         
-        // ====================================================================
-        // OBJECT MATCHING
-        // ====================================================================
-        
-        async function findMatchingObjects() {
-            console.log("Finding matching objects...");
-            console.log("Looking for Raumtypen:", {
-                erfuellt: categoryData.erfuellt.rooms,
-                unterschritten: categoryData.unterschritten.rooms,
-                ueberschritten: categoryData.ueberschritten.rooms
-            });
-            
-            // Reset object IDs
-            categoryData.erfuellt.objectIds = [];
-            categoryData.unterschritten.objectIds = [];
-            categoryData.ueberschritten.objectIds = [];
-            
-            try {
-                // Use API.viewer which has the correct methods
-                if (!API || !API.viewer) {
-                    console.warn("API.viewer not available");
-                    return;
-                }
-                
-                // Step 1: Get loaded models using getModels()
-                const models = await API.viewer.getModels();
-                console.log("Loaded models:", models);
-                
-                if (!models || models.length === 0) {
-                    console.warn("No models loaded in viewer");
-                    return;
-                }
-                
-                // Step 2: For each model, get entities/objects
-                for (const model of models) {
-                    const modelId = model.id || model.modelId || model;
-                    console.log("Processing model:", modelId);
-                    
-                    // Try getEntities first (may give us IfcSpace entities)
-                    let entities = [];
-                    try {
-                        entities = await API.viewer.getEntities(modelId);
-                        console.log(`Model ${modelId}: ${entities?.length || 0} entities`);
-                    } catch (e) {
-                        console.warn("getEntities failed:", e);
+             // ====================================================================
+            // NØDVENDIG VARIABEL (VERSJONS-ID FOR MODELLEN)
+            // Denne MÅ brukes i ModelObjectIds for å unngå feilen "Invalid model id 'undefined'".
+            // ====================================================================
+            const definitiveModelId = 'conXYa42NrE'; // Hardkodet fra din data: File.versionId
+
+            // ====================================================================
+            // I. Hjelpefunksjoner for Tilbakestilling
+            // ====================================================================
+
+            /**
+             * Tilbakestiller fargen på alle synlige objekter til standard ved å sende null
+             * som selector. Dette er nødvendig før ny fargelegging starter.
+             */
+            async function resetAllColors() {
+                try {
+                    const api = viewerAPI || API.viewer;
+                    if (api && typeof api.setObjectState === 'function') {
+                        // Bruker 'undefined' (eller null) som selector for å tilbakestille ALT.
+                        await api.setObjectState(undefined, { color: null });
+                        console.log("All object colors reset to default (pre-coloring step).");
+                    } else {
+                        console.warn("setObjectState for reset not available.");
                     }
-                    
-                    // Try getObjects if getEntities didn't work
-                    if (!entities || entities.length === 0) {
-                        try {
-                            const objects = await API.viewer.getObjects(modelId);
-                            console.log(`Model ${modelId}: ${objects?.length || 0} objects`);
-                            entities = objects || [];
-                        } catch (e) {
-                            console.warn("getObjects failed:", e);
+                } catch (error) {
+                    console.error("Error resetting colors:", error);
+                }
+            }
+
+            // ====================================================================
+            // II. Søkefunksjon
+            // ====================================================================
+
+            /**
+             * Utfører ett enkelt API.viewer.getObjects kall per kategori ved å bruke 
+             * en array av romnavn som søkekriterie.
+             */
+            const searchForRooms = async (categoryName, roomNames, categoryArray) => {
+                if (!roomNames || roomNames.length === 0) {
+                    console.log(`Category ${categoryName}: No room names defined.`);
+                    return;
+                }
+    
+                const PROPERTY_NAME = "IfcSpace.LongName";
+    
+                const searchParams = {
+                    parameter: {
+                        properties: {
+                            [PROPERTY_NAME]: roomNames 
                         }
                     }
-                    
-                    if (!entities || entities.length === 0) {
-                        console.warn("No entities found for model:", modelId);
-                        continue;
-                    }
-                    
-                    // Step 3: Get object IDs to fetch properties
-                    const objectIds = entities.map(e => e.id || e.objectId || e.entityId || e).filter(id => id);
-                    console.log(`Got ${objectIds.length} object IDs`);
-                    
-                    if (objectIds.length === 0) continue;
-                    
-                    // Step 4: Get properties for objects (in batches if needed)
-                    const batchSize = 100;
-                    for (let i = 0; i < objectIds.length; i += batchSize) {
-                        const batch = objectIds.slice(i, i + batchSize);
-                        
-                        try {
-                            const properties = await API.viewer.getObjectProperties(modelId, batch);
-                            console.log(`Got properties for ${properties?.length || 0} objects (batch ${i / batchSize + 1})`);
-                            
-                            if (properties && properties.length > 0) {
-                                // Match objects by Long Name property
-                                properties.forEach(obj => {
-                                    const longName = extractLongName(obj);
-                                    const objId = obj.id || obj.objectId || obj.entityId;
-                                    
-                                    if (longName) {
-                                        console.log(`Object ${objId}: Long Name = "${longName}"`);
-                                        
-                                        // Check each category
-                                        if (categoryData.erfuellt.rooms.includes(longName)) {
-                                            categoryData.erfuellt.objectIds.push(objId);
-                                        }
-                                        if (categoryData.unterschritten.rooms.includes(longName)) {
-                                            categoryData.unterschritten.objectIds.push(objId);
-                                        }
-                                        if (categoryData.ueberschritten.rooms.includes(longName)) {
-                                            categoryData.ueberschritten.objectIds.push(objId);
-                                        }
+                };
+
+                try {
+                    const results = await API.viewer.getObjects(searchParams);
+
+                    if (results && Array.isArray(results)) {
+                        let totalObjectsFound = 0;
+            
+                        for (const modelObject of results) {
+                            if (modelObject.objects && Array.isArray(modelObject.objects)) {
+                                for (const obj of modelObject.objects) {
+                                    if (obj.id !== undefined && obj.id !== null) {
+                                        // Lagrer ID-en som et tall (runtime ID)
+                                        categoryArray.push(Number(obj.id)); 
+                                        totalObjectsFound++;
                                     }
-                                });
-                            }
-                        } catch (e) {
-                            console.warn("getObjectProperties failed for batch:", e);
-                        }
-                    }
-                }
-                
-                console.log("Matched object IDs:", {
-                    erfuellt: categoryData.erfuellt.objectIds.length,
-                    unterschritten: categoryData.unterschritten.objectIds.length,
-                    ueberschritten: categoryData.ueberschritten.objectIds.length
-                });
-                
-            } catch (error) {
-                console.error("Error finding matching objects:", error);
-            }
-        }
-        
-        function extractLongName(obj) {
-            // Try different ways to extract LongName from object properties
-            
-            // Direct property
-            if (obj.longName) return obj.longName;
-            if (obj.LongName) return obj.LongName;
-            if (obj['Long Name']) return obj['Long Name'];
-            
-            // From properties array (PropertySet format from Trimble API)
-            // Structure: obj.properties = [{name: "IFC Space", properties: [{name: "Long Name", value: "..."}]}]
-            if (obj.properties && Array.isArray(obj.properties)) {
-                for (const pset of obj.properties) {
-                    const psetName = pset.name || pset.Name || '';
-                    
-                    // Check in "IFC Space" or "Ifc Space" property set
-                    if (psetName.toLowerCase().includes('ifc') && psetName.toLowerCase().includes('space')) {
-                        if (pset.properties && Array.isArray(pset.properties)) {
-                            const longNameProp = pset.properties.find(p => {
-                                const propName = (p.name || p.Name || '').toLowerCase();
-                                return propName === 'long name' || propName === 'longname';
-                            });
-                            if (longNameProp) {
-                                return longNameProp.value || longNameProp.Value;
+                                }
                             }
                         }
+                        console.log(`Category ${categoryName}: Found ${totalObjectsFound} matching objects.`);
+                    } else {
+                        console.log(`Category ${categoryName}: API returned unexpected format or no results.`);
                     }
+
+                } catch (error) {
+                    console.error(`Critical error during getObjects search for ${categoryName}:`, error);
                 }
-                
-                // Also check any property set for Long Name
-                for (const pset of obj.properties) {
-                    if (pset.properties && Array.isArray(pset.properties)) {
-                        const longNameProp = pset.properties.find(p => {
-                            const propName = (p.name || p.Name || '').toLowerCase();
-                            return propName === 'long name' || propName === 'longname';
-                        });
-                        if (longNameProp) {
-                            return longNameProp.value || longNameProp.Value;
-                        }
+            };
+
+
+            // ====================================================================
+            // III. Fargeleggingsfunksjoner
+            // ====================================================================
+
+            /**
+             * Bruker den korrekte ModelObjectIds strukturen (inkl. modelId) for å fargelegge objekter.
+             */
+            async function applyColorToCategory(category) {
+                const data = categoryData[category];
+    
+                if (!data.objectIds || data.objectIds.length === 0) {
+                    console.log(`No objects to color for category: ${category}`);
+                    return;
+                }
+    
+                if (!definitiveModelId) {
+                    console.error("CRITICAL: definitiveModelId mangler. Kan ikke fargelegge selektivt.");
+                    return;
+                }
+
+                // 1. Forbered ID-er (må være tall)
+                const runtimeIdsAsNumbers = data.objectIds.map(id => Number(id)); 
+
+                // 2. Konstruer den NØDVENDIGE ModelObjectIds-strukturen
+                const modelObjectSelectorArray = [{
+                    modelId: definitiveModelId,      // Løser feilen.
+                    objectRuntimeIds: runtimeIdsAsNumbers
+                }];
+
+                const colorSelector = {
+                    modelObjectIds: modelObjectSelectorArray 
+                };
+    
+                console.log(`Applying color ${data.color} to ${runtimeIdsAsNumbers.length} objects in ${category}`);
+    
+                try {
+                    const api = viewerAPI || API.viewer;
+        
+                    if (api && typeof api.setObjectState === 'function') {
+                        await api.setObjectState(colorSelector, { color: data.color });
+                        console.log(`Applied color to ${category} successfully.`);
+                    } else {
+                        console.warn("setObjectState method not available.");
                     }
+                } catch (error) {
+                    console.error(`Error applying color to ${category}:`, error);
                 }
             }
-            
-            // From nested attributes
-            if (obj.attributes) {
-                if (obj.attributes.longName) return obj.attributes.longName;
-                if (obj.attributes.LongName) return obj.attributes.LongName;
-                if (obj.attributes['Long Name']) return obj.attributes['Long Name'];
-            }
-            
-            return null;
-        }
-        
-        // ====================================================================
-        // COLOR MANAGEMENT
-        // ====================================================================
-        
-        async function applyAllColors() {
-            if (!viewerAPI) {
-                console.warn("Viewer API not available for color application");
-                return;
-            }
-            
-            try {
-                // Apply colors for each category if enabled
-                const colorErfuellt = document.getElementById('colorErfuellt').checked;
-                const colorUnterschritten = document.getElementById('colorUnterschritten').checked;
-                const colorUeberschritten = document.getElementById('colorUeberschritten').checked;
-                
-                if (colorErfuellt) {
-                    await applyColorToCategory('erfuellt');
+
+            /**
+             * Håndterer brukerens fargevalg ved å først tilbakestille alle farger,
+             * og deretter påføre fargene for de aktive kategoriene.
+             */
+            async function applyAllColors() {
+                if (!viewerAPI) {
+                    console.warn("Viewer API not available for color application");
+                    return;
                 }
-                if (colorUnterschritten) {
-                    await applyColorToCategory('unterschritten');
-                }
-                if (colorUeberschritten) {
-                    await applyColorToCategory('ueberschritten');
-                }
-                
-                console.log("All colors applied");
-                
-            } catch (error) {
-                console.error("Error applying colors:", error);
-            }
-        }
+    
+                try {
+                    // --- 1. Tilbakestill ALLE farger før fargelegging ---
+                    await resetAllColors(); 
+
+                    // 2. Fargelegg kun de aktiverte kategoriene
+                    const colorErfuellt = document.getElementById('colorErfuellt').checked;
+                    const colorUnterschritten = document.getElementById('colorUnterschritten').checked;
+                    const colorUeberschritten = document.getElementById('colorUeberschritten').checked;
         
-        async function applyColorToCategory(category) {
-            const data = categoryData[category];
-            
-            if (!data.objectIds || data.objectIds.length === 0) {
-                console.log(`No objects to color for category: ${category}`);
-                return;
-            }
-            
-            try {
-                if (typeof viewerAPI.setObjectsColor === 'function') {
-                    await viewerAPI.setObjectsColor(data.objectIds, data.color);
-                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
-                } else if (viewerAPI.objects && typeof viewerAPI.objects.setColor === 'function') {
-                    await viewerAPI.objects.setColor(data.objectIds, data.color);
-                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category}`);
-                } else {
-                    console.warn("setObjectsColor method not available");
-                }
-            } catch (error) {
-                console.error(`Error applying color to ${category}:`, error);
-            }
-        }
-        
-        async function removeColorFromCategory(category) {
-            const data = categoryData[category];
-            
-            if (!data.objectIds || data.objectIds.length === 0) {
-                return;
-            }
-            
-            try {
-                if (typeof viewerAPI.resetObjectsColor === 'function') {
-                    await viewerAPI.resetObjectsColor(data.objectIds);
-                    console.log(`Reset colors for ${data.objectIds.length} objects in ${category}`);
-                } else if (viewerAPI.objects && typeof viewerAPI.objects.resetColor === 'function') {
-                    await viewerAPI.objects.resetColor(data.objectIds);
-                } else {
-                    console.warn("resetObjectsColor method not available");
-                }
-            } catch (error) {
-                console.error(`Error resetting color for ${category}:`, error);
-            }
-        }
-        
-        async function toggleColor(category) {
-            const checkboxId = 'color' + category.charAt(0).toUpperCase() + category.slice(1);
-            const isEnabled = document.getElementById(checkboxId).checked;
-            
-            if (isEnabled) {
-                await applyColorToCategory(category);
-            } else {
-                await removeColorFromCategory(category);
-            }
-        }
-        
-        async function resetAllColors() {
-            if (!viewerAPI) {
-                console.warn("Viewer API not available");
-                return;
-            }
-            
-            try {
-                // Collect all object IDs
-                const allObjectIds = [
-                    ...categoryData.erfuellt.objectIds,
-                    ...categoryData.unterschritten.objectIds,
-                    ...categoryData.ueberschritten.objectIds
-                ];
-                
-                if (allObjectIds.length > 0) {
-                    if (typeof viewerAPI.resetObjectsColor === 'function') {
-                        await viewerAPI.resetObjectsColor(allObjectIds);
-                    } else if (typeof viewerAPI.resetAllColors === 'function') {
-                        await viewerAPI.resetAllColors();
+                    if (colorErfuellt) {
+                        await applyColorToCategory('erfuellt');
                     }
+                    if (colorUnterschritten) {
+                        await applyColorToCategory('unterschritten');
+                    }
+                    if (colorUeberschritten) {
+                        await applyColorToCategory('ueberschritten');
+                    }
+        
+                    console.log("All colors applied successfully.");
+        
+                } catch (error) {
+                    console.error("Error applying colors:", error);
                 }
-                
-                // Uncheck all color checkboxes
-                document.getElementById('colorErfuellt').checked = false;
-                document.getElementById('colorUnterschritten').checked = false;
-                document.getElementById('colorUeberschritten').checked = false;
-                
-                console.log("All colors reset");
-                
-            } catch (error) {
-                console.error("Error resetting colors:", error);
             }
-        }
+
+
+            // ====================================================================
+            // IV. Hovedfunksjon for prosessen
+            // ====================================================================
+
+            /**
+             * Hovedfunksjonen som styrer matching, telling, og fargelegging.
+             */
+            async function findMatchingObjects() {
+                console.log("Finding matching objects using array search...");
+
+                try {
+                    // 1. Initialisering: Tøm ID-lister
+                    categoryData.erfuellt.objectIds = [];
+                    categoryData.unterschritten.objectIds = [];
+                    categoryData.ueberschritten.objectIds = [];
+
+                    // 2. Utfør søk for hver kategori
+                    await searchForRooms("erfuellt", categoryData.erfuellt.rooms, categoryData.erfuellt.objectIds);
+                    await searchForRooms("unterschritten", categoryData.unterschritten.rooms, categoryData.unterschritten.objectIds);
+                    await searchForRooms("ueberschritten", categoryData.ueberschritten.rooms, categoryData.ueberschritten.objectIds);
+
+                    // 3. Logg resultater
+                    console.log("Matching complete. Final Results:", {
+                        erfuellt: categoryData.erfuellt.objectIds.length,
+                        unterschritten: categoryData.unterschritten.objectIds.length,
+                        ueberschritten: categoryData.ueberschritten.objectIds.length
+                    });
+
+                    // 4. Oppdater UI og fargelegg
+                    // Disse to funksjonene (updateCategoryCounts og applyAllColors) må finnes i din kodebase.
+                    updateCategoryCounts(); 
+                    await applyAllColors();
+
+                } catch (error) {
+                    console.error("Error finding matching objects:", error);
+                }
+            }
         
         // ====================================================================
         // VISIBILITY MANAGEMENT
@@ -1176,22 +1109,15 @@
             }
             
             try {
-                if (isVisible) {
-                    // Show objects
-                    if (typeof viewerAPI.showObjects === 'function') {
-                        await viewerAPI.showObjects(data.objectIds);
-                        console.log(`Showing ${data.objectIds.length} objects in ${category}`);
-                    } else if (viewerAPI.objects && typeof viewerAPI.objects.show === 'function') {
-                        await viewerAPI.objects.show(data.objectIds);
-                    }
+                // Use setObjectState with visible property
+                if (viewerAPI && typeof viewerAPI.setObjectState === 'function') {
+                    await viewerAPI.setObjectState(data.objectIds, { visible: isVisible });
+                    console.log(`${isVisible ? 'Showing' : 'Hiding'} ${data.objectIds.length} objects in ${category} using setObjectState`);
+                } else if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
+                    await API.viewer.setObjectState(data.objectIds, { visible: isVisible });
+                    console.log(`${isVisible ? 'Showing' : 'Hiding'} ${data.objectIds.length} objects in ${category} using API.viewer.setObjectState`);
                 } else {
-                    // Hide objects
-                    if (typeof viewerAPI.hideObjects === 'function') {
-                        await viewerAPI.hideObjects(data.objectIds);
-                        console.log(`Hiding ${data.objectIds.length} objects in ${category}`);
-                    } else if (viewerAPI.objects && typeof viewerAPI.objects.hide === 'function') {
-                        await viewerAPI.objects.hide(data.objectIds);
-                    }
+                    console.warn("setObjectState method not available for visibility toggle");
                 }
             } catch (error) {
                 console.error(`Error toggling visibility for ${category}:`, error);
