@@ -1,410 +1,327 @@
-# Raumbuch
-Trimble Connect Extension for Raumbuch
+# Raumbuch - Trimble Connect Extension
 
-# ?? Raumbuch Service - Technical Overview
+**A comprehensive BIM room management solution for Trimble Connect**
 
-**Backend API for Trimble Connect Raumbuch Extension**
-
-This ASP.NET Web API (.NET Framework 4.8) service provides 5 main endpoints for managing "Raumprogramm" (room program) and "Raumbuch" (room book) workflows in Trimble Connect projects.
+Raumbuch is a Trimble Connect Extension that enables architects, facility managers, and construction professionals to manage room programs (Raumprogramm) and room books (Raumbuch) directly within the Trimble Connect platform. It provides SOLL/IST (target/actual) area analysis, IFC property management, and 3D visualization of room compliance status.
 
 ---
 
-## ?? Key Features
+## 🌟 Key Features
 
 | Feature | Description |
 |---------|-------------|
-| **Import Template** | Duplicates Raumprogramm template to project folder |
-| **Create TODO** | Creates Trimble Connect TODO notification |
-| **Import IFC** | Creates Raumbuch from IFC + Raumprogramm (SOLL/IST analysis) |
-| **Analyze Rooms** | Performs SOLL/IST comparison |
-| **Reset IFC** | Removes Raumbuch PropertySets from IFC file |
+| **📊 SOLL/IST Analysis** | Compares planned room areas (SOLL) from Excel templates with actual areas (IST) from IFC models |
+| **📁 Room Program Management** | Create and manage room programs with Excel-based workflows |
+| **🏗️ IFC Property Sets** | Read/write custom Raumbuch property sets to IFC files |
+| **🎨 3D Visualization** | Color-code rooms in Trimble Connect 3D viewer by compliance status |
+| **📧 BCF Topic Creation** | Create BCF topics for notifications and issue tracking |
+| **☁️ Cloud Configuration** | Store and retrieve configurations via Azure Blob Storage |
+| **📋 Inventory Management** | Manage room inventories and equipment lists |
+| **📄 Room Sheets** | Generate individual Excel sheets for each room |
 
 ---
 
-## ?? API Endpoints
+## 🏛️ Architecture Overview
 
-### 1. Import Template
-**POST** `/api/raumbuch/import-template`
-
-Duplicates a Raumprogramm Excel template file.
-
-**Request:**
-```json
-{
-  "accessToken": "string",
-  "projectId": "string",
-  "templateFileId": "string",
-  "targetFolderId": "string"
-}
 ```
-
-**Response:**
-```json
-{
-  "success": true,
-  "raumprogrammFileId": "abc123",
-  "message": "Raumprogramm erfolgreich erstellt"
-}
-```
-
----
-
-### 2. Create TODO
-**POST** `/api/raumbuch/create-todo`
-
-Creates a Trimble Connect TODO notification.
-
-**Request:**
-```json
-{
-  "accessToken": "string",
-  "projectId": "string",
-  "assignees": ["user@example.com"],
-  "title": "Raumprogramm erstellt",
-  "label": "Raumbuch"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "todoId": "todo123",
-  "message": "TODO erfolgreich erstellt"
-}
-```
-
----
-
-### 3. Import IFC
-**POST** `/api/raumbuch/import-ifc`
-
-Creates Raumbuch from IFC file and Raumprogramm (SOLL/IST comparison).
-
-**Request:**
-```json
-{
-  "accessToken": "string",
-  "projectId": "string",
-  "ifcFileId": "string",
-  "raumprogrammFileId": "string",
-  "targetFolderId": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "raumbuchFileId": "xyz789",
-  "updatedIfcFileId": "ifc456",
-  "message": "Raumbuch erfolgreich erstellt"
-}
+┌─────────────────────────────────────────────────────────────────┐
+│                     Trimble Connect Platform                     │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌─────────────────────────────────────┐ │
+│  │ Raumbuch Manager│    │      Raumbuch 3D Viewer             │ │
+│  │  (index.html)   │    │        (viewer.html)                │ │
+│  │                 │    │                                     │ │
+│  │ • Configuration │    │ • Room visualization                │ │
+│  │ • SOLL/IST      │    │ • Color by status                   │ │
+│  │ • Inventory     │    │ • Toggle categories                 │ │
+│  │ • Notifications │    │ • Interactive filtering             │ │
+│  └────────┬────────┘    └────────────────┬────────────────────┘ │
+│           │                              │                       │
+│           └──────────────┬───────────────┘                       │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Trimble Connect Workspace API                  │ │
+│  │   (Authentication, Project Context, 3D Viewer Control)      │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  Raumbuch Backend Service                        │
+│                    (ASP.NET Web API)                             │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐ ┌───────────────┐ ┌─────────────────────┐  │
+│  │ RaumbuchController│ TrimbleConnect│ │   RaumbuchAnalyzer  │  │
+│  │ (20+ endpoints)   │    Service    │ │ (SOLL/IST Analysis) │  │
+│  └─────────────────┘ └───────────────┘ └─────────────────────┘  │
+│  ┌─────────────────┐ ┌───────────────┐ ┌─────────────────────┐  │
+│  │ IfcEditorService│ │AzureStorage   │ │   EmailService      │  │
+│  │ (GeometryGym)   │ │   Service     │ │                     │  │
+│  └─────────────────┘ └───────────────┘ └─────────────────────┘  │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌───────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Trimble Connect│     │  Azure Blob     │     │    IFC Files    │
+│      API      │     │    Storage      │     │  (GeometryGym)  │
+│ (Files, BCF)  │     │ (Configurations)│     │                 │
+└───────────────┘     └─────────────────┘     └─────────────────┘
 ```
 
 ---
 
-### 4. Analyze Rooms
-**POST** `/api/raumbuch/analyze-rooms`
+## 💻 Technology Stack
 
-Performs SOLL/IST room comparison.
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Backend** | ASP.NET Web API (.NET Framework 4.8) | REST API services |
+| **Excel Processing** | ClosedXML | Read/write Excel files (Raumbuch, Raumprogramm) |
+| **IFC Processing** | GeometryGym.IFC (0.1.21) | Parse and modify IFC files |
+| **Cloud Storage** | Azure Blob Storage | Configuration persistence |
+| **Frontend** | HTML5, JavaScript, CSS3 | Trimble Connect extensions |
+| **3D Viewer** | Trimble Connect Workspace API | Room visualization |
+| **Serialization** | Newtonsoft.Json (13.0.3) | JSON processing |
+| **Hosting** | Azure App Service | Production deployment |
 
-**Request:**
-```json
-{
-  "accessToken": "string",
-  "projectId": "string",
-  "raumprogrammFileId": "string",
-  "ifcFileId": "string"
-}
+---
+
+## 📋 API Endpoints
+
+### Template & Raumbuch Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/raumbuch/import-template` | Import Excel template to create Raumprogramm |
+| POST | `/api/raumbuch/create-raumbuch` | Create Raumbuch from template with column mappings |
+| POST | `/api/raumbuch/update-raumbuch` | Update existing Raumbuch with new IFC data |
+| POST | `/api/raumbuch/update-raumbuch-with-mappings` | Update Raumbuch using column mappings |
+| POST | `/api/raumbuch/get-template-headers` | Get column headers from template for mapping |
+
+### IFC Operations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/raumbuch/import-ifc` | Create Raumbuch from IFC + Raumprogramm |
+| POST | `/api/raumbuch/analyze-rooms` | Perform SOLL/IST analysis and mark IFC rooms |
+| POST | `/api/raumbuch/reset-ifc` | Remove Raumbuch PropertySets from IFC |
+| POST | `/api/raumbuch/write-raumbuch-pset` | Write Raumbuch Pset to IFC spaces |
+| POST | `/api/raumbuch/update-raumbuch-pset` | Update existing Raumbuch Pset in IFC |
+| POST | `/api/raumbuch/delete-raumbuch-pset` | Remove Raumbuch Pset from IFC |
+| POST | `/api/raumbuch/discover-properties` | Discover available properties in IFC files |
+| POST | `/api/raumbuch/get-ist-from-ifc` | Get IST values from IFC grouped by category |
+
+### Analysis & Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/raumbuch/get-zusammenfassung` | Get summary data from Raumbuch Excel |
+| POST | `/api/raumbuch/update-zusammenfassung` | Update summary with comments and status |
+| POST | `/api/raumbuch/get-viewer-data` | Get rooms grouped by status for 3D viewer |
+
+### Room Sheets & Inventory
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/raumbuch/create-room-sheets` | Create individual sheets for each room |
+| POST | `/api/raumbuch/fill-inventory` | Populate room sheets with IFC objects |
+| POST | `/api/raumbuch/update-inventory` | Update inventory data in room sheets |
+| POST | `/api/raumbuch/delete-room-lists` | Delete inventory data from room sheets |
+
+### Notifications
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/raumbuch/create-todo` | Create Trimble Connect TODO notification |
+| POST | `/api/raumbuch/create-bcf-topic` | Create BCF topic with document reference |
+
+---
+
+## 📁 Project Structure
+
 ```
-
-**Response:**
-```json
-{
-  "success": true,
-  "analysis": {
-    "totalRoomsSOLL": 150,
-    "totalRoomsIST": 148,
-    "matchedRooms": 140,
-    "missingRooms": 10,
-    "extraRooms": 8,
-    "areaDifference": 25.5
-  }
-}
+Raumbuch/
+├── RaumbuchService/
+│   ├── Config/
+│   │   └── TrimbleConfig.cs           # Azure/environment configuration reader
+│   ├── Controllers/
+│   │   ├── RaumbuchController.cs      # Main API (25+ endpoints)
+│   │   └── ProjectDataController.cs   # Configuration management
+│   ├── Services/
+│   │   ├── TrimbleConnectService.cs   # Trimble API wrapper (files, BCF, todos)
+│   │   ├── RaumbuchAnalyzer.cs        # SOLL/IST analysis engine
+│   │   ├── IfcEditorService.cs        # IFC file operations (GeometryGym)
+│   │   ├── AzureStorageService.cs     # Azure Blob Storage operations
+│   │   └── EmailService.cs            # Email notifications
+│   ├── Models/
+│   │   ├── ImportTemplateRequest.cs
+│   │   ├── ImportIfcRequest.cs
+│   │   ├── CreateBcfTopicRequest.cs
+│   │   ├── ZusammenfassungRequest.cs
+│   │   └── ...                        # 15+ request/response models
+│   ├── index.html                     # Raumbuch Manager extension UI
+│   ├── viewer.html                    # 3D Viewer extension UI
+│   ├── Scripts/app.js                 # Workspace API integration
+│   ├── RaumbuchManager.json           # Extension manifest
+│   ├── Raumbuch3DViewer.json          # 3D Viewer extension manifest
+│   └── Web.config                     # Application configuration
+├── AZURE_DEPLOYMENT_GUIDE.md          # Complete Azure deployment guide
+├── LOCAL_TESTING_GUIDE.md             # Local development instructions
+├── TRIMBLE_CONFIG_GUIDE.md            # Trimble Connect configuration
+└── RaumbuchService.sln                # Visual Studio solution
 ```
 
 ---
 
-### 5. Reset IFC
-**POST** `/api/raumbuch/reset-ifc`
+## 🚀 Quick Start
 
-Removes Raumbuch PropertySets from IFC file (cleanup).
+### Prerequisites
 
-**Request:**
-```json
-{
-  "accessToken": "string",
-  "projectId": "string",
-  "ifcFileId": "string",
-  "targetFolderId": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "cleanedIfcFileId": "ifc999",
-  "message": "PropertySets erfolgreich entfernt"
-}
-```
-
----
-
-## ?? Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Framework** | ASP.NET Web API (.NET Framework 4.8) |
-| **Excel Processing** | EPPlus (4.5.3.3) |
-| **IFC Processing** | GeometryGym.Ifc (0.2.1) |
-| **HTTP Client** | Newtonsoft.Json (13.0.3) |
-| **Deployment** | Azure App Service |
-
----
-
-## ?? Dependencies (NuGet)
-
-```xml
-<package id="EPPlus" version="4.5.3.3" />
-<package id="GeometryGym.Ifc" version="0.2.1" />
-<package id="Newtonsoft.Json" version="13.0.3" />
-<package id="Microsoft.AspNet.WebApi" version="5.3.0" />
-<package id="Microsoft.AspNet.Cors" version="5.3.0" />
-```
-
----
-
-## ?? Configuration
-
-### Azure App Settings
-
-```json
-{
-  "TrimbleClientId": "your_client_id",
-  "TrimbleClientSecret": "your_client_secret",
-  "TrimbleRedirectUri": "https://raumbuch.azurewebsites.net/callback"
-}
-```
-
-### Local Development (Web.config)
-
-```xml
-<appSettings>
-  <add key="TrimbleClientId" value="your_dev_client_id" />
-  <add key="TrimbleClientSecret" value="your_dev_client_secret" />
-  <add key="TrimbleRedirectUri" value="http://localhost:3000/callback" />
-</appSettings>
-```
-
----
-
-## ?? Setup & Installation
+- Visual Studio 2019+ with ASP.NET and web development workload
+- .NET Framework 4.8 SDK
+- Azure subscription (for production deployment)
+- Trimble Connect account and API credentials
 
 ### Local Development
 
 1. **Clone Repository**
-```bash
-git clone https://github.com/JoachimSalomonsen/Raumbuch.git
-cd RaumbuchService
-```
+   ```bash
+   git clone https://github.com/JoachimSalomonsen/Raumbuch.git
+   cd Raumbuch
+   ```
 
 2. **Restore NuGet Packages**
-```bash
-nuget restore RaumbuchService.sln
-```
+   ```bash
+   nuget restore RaumbuchService.sln
+   ```
 
-3. **Update Web.config**
-Add your Trimble Connect credentials.
+3. **Configure Credentials**
+   
+   Update `RaumbuchService/Web.config` with your credentials:
+   ```xml
+   <appSettings>
+     <add key="TRIMBLE_CLIENT_ID" value="your_client_id" />
+     <add key="TRIMBLE_CLIENT_SECRET" value="your_client_secret" />
+     <add key="TRIMBLE_REDIRECT_URI" value="http://localhost:44305/callback" />
+   </appSettings>
+   ```
 
 4. **Run in Visual Studio**
-Press F5 to start IIS Express.
-
----
-
-### Azure Deployment
-
-1. **Publish from Visual Studio**
-   - Right-click project ? Publish
-   - Choose Azure App Service
-   - Select existing: `Connect_Extensions/Raumbuch`
-
-2. **Configure App Settings in Azure Portal**
-   - Navigate to App Service
-   - Settings ? Configuration
-   - Add `TrimbleClientId`, `TrimbleClientSecret`, `TrimbleRedirectUri`
-
-3. **Test Deployment**
-```bash
-curl https://raumbuch.azurewebsites.net/api/raumbuch/test
-```
-
----
-
-## ?? Authentication Flow
-
-**Option A: OAuth2 Authorization Code Flow (testing)**
-```bash
-1. GET https://id.trimble.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/callback&scope=openid
-2. Login ? Copy authorization code
-3. POST https://id.trimble.com/oauth/token
-   Body: grant_type=authorization_code&code=...&client_id=...&client_secret=...
-```
-
-**Option B: Trimble Connect Extension (production)**
-```javascript
-const token = window.parent.TC.auth.getToken();
-```
-
-### 2. Test Workflow
-
-**Schritt 1: Import Template**
-```bash
-POST http://localhost:[port]/api/raumbuch/import-template
-Content-Type: application/json
-
-{
-  "accessToken": "YOUR_TOKEN",
-  "projectId": "YOUR_PROJECT_ID",
-  "templateFileId": "TEMPLATE_FILE_ID",
-  "targetFolderId": "FOLDER_ID"
-}
-```
-
-**Schritt 2: Create TODO**
-```bash
-POST http://localhost:[port]/api/raumbuch/create-todo
-Content-Type: application/json
-
-{
-  "accessToken": "YOUR_TOKEN",
-  "projectId": "YOUR_PROJECT_ID",
-  "assignees": ["user@example.com"],
-  "title": "Raumprogramm erstellt",
-  "label": "Raumbuch"
-}
-```
-
-**Schritt 3: Import IFC**
-```bash
-POST http://localhost:[port]/api/raumbuch/import-ifc
-Content-Type: application/json
-
-{
-  "accessToken": "YOUR_TOKEN",
-  "projectId": "YOUR_PROJECT_ID",
-  "ifcFileId": "IFC_FILE_ID",
-  "raumprogrammFileId": "RAUMPROGRAMM_FILE_ID",
-  "targetFolderId": "FOLDER_ID"
-}
-```
-
----
-
-## ?? Projektstruktur
-
-```
-RaumbuchService/
-??? Config/
-?   ??? TrimbleConfig.cs          # Azure App Settings reader
-??? Controllers/
-?   ??? RaumbuchController.cs     # Main API controller (5 endpoints + Excel helpers)
-??? Models/
-?   ??? ImportTemplateRequest.cs
-?   ??? CreateTodoRequest.cs
-?   ??? ImportIfcRequest.cs
-?   ??? AnalyzeRoomsRequest.cs
-?   ??? ResetIfcRequest.cs
-??? Services/
-?   ??? TrimbleConnectService.cs  # Trimble API wrapper
-?   ??? RaumbuchAnalyzer.cs       # SOLL/IST analysis
-?   ??? IfcEditorService.cs       # IFC file editing (GeometryGym)
-??? packages.config               # NuGet dependencies
-```
-
----
-
-## ?? N�chste Schritte
-
-### Phase 1: Backend Testing ?
-- [x] Implementiere alle Services
-- [x] Implementiere Excel helpers
-- [x] Implementiere IFC editor
-- [ ] **TODO: Restore NuGet Packages**
-- [ ] **TODO: Build Project**
-- [ ] **TODO: Test locally with Postman**
-
-### Phase 2: Azure Deployment
-- [ ] Configure App Settings in Azure
-- [ ] Publish to Azure
-- [ ] Test from Azure URL
-
-### Phase 3: Frontend (Trimble Connect Extension)
-- [ ] Create extension structure (HTML/JS)
-- [ ] Implement UI buttons
-- [ ] Register in Trimble Connect
-- [ ] Test in 3D viewer
-
----
-
-## ?? Frontend Interface
-
-The service includes a local testing interface at `RaumbuchService/index.html` with features:
-
-- Configuration management (save/load project settings)
-- Step-by-step workflow UI
-- BCF topic creation
-- IFC import and processing
-- Pset management (write/update/delete)
-- Room sheets and inventory management
-
-**To use:**
-1. Start the RaumbuchService locally
-2. Open `RaumbuchService/index.html` in your browser
-3. Enter your Trimble Connect access token and project ID
-4. Follow the step-by-step workflow
-
----
-
-## ?? Support
-
-Bei Fragen kontaktiere:
-- Entwickler: Joachim Salomonsen
-- Azure Resource Group: Connect_Extensions
-- App Service: Raumbuch
-
----
-
-## ?? Lizenz
-
-Internes Projekt
+   - Open `RaumbuchService.sln`
+   - Press F5 to start IIS Express
+   - Navigate to `https://localhost:44305/`
 
 ---
 
 ## ☁️ Azure Deployment
 
-The application is deployed to **Azure App Service** and uses **Azure Blob Storage** for configuration management:
+### Resources
 
-- **App Service**: `Raumbuch` (Sweden Central)
-- **Storage Account**: `raumbuchstorage` (Norway East)
-- **Resource Group**: `Connect_Extensions`
-- **Access URL**: `https://raumbuch.azurewebsites.net/`
+| Resource | Type | Location |
+|----------|------|----------|
+| `Raumbuch` | App Service | Sweden Central |
+| `raumbuchstorage` | Storage Account | Norway East |
+| `Connect_Extensions` | Resource Group | Norway East |
 
-### Key Features in Azure:
-- ✅ **Configuration Storage**: JSON configurations saved to Azure Blob Storage
-- ✅ **Project Organization**: Configurations organized by project number
-- ✅ **Web-Based Access**: No local installation required
-- ✅ **Automatic Fallback**: Works locally without Azure Storage configured
+### Production URL
 
-📖 **See [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md) for complete deployment and configuration instructions.**
+**https://raumbuch.azurewebsites.net/**
+
+### Configuration Storage
+
+Configurations are stored in Azure Blob Storage:
+```
+raumbuchstorage/
+└── raumbuch-configs/
+    └── {projectId}/
+        ├── Config1.json
+        ├── Config2.json
+        └── ...
+```
+
+📖 See [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md) for complete deployment instructions.
+
+---
+
+## 🔐 Authentication
+
+### Trimble Connect Extension (Production)
+
+When running as a Trimble Connect extension, authentication is handled automatically via the Workspace API:
+
+```javascript
+// Authentication via Trimble Connect Extension API
+const token = await API.extension.requestPermission(['data:read', 'data:write']);
+const projectContext = await workspace.getContext();
+```
+
+### Local Development (OAuth2)
+
+For local testing, use OAuth2 Authorization Code Flow:
+
+1. Navigate to Trimble authorization URL
+2. Login and obtain authorization code
+3. Exchange code for access token
+
+---
+
+## 📊 SOLL/IST Analysis
+
+The core feature of Raumbuch is comparing planned room areas (SOLL) with actual areas from IFC models (IST):
+
+| Status | Condition | Color |
+|--------|-----------|-------|
+| **Erfüllt** | IST ≈ SOLL (within tolerance) | 🟢 Green |
+| **Unterschritten** | IST < SOLL | 🔴 Red |
+| **Überschritten** | IST > SOLL | ⚪ No color |
+
+The analysis can be configured with custom tolerance values (e.g., ±5%).
+
+---
+
+## 📖 Related Documentation
+
+| Document | Description |
+|----------|-------------|
+| [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md) | Complete Azure setup and deployment |
+| [LOCAL_TESTING_GUIDE.md](LOCAL_TESTING_GUIDE.md) | Local development and testing |
+| [TRIMBLE_CONFIG_GUIDE.md](TRIMBLE_CONFIG_GUIDE.md) | Trimble Connect configuration |
+| [TRIMBLE_IFRAME_EMBEDDING.md](TRIMBLE_IFRAME_EMBEDDING.md) | iframe embedding security |
+| [QUICK_START_TESTING.md](QUICK_START_TESTING.md) | Quick start for testing |
+
+---
+
+## 🛠️ Technical Summary
+
+**Raumbuch** is a BIM (Building Information Modeling) extension for Trimble Connect that bridges the gap between architectural room planning and actual building data. Built on ASP.NET Web API (.NET Framework 4.8), it processes IFC files using the GeometryGym library to extract IfcSpace objects and their properties.
+
+**Core Workflow:**
+1. Import an Excel template containing planned room areas (Raumprogramm)
+2. Parse IFC model files to extract actual room geometry and areas
+3. Perform SOLL/IST (target/actual) comparison analysis
+4. Generate Raumbuch Excel reports with detailed room data
+5. Write analysis results back to IFC as custom PropertySets
+6. Visualize compliance status in Trimble Connect 3D viewer
+
+**Key Technical Aspects:**
+- Uses ClosedXML for Excel file manipulation (reading templates, generating reports)
+- Integrates with Trimble Connect API for file operations and BCF topic creation
+- Stores user configurations in Azure Blob Storage for persistence across sessions
+- Implements the Trimble Connect Workspace API for 3D viewer color-coding
+- Supports OAuth2 authentication via Trimble Identity
+
+---
+
+## 👤 Support
+
+- **Developer**: Joachim Salomonsen
+- **Azure Resource Group**: Connect_Extensions
+- **App Service**: Raumbuch
+
+---
+
+## 📝 License
+
+Internal project - proprietary
