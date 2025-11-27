@@ -890,386 +890,210 @@
             }
         }
         
-        // ====================================================================
-        // OBJECT MATCHING (OPPDATERT MED TRIMBLE API STRUKTUR)
-        // ====================================================================
+             // ====================================================================
+            // NØDVENDIG VARIABEL (VERSJONS-ID FOR MODELLEN)
+            // Denne MÅ brukes i ModelObjectIds for å unngå feilen "Invalid model id 'undefined'".
+            // ====================================================================
+            const definitiveModelId = 'conXYa42NrE'; // Hardkodet fra din data: File.versionId
 
-        /**
-         * Finner og matcher IfcSpace-objekter basert på deres LongName-egenskap.
-         * Bruker getEntities for å finne IfcSpace-objekter og den bekreftede
-         * {modelId: X, objectRuntimeIds: [Y]} strukturen for å hente egenskaper i batches.
-         * * Merk: BATCH_SIZE, TARGET_PSETS, categoryData, updateCategoryCounts, 
-         * applyAllColors, og extractLongNameFromProperties antas å være definert andre steder.
-         */
-        async function findMatchingObjects() {
-            console.log("Finding matching objects...");
+            // ====================================================================
+            // I. Hjelpefunksjoner for Tilbakestilling
+            // ====================================================================
 
-            // Reset object IDs
-            categoryData.erfuellt.objectIds = [];
-            categoryData.unterschritten.objectIds = [];
-            categoryData.ueberschritten.objectIds = [];
+            /**
+             * Tilbakestiller fargen på alle synlige objekter til standard ved å sende null
+             * som selector. Dette er nødvendig før ny fargelegging starter.
+             */
+            async function resetAllColors() {
+                try {
+                    const api = viewerAPI || API.viewer;
+                    if (api && typeof api.setObjectState === 'function') {
+                        // Bruker 'undefined' (eller null) som selector for å tilbakestille ALT.
+                        await api.setObjectState(undefined, { color: null });
+                        console.log("All object colors reset to default (pre-coloring step).");
+                    } else {
+                        console.warn("setObjectState for reset not available.");
+                    }
+                } catch (error) {
+                    console.error("Error resetting colors:", error);
+                }
+            }
 
-            // Variabler for å lagre den definitive konteksten for eiendomshenting
-            let definitiveModelId = null;
-            let definitiveVersionId = null;
+            // ====================================================================
+            // II. Søkefunksjon
+            // ====================================================================
 
-            try {
-                if (!viewerAPI) {
-                    console.warn("viewerAPI not available");
+            /**
+             * Utfører ett enkelt API.viewer.getObjects kall per kategori ved å bruke 
+             * en array av romnavn som søkekriterie.
+             */
+            const searchForRooms = async (categoryName, roomNames, categoryArray) => {
+                if (!roomNames || roomNames.length === 0) {
+                    console.log(`Category ${categoryName}: No room names defined.`);
                     return;
                 }
+    
+                const PROPERTY_NAME = "IfcSpace.LongName";
+    
+                const searchParams = {
+                    parameter: {
+                        properties: {
+                            [PROPERTY_NAME]: roomNames 
+                        }
+                    }
+                };
 
-                // --- Step 1: Get loaded models ---
-                console.log("Getting loaded models...");
-                const models = await viewerAPI.getModels();
+                try {
+                    const results = await API.viewer.getObjects(searchParams);
 
-                if (!models || models.length === 0) {
-                    console.warn("No models loaded in viewer");
-                    return;
-                }
-
-                // --- Step 2: Get IfcSpace entities and IDs ---
-                const spaceIds = [];
-
-                for (const model of models) {
-                    const modelId = model.id || model.modelId || model;
-                    console.log(`Getting IfcSpace entities from model: ${modelId}`);
-
-                    try {
-                        const entities = await viewerAPI.getEntities({
-                            modelId: modelId,
-                            class: "IfcSpace"
-                        });
-
-                        if (entities && entities.length > 0) {
-
-                            // Extract IDs from entities - handle wrapper objects with entityForModel
-                            for (const entity of entities) {
-                                if (entity.entityForModel && Array.isArray(entity.entityForModel)) {
-                                    console.log(`Entity has entityForModel with ${entity.entityForModel.length} items. Extracting IDs...`);
-
-                                    // Capture the Model ID and Version ID from the entity wrapper
-                                    if (!definitiveModelId) {
-                                        definitiveModelId = entity.modelId || modelId;
-                                        definitiveVersionId = entity.versionId || definitiveModelId;
-                                        console.log(`Captured definitiveModelId: ${definitiveModelId}, definitiveVersionId: ${definitiveVersionId}`);
-                                    }
-
-                                    // Extract the primitive ID (objectRuntimeIds)
-                                    for (const idObject of entity.entityForModel) {
-                                        // Bruker den mest sannsynlige ID-nøkkelen basert på din onSelectionChanged logg
-                                        const actualId = idObject.id || idObject.runtimeId || idObject.objectRuntimeId || idObject.objectId;
-
-                                        if (actualId !== undefined && actualId !== null) {
-                                            spaceIds.push(actualId);
-                                        }
-                                    }
-                                } else {
-                                    // Fallback for direkte ID
-                                    const entityId = entity.id || entity.runtimeId || entity.objectId;
-                                    if (entityId !== undefined && entityId !== null) {
-                                        spaceIds.push(entityId);
+                    if (results && Array.isArray(results)) {
+                        let totalObjectsFound = 0;
+            
+                        for (const modelObject of results) {
+                            if (modelObject.objects && Array.isArray(modelObject.objects)) {
+                                for (const obj of modelObject.objects) {
+                                    if (obj.id !== undefined && obj.id !== null) {
+                                        // Lagrer ID-en som et tall (runtime ID)
+                                        categoryArray.push(Number(obj.id)); 
+                                        totalObjectsFound++;
                                     }
                                 }
                             }
                         }
-                    } catch (entityError) {
-                        console.warn(`Error getting entities from model ${modelId}:`, entityError);
-                    }
-                }
-
-                // Deduplicate and filter IDs
-                const uniqueSpaceIds = [...new Set(spaceIds)].filter(id => id !== undefined && id !== null);
-                console.log(`Total unique IfcSpace IDs found: ${uniqueSpaceIds.length}`);
-
-                if (uniqueSpaceIds.length === 0) {
-                    console.warn("No IfcSpace IDs found in any model");
-                    updateCategoryCounts();
-                    return;
-                }
-
-                if (!definitiveModelId) {
-                    console.warn("Could not determine definitive Model ID for property fetching. Cannot proceed.");
-                    updateCategoryCounts();
-                    return;
-                }
-
-                // --- Step 3: Process IfcSpace IDs in batches to get properties ---
-                for (let i = 0; i < uniqueSpaceIds.length; i += BATCH_SIZE) {
-                    const batchIds = uniqueSpaceIds.slice(i, i + BATCH_SIZE);
-                    const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-                    const totalBatches = Math.ceil(uniqueSpaceIds.length / BATCH_SIZE);
-
-                    console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} IfcSpace objects)`);
-
-                    let propertiesResult = null;
-
-                    // APPROACH 1: Bruk den bekreftede strukturen: {modelId: X, objectRuntimeIds: [Y]}
-                    try {
-                        console.log("Trying getObjectProperties with the confirmed structure {modelId: X, objectRuntimeIds: [Y]}...");
-
-                        // Denne strukturen matcher utdata fra viewer.onSelectionChanged eventet.
-                        const requestObject = [{
-                            modelId: definitiveModelId,
-                            objectRuntimeIds: batchIds // Arrayen med numeriske ID-er
-                        }];
-
-                        propertiesResult = await viewerAPI.getObjectProperties(requestObject);
-                        console.log(`Approach 1 result: Returned ${propertiesResult ? propertiesResult.length : 0} objects`);
-                    } catch (err) {
-                        console.warn("Approach 1 (Confirmed Structure) failed:", err);
-                    }
-
-                    // FALLBACK 2: Prøv den tidligere strukturen med ID/Model/Version hints (mindre sannsynlig å lykkes)
-                    if (!propertiesResult || propertiesResult.length === 0) {
-                        console.log("Approach 1 failed. Trying fallback with explicit ID/Model/Version hints...");
-                        try {
-                            const fallbackRequestObjects = batchIds.map(id => ({
-                                id: id,
-                                modelId: definitiveModelId,
-                                versionId: definitiveVersionId,
-                                propertyNames: ["LongName", "IfcSpace.LongName"]
-                            }));
-
-                            propertiesResult = await viewerAPI.getObjectProperties(fallbackRequestObjects);
-                            console.log(`Fallback 2 result: Returned ${propertiesResult ? propertiesResult.length : 0} objects`);
-                        } catch (err) {
-                            console.warn("Fallback 2 failed:", err);
-                        }
-                    }
-
-                    if (!propertiesResult || propertiesResult.length === 0) {
-                        console.log(`Batch ${batchNumber}: No properties returned from any approach`);
-                        continue;
-                    }
-
-                    console.log(`Batch ${batchNumber}: Got properties for ${propertiesResult.length} objects`);
-
-                    // Log first object structure for debugging
-                    if (i === 0 && propertiesResult.length > 0) {
-                        console.log("Sample IfcSpace properties structure (SUCCESS expected here):", propertiesResult[0]);
-                    }
-
-                    // --- Step 4 & 5: Process properties and match objects ---
-                    for (const objProps of propertiesResult) {
-                        const longName = extractLongNameFromProperties(objProps);
-
-                        if (longName) {
-                            const objectId = objProps.id || objProps.runtimeId || objProps.objectRuntimeId || objProps.objectId;
-
-                            if (objectId === undefined || objectId === null) {
-                                console.warn(`Found LongName "${longName}" but could not determine object ID`);
-                                continue;
-                            }
-
-                            // Match against category data arrays
-                            if (categoryData.erfuellt.rooms.includes(longName)) {
-                                categoryData.erfuellt.objectIds.push(objectId);
-                            }
-                            if (categoryData.unterschritten.rooms.includes(longName)) {
-                                categoryData.unterschritten.objectIds.push(objectId);
-                            }
-                            if (categoryData.ueberschritten.rooms.includes(longName)) {
-                                categoryData.ueberschritten.objectIds.push(objectId);
-                            }
-                        }
-                    }
-                }
-
-                console.log("Matching complete. Results:", {
-                    erfuellt: categoryData.erfuellt.objectIds.length,
-                    unterschritten: categoryData.unterschritten.objectIds.length,
-                    ueberschritten: categoryData.ueberschritten.objectIds.length
-                });
-
-                // --- Step 6: Update UI counts and apply colors ---
-                updateCategoryCounts();
-                await applyAllColors();
-
-            } catch (error) {
-                console.error("Error finding matching objects:", error);
-            }
-        }
-
-        /**
-         * Extracts the LongName property from an object's properties.
-         * (Antas å være definert nøyaktig som i forrige svar)
-         */
-        function extractLongNameFromProperties(objProps) {
-            if (!objProps || !objProps.properties || !Array.isArray(objProps.properties)) {
-                return null;
-            }
-
-            // Antar at TARGET_PSETS er definert (f.eks. ['pset_spacecommon', 'attributes'])
-            const targetPsetNames = Array.isArray(TARGET_PSETS) ? TARGET_PSETS.map(n => n.toLowerCase()) : [];
-
-            // 1. Search in target property sets
-            for (const pset of objProps.properties) {
-                const psetName = (pset.name || pset.Name || '').toLowerCase();
-
-                if (targetPsetNames.some(target => psetName.includes(target)) && pset.properties && Array.isArray(pset.properties)) {
-                    const longNameProp = pset.properties.find(prop => {
-                        const propName = (prop.name || prop.Name || '').toLowerCase();
-                        return propName === 'longname' || propName === 'long name' || propName === 'long_name';
-                    });
-
-                    if (longNameProp) {
-                        return longNameProp.value || longNameProp.Value || null;
-                    }
-                }
-            }
-
-            // 2. Fallback: Search all property sets for LongName
-            for (const pset of objProps.properties) {
-                if (pset.properties && Array.isArray(pset.properties)) {
-                    const longNameProp = pset.properties.find(prop => {
-                        const propName = (prop.name || prop.Name || '').toLowerCase();
-                        return propName === 'longname' || propName === 'long name' || propName === 'long_name';
-                    });
-
-                    if (longNameProp) {
-                        return longNameProp.value || longNameProp.Value || null;
-                    }
-                }
-            }
-
-            return null;
-        }
-        
-        // ====================================================================
-        // COLOR MANAGEMENT
-        // ====================================================================
-        
-        async function applyAllColors() {
-            if (!viewerAPI) {
-                console.warn("Viewer API not available for color application");
-                return;
-            }
-            
-            try {
-                // Apply colors for each category if enabled
-                const colorErfuellt = document.getElementById('colorErfuellt').checked;
-                const colorUnterschritten = document.getElementById('colorUnterschritten').checked;
-                const colorUeberschritten = document.getElementById('colorUeberschritten').checked;
-                
-                if (colorErfuellt) {
-                    await applyColorToCategory('erfuellt');
-                }
-                if (colorUnterschritten) {
-                    await applyColorToCategory('unterschritten');
-                }
-                if (colorUeberschritten) {
-                    await applyColorToCategory('ueberschritten');
-                }
-                
-                console.log("All colors applied");
-                
-            } catch (error) {
-                console.error("Error applying colors:", error);
-            }
-        }
-        
-        async function applyColorToCategory(category) {
-            const data = categoryData[category];
-            
-            if (!data.objectIds || data.objectIds.length === 0) {
-                console.log(`No objects to color for category: ${category}`);
-                return;
-            }
-            
-            console.log(`Applying color ${data.color} to ${data.objectIds.length} objects in ${category}`);
-            
-            try {
-                // Use viewerAPI.setObjectState with array of object IDs and state
-                // Format: setObjectState(objectIds, state) where state includes {color: '#RRGGBB'}
-                if (viewerAPI && typeof viewerAPI.setObjectState === 'function') {
-                    await viewerAPI.setObjectState(data.objectIds, { color: data.color });
-                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category} using setObjectState`);
-                } else if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
-                    // Fallback: Try API.viewer.setObjectState
-                    await API.viewer.setObjectState(data.objectIds, { color: data.color });
-                    console.log(`Applied color ${data.color} to ${data.objectIds.length} objects in ${category} using API.viewer.setObjectState`);
-                } else {
-                    console.warn("setObjectState method not available");
-                    console.log("Available viewerAPI methods:", viewerAPI ? Object.keys(viewerAPI).filter(k => typeof viewerAPI[k] === 'function') : 'none');
-                }
-            } catch (error) {
-                console.error(`Error applying color to ${category}:`, error);
-            }
-        }
-        
-        async function removeColorFromCategory(category) {
-            const data = categoryData[category];
-            
-            if (!data.objectIds || data.objectIds.length === 0) {
-                return;
-            }
-            
-            try {
-                // Use setObjectState with color: 'reset' to remove colors
-                if (viewerAPI && typeof viewerAPI.setObjectState === 'function') {
-                    await viewerAPI.setObjectState(data.objectIds, { color: 'reset' });
-                    console.log(`Reset colors for ${data.objectIds.length} objects in ${category} using setObjectState`);
-                } else if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
-                    await API.viewer.setObjectState(data.objectIds, { color: 'reset' });
-                    console.log(`Reset colors for ${data.objectIds.length} objects in ${category} using API.viewer.setObjectState`);
-                } else {
-                    console.warn("setObjectState method not available for resetting colors");
-                }
-            } catch (error) {
-                console.error(`Error resetting color for ${category}:`, error);
-            }
-        }
-        
-        async function toggleColor(category) {
-            const checkboxId = 'color' + category.charAt(0).toUpperCase() + category.slice(1);
-            const isEnabled = document.getElementById(checkboxId).checked;
-            
-            if (isEnabled) {
-                await applyColorToCategory(category);
-            } else {
-                await removeColorFromCategory(category);
-            }
-        }
-        
-        async function resetAllColors() {
-            if (!viewerAPI) {
-                console.warn("viewerAPI not available");
-                return;
-            }
-            
-            try {
-                // Collect all object IDs
-                const allObjectIds = [
-                    ...categoryData.erfuellt.objectIds,
-                    ...categoryData.unterschritten.objectIds,
-                    ...categoryData.ueberschritten.objectIds
-                ];
-                
-                if (allObjectIds.length > 0) {
-                    // Use setObjectState with color: 'reset'
-                    if (typeof viewerAPI.setObjectState === 'function') {
-                        await viewerAPI.setObjectState(allObjectIds, { color: 'reset' });
-                        console.log(`Reset colors for ${allObjectIds.length} objects using setObjectState`);
-                    } else if (API && API.viewer && typeof API.viewer.setObjectState === 'function') {
-                        await API.viewer.setObjectState(allObjectIds, { color: 'reset' });
-                        console.log(`Reset colors for ${allObjectIds.length} objects using API.viewer.setObjectState`);
+                        console.log(`Category ${categoryName}: Found ${totalObjectsFound} matching objects.`);
                     } else {
-                        console.warn("setObjectState method not available for resetting all colors");
+                        console.log(`Category ${categoryName}: API returned unexpected format or no results.`);
                     }
+
+                } catch (error) {
+                    console.error(`Critical error during getObjects search for ${categoryName}:`, error);
                 }
-                
-                // Uncheck all color checkboxes
-                document.getElementById('colorErfuellt').checked = false;
-                document.getElementById('colorUnterschritten').checked = false;
-                document.getElementById('colorUeberschritten').checked = false;
-                
-                console.log("All colors reset");
-                
-            } catch (error) {
-                console.error("Error resetting colors:", error);
+            };
+
+
+            // ====================================================================
+            // III. Fargeleggingsfunksjoner
+            // ====================================================================
+
+            /**
+             * Bruker den korrekte ModelObjectIds strukturen (inkl. modelId) for å fargelegge objekter.
+             */
+            async function applyColorToCategory(category) {
+                const data = categoryData[category];
+    
+                if (!data.objectIds || data.objectIds.length === 0) {
+                    console.log(`No objects to color for category: ${category}`);
+                    return;
+                }
+    
+                if (!definitiveModelId) {
+                    console.error("CRITICAL: definitiveModelId mangler. Kan ikke fargelegge selektivt.");
+                    return;
+                }
+
+                // 1. Forbered ID-er (må være tall)
+                const runtimeIdsAsNumbers = data.objectIds.map(id => Number(id)); 
+
+                // 2. Konstruer den NØDVENDIGE ModelObjectIds-strukturen
+                const modelObjectSelectorArray = [{
+                    modelId: definitiveModelId,      // Løser feilen.
+                    objectRuntimeIds: runtimeIdsAsNumbers
+                }];
+
+                const colorSelector = {
+                    modelObjectIds: modelObjectSelectorArray 
+                };
+    
+                console.log(`Applying color ${data.color} to ${runtimeIdsAsNumbers.length} objects in ${category}`);
+    
+                try {
+                    const api = viewerAPI || API.viewer;
+        
+                    if (api && typeof api.setObjectState === 'function') {
+                        await api.setObjectState(colorSelector, { color: data.color });
+                        console.log(`Applied color to ${category} successfully.`);
+                    } else {
+                        console.warn("setObjectState method not available.");
+                    }
+                } catch (error) {
+                    console.error(`Error applying color to ${category}:`, error);
+                }
             }
-        }
+
+            /**
+             * Håndterer brukerens fargevalg ved å først tilbakestille alle farger,
+             * og deretter påføre fargene for de aktive kategoriene.
+             */
+            async function applyAllColors() {
+                if (!viewerAPI) {
+                    console.warn("Viewer API not available for color application");
+                    return;
+                }
+    
+                try {
+                    // --- 1. Tilbakestill ALLE farger før fargelegging ---
+                    await resetAllColors(); 
+
+                    // 2. Fargelegg kun de aktiverte kategoriene
+                    const colorErfuellt = document.getElementById('colorErfuellt').checked;
+                    const colorUnterschritten = document.getElementById('colorUnterschritten').checked;
+                    const colorUeberschritten = document.getElementById('colorUeberschritten').checked;
+        
+                    if (colorErfuellt) {
+                        await applyColorToCategory('erfuellt');
+                    }
+                    if (colorUnterschritten) {
+                        await applyColorToCategory('unterschritten');
+                    }
+                    if (colorUeberschritten) {
+                        await applyColorToCategory('ueberschritten');
+                    }
+        
+                    console.log("All colors applied successfully.");
+        
+                } catch (error) {
+                    console.error("Error applying colors:", error);
+                }
+            }
+
+
+            // ====================================================================
+            // IV. Hovedfunksjon for prosessen
+            // ====================================================================
+
+            /**
+             * Hovedfunksjonen som styrer matching, telling, og fargelegging.
+             */
+            async function findMatchingObjects() {
+                console.log("Finding matching objects using array search...");
+
+                try {
+                    // 1. Initialisering: Tøm ID-lister
+                    categoryData.erfuellt.objectIds = [];
+                    categoryData.unterschritten.objectIds = [];
+                    categoryData.ueberschritten.objectIds = [];
+
+                    // 2. Utfør søk for hver kategori
+                    await searchForRooms("erfuellt", categoryData.erfuellt.rooms, categoryData.erfuellt.objectIds);
+                    await searchForRooms("unterschritten", categoryData.unterschritten.rooms, categoryData.unterschritten.objectIds);
+                    await searchForRooms("ueberschritten", categoryData.ueberschritten.rooms, categoryData.ueberschritten.objectIds);
+
+                    // 3. Logg resultater
+                    console.log("Matching complete. Final Results:", {
+                        erfuellt: categoryData.erfuellt.objectIds.length,
+                        unterschritten: categoryData.unterschritten.objectIds.length,
+                        ueberschritten: categoryData.ueberschritten.objectIds.length
+                    });
+
+                    // 4. Oppdater UI og fargelegg
+                    // Disse to funksjonene (updateCategoryCounts og applyAllColors) må finnes i din kodebase.
+                    updateCategoryCounts(); 
+                    await applyAllColors();
+
+                } catch (error) {
+                    console.error("Error finding matching objects:", error);
+                }
+            }
         
         // ====================================================================
         // VISIBILITY MANAGEMENT
