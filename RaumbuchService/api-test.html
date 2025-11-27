@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trimble Connect API Test Tool</title>
+    <link rel="stylesheet" href="Content/Site.css">
+    <!-- Trimble Workspace API -->
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <style>
+        /* Additional styles for API Test Tool */
+        .api-test-container {
+            padding: 15px;
+            max-width: 100%;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--tc-bg-neutral);
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-connected { background-color: #2E8540; }
+        .status-disconnected { background-color: #D64545; }
+        .status-connecting { background-color: #FFBF47; }
+        
+        .command-section {
+            margin-bottom: 20px;
+        }
+        
+        .command-input {
+            width: 100%;
+            max-width: none !important;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            padding: 12px;
+            border: 1px solid var(--tc-border);
+            border-radius: 4px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .command-input:focus {
+            outline: none;
+            border-color: var(--tc-primary-blue);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+        }
+        
+        .command-input::placeholder {
+            color: #6a9955;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-execute {
+            background-color: var(--tc-success-green);
+            color: white;
+        }
+        
+        .btn-execute:hover {
+            background-color: #256d34;
+        }
+        
+        .btn-clear {
+            background-color: var(--tc-text-muted);
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background-color: #6a6e72;
+        }
+        
+        .response-section {
+            margin-top: 20px;
+        }
+        
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .response-output {
+            width: 100%;
+            max-width: none !important;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            padding: 12px;
+            border: 1px solid var(--tc-border);
+            border-radius: 4px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .response-success {
+            border-left: 4px solid var(--tc-success-green);
+        }
+        
+        .response-error {
+            border-left: 4px solid var(--tc-error-red);
+        }
+        
+        .examples-section {
+            margin-top: 20px;
+        }
+        
+        .example-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .example-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--tc-bg-neutral);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .example-item:hover {
+            background: var(--tc-border);
+        }
+        
+        .example-code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85em;
+            color: var(--tc-text-primary);
+            flex: 1;
+        }
+        
+        .example-btn {
+            padding: 4px 12px;
+            font-size: 0.8em;
+            width: auto;
+            margin: 0;
+        }
+        
+        .info-box {
+            background-color: var(--tc-loading-bg);
+            border: 1px solid var(--tc-loading-border);
+            border-left: 4px solid var(--tc-warning-yellow);
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+        }
+        
+        .info-box code {
+            background-color: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        
+        .api-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--tc-border);
+        }
+        
+        .api-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .api-info-label {
+            font-size: 0.75em;
+            color: var(--tc-text-muted);
+            text-transform: uppercase;
+        }
+        
+        .api-info-value {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85em;
+            color: var(--tc-text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="api-test-container">
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-indicator status-connecting" id="statusIndicator"></span>
+            <span id="statusText">Connecting to Trimble Connect Workspace...</span>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <strong>💡 API Test Tool (Development Only)</strong>
+            <p style="margin-top: 8px;">
+                Enter JavaScript code to test Trimble Connect Workspace API calls. 
+                You can use <code>API</code> to access the Workspace API and <code>viewerAPI</code> for the 3D Viewer API.
+                <br><em style="font-size: 0.85em; color: #856404;">⚠️ This tool executes JavaScript code directly. Use only for development and testing purposes.</em>
+            </p>
+            <div class="api-info" id="apiInfo" style="display: none;">
+                <div class="api-info-item">
+                    <span class="api-info-label">Project ID</span>
+                    <span class="api-info-value" id="projectIdDisplay">-</span>
+                </div>
+                <div class="api-info-item">
+                    <span class="api-info-label">Token Status</span>
+                    <span class="api-info-value" id="tokenStatus">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Input Section -->
+        <section class="card command-section">
+            <h2>🔧 API Command</h2>
+            <p>Enter your API call (JavaScript expression that returns a Promise or value):</p>
+            
+            <textarea 
+                id="commandInput" 
+                class="command-input" 
+                placeholder="// Example API calls:
+API.viewer.getObjectProperties({ id: 123 });
+API.project.getCurrentProject();
+API.viewer.getObjects({ parameter: { properties: { 'IfcSpace.LongName': ['Room1'] } } });"
+                spellcheck="false"
+            ></textarea>
+            
+            <div class="button-row">
+                <button class="btn btn-execute" id="executeBtn" onclick="executeCommand()">
+                    ▶ Execute
+                </button>
+                <button class="btn btn-clear" onclick="clearCommand()">
+                    🗑️ Clear
+                </button>
+                <button class="btn btn-secondary" onclick="clearResponse()">
+                    📋 Clear Response
+                </button>
+            </div>
+        </section>
+
+        <!-- Response Section -->
+        <section class="card response-section">
+            <div class="response-header">
+                <h2>📤 Response</h2>
+                <button class="btn btn-secondary example-btn" onclick="copyResponse()">
+                    📋 Copy
+                </button>
+            </div>
+            <pre id="responseOutput" class="response-output">// Response will appear here after executing a command...</pre>
+        </section>
+
+        <!-- Example Commands Section -->
+        <section class="card examples-section">
+            <h2>📚 Example Commands</h2>
+            <p>Click to load an example command:</p>
+            
+            <div class="example-list">
+                <div class="example-item" onclick="loadExample('project')">
+                    <span class="example-code">API.project.getCurrentProject()</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('objects')">
+                    <span class="example-code">API.viewer.getObjects()</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('objectProperties')">
+                    <span class="example-code">API.viewer.getObjectProperties({ id: 123 })</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('searchObjects')">
+                    <span class="example-code">API.viewer.getObjects({ parameter: { properties: {...} } })</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('setObjectState')">
+                    <span class="example-code">API.viewer.setObjectState(selector, { color: '#FF0000' })</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('extension')">
+                    <span class="example-code">API.extension.requestPermission('accesstoken')</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+                <div class="example-item" onclick="loadExample('listAPI')">
+                    <span class="example-code">Object.keys(API)</span>
+                    <button class="btn btn-primary example-btn">Load</button>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Trimble Connect API Test Tool v1.0 - Buildingpoint Schweiz AG</p>
+        </footer>
+    </div>
+
+    <script>
+        // ====================================================================
+        // TRIMBLE CONNECT API TEST TOOL
+        // ====================================================================
+        
+        // API reference and state
+        let API = null;
+        let viewerAPI = null;
+        let isConnected = false;
+        let workspaceToken = null;
+        let workspaceProjectId = null;
+        
+        // ====================================================================
+        // INITIALIZATION
+        // ====================================================================
+        
+        /**
+         * Helper function to set connected state and update UI
+         */
+        function setConnectedState(status, message) {
+            isConnected = (status === 'connected');
+            updateConnectionStatus(status, message);
+        }
+        
+        async function init() {
+            console.log("Initializing Trimble Connect API Test Tool...");
+            setConnectedState('connecting', 'Connecting to Trimble Connect Workspace...');
+            
+            try {
+                // Connect to Trimble Workspace API
+                API = await window.TrimbleConnectWorkspace.connect(
+                    window.parent,
+                    eventHandler,
+                    30000
+                );
+                
+                console.log("Connected to Workspace API:", API);
+                
+                // Get access token and project info
+                try {
+                    workspaceToken = await API.extension.requestPermission("accesstoken");
+                    console.log("Access token received from Workspace API");
+                    document.getElementById('tokenStatus').textContent = 'Valid';
+                    
+                    const project = await API.project.getCurrentProject();
+                    console.log("Current project:", project);
+                    
+                    if (project && project.id) {
+                        workspaceProjectId = project.id;
+                        document.getElementById('projectIdDisplay').textContent = workspaceProjectId;
+                        console.log("Project ID from Workspace API:", workspaceProjectId);
+                    }
+                } catch (tokenError) {
+                    console.warn("Could not get token/project:", tokenError);
+                    document.getElementById('tokenStatus').textContent = 'Error: ' + tokenError.message;
+                }
+                
+                // Initialize 3D Viewer
+                if (API && API.embed && typeof API.embed.init3DViewer === 'function') {
+                    viewerAPI = await API.embed.init3DViewer({});
+                    console.log("3D Viewer initialized:", viewerAPI);
+                    setConnectedState('connected', 'Connected to Workspace & 3D Viewer');
+                } else if (API && API.viewer) {
+                    // Alternative: viewer might be directly available
+                    viewerAPI = API.viewer;
+                    console.log("Viewer API obtained directly:", viewerAPI);
+                    setConnectedState('connected', 'Connected to Workspace API');
+                } else {
+                    console.warn("embed.init3DViewer not available");
+                    viewerAPI = API;
+                    setConnectedState('connected', 'Connected to Workspace API (limited mode)');
+                }
+                
+                // Show API info
+                document.getElementById('apiInfo').style.display = 'flex';
+                
+            } catch (error) {
+                console.error("Error initializing extension:", error);
+                setConnectedState('disconnected', 'Error: ' + error.message);
+            }
+        }
+        
+        function eventHandler(event, args) {
+            console.log("Workspace event:", event, args);
+            
+            if (event === "extension.command") {
+                handleCommand(args.data);
+            }
+            if (event === "extension.accessToken") {
+                console.log("Access token event received");
+                workspaceToken = args.data;
+                document.getElementById('tokenStatus').textContent = 'Refreshed';
+            }
+        }
+        
+        function handleCommand(command) {
+            console.log("Command received:", command);
+        }
+        
+        // ====================================================================
+        // CONNECTION STATUS
+        // ====================================================================
+        
+        function updateConnectionStatus(status, message) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator';
+            
+            switch(status) {
+                case 'connected':
+                    indicator.classList.add('status-connected');
+                    break;
+                case 'disconnected':
+                    indicator.classList.add('status-disconnected');
+                    break;
+                case 'connecting':
+                    indicator.classList.add('status-connecting');
+                    break;
+            }
+            
+            text.textContent = message;
+        }
+        
+        // ====================================================================
+        // COMMAND EXECUTION
+        // ====================================================================
+        
+        async function executeCommand() {
+            const commandInput = document.getElementById('commandInput');
+            const responseOutput = document.getElementById('responseOutput');
+            const command = commandInput.value.trim();
+            
+            if (!command) {
+                showResponse('error', 'Please enter a command to execute.');
+                return;
+            }
+            
+            if (!isConnected || !API) {
+                showResponse('error', 'Not connected to Trimble Connect. Please wait for connection or refresh the page.');
+                return;
+            }
+            
+            showResponse('loading', '⏳ Executing command...');
+            
+            try {
+                // Use Function constructor to evaluate the command in the current scope
+                // This allows access to API, viewerAPI, workspaceToken, etc.
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                const fn = new AsyncFunction('API', 'viewerAPI', 'workspaceToken', 'workspaceProjectId', `
+                    return ${command};
+                `);
+                
+                const startTime = performance.now();
+                const result = await fn(API, viewerAPI, workspaceToken, workspaceProjectId);
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+                
+                // Format the result as JSON
+                let formattedResult;
+                try {
+                    formattedResult = JSON.stringify(result, null, 2);
+                } catch (stringifyError) {
+                    // If can't stringify (e.g., circular references), try toString
+                    formattedResult = String(result);
+                }
+                
+                showResponse('success', `✅ Success (${duration}ms)\n\n${formattedResult}`);
+                console.log("Command result:", result);
+                
+            } catch (error) {
+                console.error("Command execution error:", error);
+                showResponse('error', `❌ Error: ${error.message}\n\nStack:\n${error.stack || 'No stack trace available'}`);
+            }
+        }
+        
+        function showResponse(type, message) {
+            const responseOutput = document.getElementById('responseOutput');
+            responseOutput.textContent = message;
+            
+            responseOutput.className = 'response-output';
+            if (type === 'success') {
+                responseOutput.classList.add('response-success');
+            } else if (type === 'error') {
+                responseOutput.classList.add('response-error');
+            }
+        }
+        
+        function clearCommand() {
+            document.getElementById('commandInput').value = '';
+            document.getElementById('commandInput').focus();
+        }
+        
+        function clearResponse() {
+            document.getElementById('responseOutput').textContent = '// Response will appear here after executing a command...';
+            document.getElementById('responseOutput').className = 'response-output';
+        }
+        
+        function copyResponse() {
+            const responseOutput = document.getElementById('responseOutput');
+            const text = responseOutput.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Show brief feedback
+                const originalText = responseOutput.textContent;
+                responseOutput.textContent = '📋 Copied to clipboard!';
+                setTimeout(() => {
+                    responseOutput.textContent = originalText;
+                }, 1000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        // ====================================================================
+        // EXAMPLE COMMANDS
+        // ====================================================================
+        
+        const examples = {
+            project: `API.project.getCurrentProject()`,
+            
+            objects: `API.viewer.getObjects()`,
+            
+            objectProperties: `// Get properties of an object by ID
+API.viewer.getObjectProperties({ id: 123 })`,
+            
+            searchObjects: `// Search for objects by property
+API.viewer.getObjects({
+    parameter: {
+        properties: {
+            'IfcSpace.LongName': ['RoomName1', 'RoomName2']
+        }
+    }
+})`,
+            
+            setObjectState: `// Set color on objects (requires modelId and objectRuntimeIds)
+API.viewer.setObjectState(
+    {
+        modelObjectIds: [{
+            modelId: 'YOUR_MODEL_ID',
+            objectRuntimeIds: [1, 2, 3]
+        }]
+    },
+    { color: '#FF0000' }
+)`,
+            
+            extension: `// Request a fresh access token
+API.extension.requestPermission('accesstoken')`,
+            
+            listAPI: `// List available API methods
+Object.keys(API)`
+        };
+        
+        function loadExample(exampleKey) {
+            const commandInput = document.getElementById('commandInput');
+            commandInput.value = examples[exampleKey] || '';
+            commandInput.focus();
+        }
+        
+        // ====================================================================
+        // KEYBOARD SHORTCUTS
+        // ====================================================================
+        
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter or Cmd+Enter to execute
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                executeCommand();
+            }
+        });
+        
+        // ====================================================================
+        // INITIALIZE ON LOAD
+        // ====================================================================
+        
+        init();
+    </script>
+</body>
+</html>
