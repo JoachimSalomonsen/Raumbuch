@@ -936,6 +936,7 @@
                         
                         if (entities && entities.length > 0) {
                             console.log(`Model ${modelId}: Found ${entities.length} IfcSpace entities`);
+                            console.log(`First entity structure:`, entities[0]);
                             
                             // Extract IDs from entities and add to spaceIds array
                             for (const entity of entities) {
@@ -953,6 +954,7 @@
                 }
                 
                 console.log(`Total IfcSpace entities found: ${spaceIds.length}`);
+                console.log(`Space IDs:`, spaceIds);
                 
                 if (spaceIds.length === 0) {
                     console.warn("No IfcSpace entities found in any model");
@@ -967,54 +969,74 @@
                     const totalBatches = Math.ceil(spaceIds.length / BATCH_SIZE);
                     
                     console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} IfcSpace objects)`);
+                    console.log(`Batch IDs:`, batchIds);
                     
+                    let propertiesResult = null;
+                    
+                    // Approach 1: Try passing array directly
                     try {
-                        // Call getObjectProperties with the batch of IfcSpace IDs
-                        const propertiesResult = await viewerAPI.getObjectProperties(batchIds);
-                        
-                        if (!propertiesResult || propertiesResult.length === 0) {
-                            console.log(`Batch ${batchNumber}: No properties returned`);
-                            continue;
-                        }
-                        
-                        console.log(`Batch ${batchNumber}: Got properties for ${propertiesResult.length} objects`);
-                        
-                        // Log first object structure for debugging (only first batch)
-                        if (i === 0 && propertiesResult.length > 0) {
-                            console.log("Sample IfcSpace properties structure:", propertiesResult[0]);
-                        }
-                        
-                        // Step 4: Process each object's properties to find LongName
-                        for (const objProps of propertiesResult) {
-                            const longName = extractLongNameFromProperties(objProps);
-                            
-                            if (longName) {
-                                // Get the object's runtime ID - validate that we have a valid ID
-                                const objectId = objProps.id || objProps.runtimeId || objProps.objectId;
-                                
-                                if (objectId === undefined || objectId === null) {
-                                    console.warn(`Found LongName "${longName}" but could not determine object ID`);
-                                    continue;
+                        console.log("Trying getObjectProperties with array...");
+                        propertiesResult = await viewerAPI.getObjectProperties(batchIds);
+                        console.log(`Approach 1 result:`, propertiesResult);
+                    } catch (err) {
+                        console.warn("Approach 1 failed:", err);
+                    }
+                    
+                    // Approach 2: Try one by one if batch fails
+                    if (!propertiesResult || propertiesResult.length === 0) {
+                        console.log("Trying to get properties one by one...");
+                        propertiesResult = [];
+                        for (const objId of batchIds) {
+                            try {
+                                const props = await viewerAPI.getObjectProperties([objId]);
+                                console.log(`Properties for ${objId}:`, props);
+                                if (props && props.length > 0) {
+                                    propertiesResult.push(...props);
                                 }
-                                
-                                console.log(`Found LongName "${longName}" for IfcSpace ${objectId}`);
-                                
-                                // Step 5: Match against category data arrays
-                                if (categoryData.erfuellt.rooms.includes(longName)) {
-                                    categoryData.erfuellt.objectIds.push(objectId);
-                                }
-                                if (categoryData.unterschritten.rooms.includes(longName)) {
-                                    categoryData.unterschritten.objectIds.push(objectId);
-                                }
-                                if (categoryData.ueberschritten.rooms.includes(longName)) {
-                                    categoryData.ueberschritten.objectIds.push(objectId);
-                                }
+                            } catch (err) {
+                                console.warn(`Failed to get properties for ${objId}:`, err);
                             }
                         }
+                    }
+                    
+                    if (!propertiesResult || propertiesResult.length === 0) {
+                        console.log(`Batch ${batchNumber}: No properties returned from any approach`);
+                        continue;
+                    }
+                    
+                    console.log(`Batch ${batchNumber}: Got properties for ${propertiesResult.length} objects`);
+                    
+                    // Log first object structure for debugging (only first batch)
+                    if (i === 0 && propertiesResult.length > 0) {
+                        console.log("Sample IfcSpace properties structure:", propertiesResult[0]);
+                    }
+                    
+                    // Step 4: Process each object's properties to find LongName
+                    for (const objProps of propertiesResult) {
+                        const longName = extractLongNameFromProperties(objProps);
                         
-                    } catch (batchError) {
-                        console.error(`Error processing batch ${batchNumber}:`, batchError);
-                        // Continue processing other batches even if one fails
+                        if (longName) {
+                            // Get the object's runtime ID - validate that we have a valid ID
+                            const objectId = objProps.id || objProps.runtimeId || objProps.objectId;
+                            
+                            if (objectId === undefined || objectId === null) {
+                                console.warn(`Found LongName "${longName}" but could not determine object ID`);
+                                continue;
+                            }
+                            
+                            console.log(`Found LongName "${longName}" for IfcSpace ${objectId}`);
+                            
+                            // Step 5: Match against category data arrays
+                            if (categoryData.erfuellt.rooms.includes(longName)) {
+                                categoryData.erfuellt.objectIds.push(objectId);
+                            }
+                            if (categoryData.unterschritten.rooms.includes(longName)) {
+                                categoryData.unterschritten.objectIds.push(objectId);
+                            }
+                            if (categoryData.ueberschritten.rooms.includes(longName)) {
+                                categoryData.ueberschritten.objectIds.push(objectId);
+                            }
+                        }
                     }
                 }
                 
