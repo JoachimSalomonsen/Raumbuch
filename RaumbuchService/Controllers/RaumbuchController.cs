@@ -776,7 +776,16 @@ namespace RaumbuchService.Controllers
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in GetViewerData: {ex.Message}");
-                return InternalServerError(new Exception($"Fehler beim Laden der Viewer-Daten: {ex.Message}", ex));
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                // Return detailed error message in response for debugging
+                return Content(System.Net.HttpStatusCode.InternalServerError, new
+                {
+                    success = false,
+                    message = $"Fehler beim Laden der Viewer-Daten: {ex.Message}",
+                    details = ex.InnerException?.Message,
+                    fileId = request?.RaumbuchFileId
+                });
             }
         }
 
