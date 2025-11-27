@@ -935,14 +935,30 @@
                         });
                         
                         if (entities && entities.length > 0) {
-                            console.log(`Model ${modelId}: Found ${entities.length} IfcSpace entities`);
+                            console.log(`Model ${modelId}: Found ${entities.length} IfcSpace entity wrappers`);
                             console.log(`First entity structure:`, entities[0]);
                             
-                            // Extract IDs from entities and add to spaceIds array
+                            // Extract IDs from entities - handle wrapper objects with entityForModel
                             for (const entity of entities) {
-                                const entityId = entity.id || entity.runtimeId || entity.objectId || entity;
-                                if (entityId !== undefined && entityId !== null) {
-                                    spaceIds.push(entityId);
+                                // Check if entity has entityForModel array (wrapper structure)
+                                if (entity.entityForModel && Array.isArray(entity.entityForModel)) {
+                                    console.log(`Entity has entityForModel with ${entity.entityForModel.length} items`);
+                                    // The actual IDs are inside entityForModel array
+                                    for (const id of entity.entityForModel) {
+                                        if (id !== undefined && id !== null) {
+                                            // ID could be a string or number
+                                            spaceIds.push(id);
+                                        }
+                                    }
+                                } else {
+                                    // Fallback: try to get ID directly from entity
+                                    const entityId = entity.id || entity.runtimeId || entity.objectId;
+                                    if (entityId !== undefined && entityId !== null) {
+                                        spaceIds.push(entityId);
+                                    } else if (typeof entity === 'string' || typeof entity === 'number') {
+                                        // Entity itself might be the ID
+                                        spaceIds.push(entity);
+                                    }
                                 }
                             }
                         } else {
@@ -953,20 +969,22 @@
                     }
                 }
                 
-                console.log(`Total IfcSpace entities found: ${spaceIds.length}`);
-                console.log(`Space IDs:`, spaceIds);
+                // Flatten and ensure all IDs are proper values (strings/numbers)
+                const flatSpaceIds = spaceIds.flat().filter(id => id !== undefined && id !== null);
+                console.log(`Total IfcSpace IDs found: ${flatSpaceIds.length}`);
+                console.log(`Space IDs (first 10):`, flatSpaceIds.slice(0, 10));
                 
-                if (spaceIds.length === 0) {
-                    console.warn("No IfcSpace entities found in any model");
+                if (flatSpaceIds.length === 0) {
+                    console.warn("No IfcSpace IDs found in any model");
                     updateCategoryCounts();
                     return;
                 }
                 
                 // Step 3: Process IfcSpace IDs in batches to get properties
-                for (let i = 0; i < spaceIds.length; i += BATCH_SIZE) {
-                    const batchIds = spaceIds.slice(i, i + BATCH_SIZE);
+                for (let i = 0; i < flatSpaceIds.length; i += BATCH_SIZE) {
+                    const batchIds = flatSpaceIds.slice(i, i + BATCH_SIZE);
                     const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-                    const totalBatches = Math.ceil(spaceIds.length / BATCH_SIZE);
+                    const totalBatches = Math.ceil(flatSpaceIds.length / BATCH_SIZE);
                     
                     console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} IfcSpace objects)`);
                     console.log(`Batch IDs:`, batchIds);
