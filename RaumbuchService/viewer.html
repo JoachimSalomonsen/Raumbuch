@@ -690,6 +690,17 @@
             const raumbuchFile = config.files?.raumbuch;
             const raumbuchFileId = raumbuchFile?.id || raumbuchFile;
             
+            // Refresh token before making API call to avoid INVALID_SESSION errors
+            try {
+                if (API && API.extension && typeof API.extension.requestPermission === 'function') {
+                    console.log('Refreshing access token...');
+                    workspaceToken = await API.extension.requestPermission("accesstoken");
+                    console.log('Access token refreshed');
+                }
+            } catch (tokenError) {
+                console.warn('Could not refresh token:', tokenError);
+            }
+            
             if (!raumbuchFileId || !workspaceToken) {
                 throw new Error('Raumbuch-Datei ID oder Token fehlt');
             }
