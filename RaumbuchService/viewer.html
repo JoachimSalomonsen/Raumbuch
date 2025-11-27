@@ -880,171 +880,178 @@
         }
         
         // ====================================================================
-        // OBJECT MATCHING
+        // OBJECT MATCHING (OPPDATERT MED TRIMBLE API STRUKTUR)
         // ====================================================================
-        
+
         /**
-         * Finds and matches IfcSpace objects based on their LongName property.
-         * Uses getModels() and getEntities() to specifically target IfcSpace objects,
-         * then fetches properties in batches to find LongName values.
+         * Finner og matcher IfcSpace-objekter basert på deres LongName-egenskap.
+         * Bruker getEntities for å finne IfcSpace-objekter og den bekreftede
+         * {modelId: X, objectRuntimeIds: [Y]} strukturen for å hente egenskaper i batches.
+         * * Merk: BATCH_SIZE, TARGET_PSETS, categoryData, updateCategoryCounts, 
+         * applyAllColors, og extractLongNameFromProperties antas å være definert andre steder.
          */
         async function findMatchingObjects() {
             console.log("Finding matching objects...");
-            console.log("Looking for Raumtypen:", {
-                erfuellt: categoryData.erfuellt.rooms,
-                unterschritten: categoryData.unterschritten.rooms,
-                ueberschritten: categoryData.ueberschritten.rooms
-            });
-            
+
             // Reset object IDs
             categoryData.erfuellt.objectIds = [];
             categoryData.unterschritten.objectIds = [];
             categoryData.ueberschritten.objectIds = [];
-            
+
+            // Variabler for å lagre den definitive konteksten for eiendomshenting
+            let definitiveModelId = null;
+            let definitiveVersionId = null;
+
             try {
-                // Check for API availability
                 if (!viewerAPI) {
                     console.warn("viewerAPI not available");
                     return;
                 }
-                
-                // Step 1: Get loaded models
+
+                // --- Step 1: Get loaded models ---
                 console.log("Getting loaded models...");
                 const models = await viewerAPI.getModels();
-                
+
                 if (!models || models.length === 0) {
                     console.warn("No models loaded in viewer");
                     return;
                 }
-                
-                console.log(`Found ${models.length} loaded models`);
-                
-                // Step 2: Get IfcSpace entities from each model
-                // Collect all IfcSpace IDs into a flat array
+
+                // --- Step 2: Get IfcSpace entities and IDs ---
                 const spaceIds = [];
-                
+
                 for (const model of models) {
                     const modelId = model.id || model.modelId || model;
                     console.log(`Getting IfcSpace entities from model: ${modelId}`);
-                    
+
                     try {
-                        // Use getEntities with class filter to specifically get IfcSpace objects
-                        const entities = await viewerAPI.getEntities({ 
-                            modelId: modelId, 
-                            class: "IfcSpace" 
+                        const entities = await viewerAPI.getEntities({
+                            modelId: modelId,
+                            class: "IfcSpace"
                         });
-                        
+
                         if (entities && entities.length > 0) {
-                            console.log(`Model ${modelId}: Found ${entities.length} IfcSpace entity wrappers`);
-                            console.log(`First entity structure:`, entities[0]);
-                            
+
                             // Extract IDs from entities - handle wrapper objects with entityForModel
                             for (const entity of entities) {
-                                // Check if entity has entityForModel array (wrapper structure)
                                 if (entity.entityForModel && Array.isArray(entity.entityForModel)) {
-                                    console.log(`Entity has entityForModel with ${entity.entityForModel.length} items`);
-                                    // The actual IDs are inside entityForModel array
-                                    for (const id of entity.entityForModel) {
-                                        if (id !== undefined && id !== null) {
-                                            // ID could be a string or number
-                                            spaceIds.push(id);
+                                    console.log(`Entity has entityForModel with ${entity.entityForModel.length} items. Extracting IDs...`);
+
+                                    // Capture the Model ID and Version ID from the entity wrapper
+                                    if (!definitiveModelId) {
+                                        definitiveModelId = entity.modelId || modelId;
+                                        definitiveVersionId = entity.versionId || definitiveModelId;
+                                        console.log(`Captured definitiveModelId: ${definitiveModelId}, definitiveVersionId: ${definitiveVersionId}`);
+                                    }
+
+                                    // Extract the primitive ID (objectRuntimeIds)
+                                    for (const idObject of entity.entityForModel) {
+                                        // Bruker den mest sannsynlige ID-nøkkelen basert på din onSelectionChanged logg
+                                        const actualId = idObject.id || idObject.runtimeId || idObject.objectRuntimeId || idObject.objectId;
+
+                                        if (actualId !== undefined && actualId !== null) {
+                                            spaceIds.push(actualId);
                                         }
                                     }
                                 } else {
-                                    // Fallback: try to get ID directly from entity
+                                    // Fallback for direkte ID
                                     const entityId = entity.id || entity.runtimeId || entity.objectId;
                                     if (entityId !== undefined && entityId !== null) {
                                         spaceIds.push(entityId);
-                                    } else if (typeof entity === 'string' || typeof entity === 'number') {
-                                        // Entity itself might be the ID
-                                        spaceIds.push(entity);
                                     }
                                 }
                             }
-                        } else {
-                            console.log(`Model ${modelId}: No IfcSpace entities found`);
                         }
                     } catch (entityError) {
                         console.warn(`Error getting entities from model ${modelId}:`, entityError);
                     }
                 }
-                
-                // Flatten and ensure all IDs are proper values (strings/numbers)
-                const flatSpaceIds = spaceIds.flat().filter(id => id !== undefined && id !== null);
-                console.log(`Total IfcSpace IDs found: ${flatSpaceIds.length}`);
-                console.log(`Space IDs (first 10):`, flatSpaceIds.slice(0, 10));
-                
-                if (flatSpaceIds.length === 0) {
+
+                // Deduplicate and filter IDs
+                const uniqueSpaceIds = [...new Set(spaceIds)].filter(id => id !== undefined && id !== null);
+                console.log(`Total unique IfcSpace IDs found: ${uniqueSpaceIds.length}`);
+
+                if (uniqueSpaceIds.length === 0) {
                     console.warn("No IfcSpace IDs found in any model");
                     updateCategoryCounts();
                     return;
                 }
-                
-                // Step 3: Process IfcSpace IDs in batches to get properties
-                for (let i = 0; i < flatSpaceIds.length; i += BATCH_SIZE) {
-                    const batchIds = flatSpaceIds.slice(i, i + BATCH_SIZE);
+
+                if (!definitiveModelId) {
+                    console.warn("Could not determine definitive Model ID for property fetching. Cannot proceed.");
+                    updateCategoryCounts();
+                    return;
+                }
+
+                // --- Step 3: Process IfcSpace IDs in batches to get properties ---
+                for (let i = 0; i < uniqueSpaceIds.length; i += BATCH_SIZE) {
+                    const batchIds = uniqueSpaceIds.slice(i, i + BATCH_SIZE);
                     const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-                    const totalBatches = Math.ceil(flatSpaceIds.length / BATCH_SIZE);
-                    
+                    const totalBatches = Math.ceil(uniqueSpaceIds.length / BATCH_SIZE);
+
                     console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} IfcSpace objects)`);
-                    console.log(`Batch IDs:`, batchIds);
-                    
+
                     let propertiesResult = null;
-                    
-                    // Approach 1: Try passing array directly
+
+                    // APPROACH 1: Bruk den bekreftede strukturen: {modelId: X, objectRuntimeIds: [Y]}
                     try {
-                        console.log("Trying getObjectProperties with array...");
-                        propertiesResult = await viewerAPI.getObjectProperties(batchIds);
-                        console.log(`Approach 1 result:`, propertiesResult);
+                        console.log("Trying getObjectProperties with the confirmed structure {modelId: X, objectRuntimeIds: [Y]}...");
+
+                        // Denne strukturen matcher utdata fra viewer.onSelectionChanged eventet.
+                        const requestObject = [{
+                            modelId: definitiveModelId,
+                            objectRuntimeIds: batchIds // Arrayen med numeriske ID-er
+                        }];
+
+                        propertiesResult = await viewerAPI.getObjectProperties(requestObject);
+                        console.log(`Approach 1 result: Returned ${propertiesResult ? propertiesResult.length : 0} objects`);
                     } catch (err) {
-                        console.warn("Approach 1 failed:", err);
+                        console.warn("Approach 1 (Confirmed Structure) failed:", err);
                     }
-                    
-                    // Approach 2: Try one by one if batch fails
+
+                    // FALLBACK 2: Prøv den tidligere strukturen med ID/Model/Version hints (mindre sannsynlig å lykkes)
                     if (!propertiesResult || propertiesResult.length === 0) {
-                        console.log("Trying to get properties one by one...");
-                        propertiesResult = [];
-                        for (const objId of batchIds) {
-                            try {
-                                const props = await viewerAPI.getObjectProperties([objId]);
-                                console.log(`Properties for ${objId}:`, props);
-                                if (props && props.length > 0) {
-                                    propertiesResult.push(...props);
-                                }
-                            } catch (err) {
-                                console.warn(`Failed to get properties for ${objId}:`, err);
-                            }
+                        console.log("Approach 1 failed. Trying fallback with explicit ID/Model/Version hints...");
+                        try {
+                            const fallbackRequestObjects = batchIds.map(id => ({
+                                id: id,
+                                modelId: definitiveModelId,
+                                versionId: definitiveVersionId,
+                                propertyNames: ["LongName", "IfcSpace.LongName"]
+                            }));
+
+                            propertiesResult = await viewerAPI.getObjectProperties(fallbackRequestObjects);
+                            console.log(`Fallback 2 result: Returned ${propertiesResult ? propertiesResult.length : 0} objects`);
+                        } catch (err) {
+                            console.warn("Fallback 2 failed:", err);
                         }
                     }
-                    
+
                     if (!propertiesResult || propertiesResult.length === 0) {
                         console.log(`Batch ${batchNumber}: No properties returned from any approach`);
                         continue;
                     }
-                    
+
                     console.log(`Batch ${batchNumber}: Got properties for ${propertiesResult.length} objects`);
-                    
-                    // Log first object structure for debugging (only first batch)
+
+                    // Log first object structure for debugging
                     if (i === 0 && propertiesResult.length > 0) {
-                        console.log("Sample IfcSpace properties structure:", propertiesResult[0]);
+                        console.log("Sample IfcSpace properties structure (SUCCESS expected here):", propertiesResult[0]);
                     }
-                    
-                    // Step 4: Process each object's properties to find LongName
+
+                    // --- Step 4 & 5: Process properties and match objects ---
                     for (const objProps of propertiesResult) {
                         const longName = extractLongNameFromProperties(objProps);
-                        
+
                         if (longName) {
-                            // Get the object's runtime ID - validate that we have a valid ID
-                            const objectId = objProps.id || objProps.runtimeId || objProps.objectId;
-                            
+                            const objectId = objProps.id || objProps.runtimeId || objProps.objectRuntimeId || objProps.objectId;
+
                             if (objectId === undefined || objectId === null) {
                                 console.warn(`Found LongName "${longName}" but could not determine object ID`);
                                 continue;
                             }
-                            
-                            console.log(`Found LongName "${longName}" for IfcSpace ${objectId}`);
-                            
-                            // Step 5: Match against category data arrays
+
+                            // Match against category data arrays
                             if (categoryData.erfuellt.rooms.includes(longName)) {
                                 categoryData.erfuellt.objectIds.push(objectId);
                             }
@@ -1057,67 +1064,64 @@
                         }
                     }
                 }
-                
+
                 console.log("Matching complete. Results:", {
                     erfuellt: categoryData.erfuellt.objectIds.length,
                     unterschritten: categoryData.unterschritten.objectIds.length,
                     ueberschritten: categoryData.ueberschritten.objectIds.length
                 });
-                
-                // Step 6: Update UI counts and apply colors
+
+                // --- Step 6: Update UI counts and apply colors ---
                 updateCategoryCounts();
                 await applyAllColors();
-                
+
             } catch (error) {
                 console.error("Error finding matching objects:", error);
             }
         }
-        
+
         /**
          * Extracts the LongName property from an object's properties.
-         * Looks in Pset_SpaceCommon, Attributes, or IfcSpace property sets.
-         * @param {Object} objProps - The object properties returned from getObjectProperties
-         * @returns {string|null} The LongName value or null if not found
+         * (Antas å være definert nøyaktig som i forrige svar)
          */
         function extractLongNameFromProperties(objProps) {
             if (!objProps || !objProps.properties || !Array.isArray(objProps.properties)) {
                 return null;
             }
-            
-            // First, search in the target property sets (defined in TARGET_PSETS constant)
+
+            // Antar at TARGET_PSETS er definert (f.eks. ['pset_spacecommon', 'attributes'])
+            const targetPsetNames = Array.isArray(TARGET_PSETS) ? TARGET_PSETS.map(n => n.toLowerCase()) : [];
+
+            // 1. Search in target property sets
             for (const pset of objProps.properties) {
                 const psetName = (pset.name || pset.Name || '').toLowerCase();
-                
-                // Check if this is one of our target property sets
-                const isTargetPset = TARGET_PSETS.some(target => psetName.includes(target));
-                
-                if (isTargetPset && pset.properties && Array.isArray(pset.properties)) {
-                    // Look for LongName property within this property set
+
+                if (targetPsetNames.some(target => psetName.includes(target)) && pset.properties && Array.isArray(pset.properties)) {
                     const longNameProp = pset.properties.find(prop => {
                         const propName = (prop.name || prop.Name || '').toLowerCase();
                         return propName === 'longname' || propName === 'long name' || propName === 'long_name';
                     });
-                    
+
                     if (longNameProp) {
                         return longNameProp.value || longNameProp.Value || null;
                     }
                 }
             }
-            
-            // Fallback: Search all property sets for LongName
+
+            // 2. Fallback: Search all property sets for LongName
             for (const pset of objProps.properties) {
                 if (pset.properties && Array.isArray(pset.properties)) {
                     const longNameProp = pset.properties.find(prop => {
                         const propName = (prop.name || prop.Name || '').toLowerCase();
                         return propName === 'longname' || propName === 'long name' || propName === 'long_name';
                     });
-                    
+
                     if (longNameProp) {
                         return longNameProp.value || longNameProp.Value || null;
                     }
                 }
             }
-            
+
             return null;
         }
         
