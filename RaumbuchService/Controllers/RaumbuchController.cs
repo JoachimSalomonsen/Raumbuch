@@ -742,6 +742,17 @@ namespace RaumbuchService.Controllers
         {
             try
             {
+                // Debug: Log token info for diagnosing INVALID_SESSION errors
+                System.Diagnostics.Debug.WriteLine($"GetViewerData called");
+                System.Diagnostics.Debug.WriteLine($"Request null: {request == null}");
+                if (request != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"AccessToken null or empty: {string.IsNullOrWhiteSpace(request.AccessToken)}");
+                    System.Diagnostics.Debug.WriteLine($"AccessToken length: {request.AccessToken?.Length ?? 0}");
+                    System.Diagnostics.Debug.WriteLine($"AccessToken first 20 chars: {(request.AccessToken?.Length > 20 ? request.AccessToken.Substring(0, 20) + "..." : request.AccessToken)}");
+                    System.Diagnostics.Debug.WriteLine($"RaumbuchFileId: {request.RaumbuchFileId}");
+                }
+                
                 if (request == null ||
                     string.IsNullOrWhiteSpace(request.AccessToken) ||
                     string.IsNullOrWhiteSpace(request.RaumbuchFileId))

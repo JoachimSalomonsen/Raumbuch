@@ -100,21 +100,25 @@ namespace RaumbuchService.Models
         /// <summary>
         /// Trimble Connect access token
         /// </summary>
+        [Newtonsoft.Json.JsonProperty("accessToken")]
         public string AccessToken { get; set; }
 
         /// <summary>
         /// Raumbuch file ID in Trimble Connect
         /// </summary>
+        [Newtonsoft.Json.JsonProperty("raumbuchFileId")]
         public string RaumbuchFileId { get; set; }
 
         /// <summary>
         /// Tolerance minimum (percentage below 100% considered as under)
         /// </summary>
+        [Newtonsoft.Json.JsonProperty("toleranceMin")]
         public double ToleranceMin { get; set; } = -10;
 
         /// <summary>
         /// Tolerance maximum (percentage above 100% considered as over)
         /// </summary>
+        [Newtonsoft.Json.JsonProperty("toleranceMax")]
         public double ToleranceMax { get; set; } = 10;
     }
 
