@@ -885,8 +885,8 @@
         
         /**
          * Finds and matches IfcSpace objects based on their LongName property.
-         * Uses viewerAPI.getObjects() to get all object runtime IDs, then fetches
-         * properties in batches to find LongName values.
+         * Uses getModels() and getEntities() to specifically target IfcSpace objects,
+         * then fetches properties in batches to find LongName values.
          */
         async function findMatchingObjects() {
             console.log("Finding matching objects...");
@@ -908,29 +908,68 @@
                     return;
                 }
                 
-                // Step 1: Get ALL object runtime IDs from the viewer
-                // This returns a flat array of IDs for all objects currently in the view
-                console.log("Getting all object IDs from viewer...");
-                const allObjectIds = await viewerAPI.getObjects();
+                // Step 1: Get loaded models
+                console.log("Getting loaded models...");
+                const models = await viewerAPI.getModels();
                 
-                if (!allObjectIds || allObjectIds.length === 0) {
-                    console.warn("No objects found in viewer");
+                if (!models || models.length === 0) {
+                    console.warn("No models loaded in viewer");
                     return;
                 }
                 
-                console.log(`Found ${allObjectIds.length} total objects in viewer`);
+                console.log(`Found ${models.length} loaded models`);
                 
-                // Step 2: Process objects in batches to avoid browser timeouts
-                // Batch size of 1000 is recommended for performance
-                for (let i = 0; i < allObjectIds.length; i += BATCH_SIZE) {
-                    const batchIds = allObjectIds.slice(i, i + BATCH_SIZE);
-                    const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-                    const totalBatches = Math.ceil(allObjectIds.length / BATCH_SIZE);
-                    
-                    console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} objects)`);
+                // Step 2: Get IfcSpace entities from each model
+                // Collect all IfcSpace IDs into a flat array
+                const spaceIds = [];
+                
+                for (const model of models) {
+                    const modelId = model.id || model.modelId || model;
+                    console.log(`Getting IfcSpace entities from model: ${modelId}`);
                     
                     try {
-                        // Call getObjectProperties with just the array of IDs
+                        // Use getEntities with class filter to specifically get IfcSpace objects
+                        const entities = await viewerAPI.getEntities({ 
+                            modelId: modelId, 
+                            class: "IfcSpace" 
+                        });
+                        
+                        if (entities && entities.length > 0) {
+                            console.log(`Model ${modelId}: Found ${entities.length} IfcSpace entities`);
+                            
+                            // Extract IDs from entities and add to spaceIds array
+                            for (const entity of entities) {
+                                const entityId = entity.id || entity.runtimeId || entity.objectId || entity;
+                                if (entityId !== undefined && entityId !== null) {
+                                    spaceIds.push(entityId);
+                                }
+                            }
+                        } else {
+                            console.log(`Model ${modelId}: No IfcSpace entities found`);
+                        }
+                    } catch (entityError) {
+                        console.warn(`Error getting entities from model ${modelId}:`, entityError);
+                    }
+                }
+                
+                console.log(`Total IfcSpace entities found: ${spaceIds.length}`);
+                
+                if (spaceIds.length === 0) {
+                    console.warn("No IfcSpace entities found in any model");
+                    updateCategoryCounts();
+                    return;
+                }
+                
+                // Step 3: Process IfcSpace IDs in batches to get properties
+                for (let i = 0; i < spaceIds.length; i += BATCH_SIZE) {
+                    const batchIds = spaceIds.slice(i, i + BATCH_SIZE);
+                    const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+                    const totalBatches = Math.ceil(spaceIds.length / BATCH_SIZE);
+                    
+                    console.log(`Processing batch ${batchNumber}/${totalBatches} (${batchIds.length} IfcSpace objects)`);
+                    
+                    try {
+                        // Call getObjectProperties with the batch of IfcSpace IDs
                         const propertiesResult = await viewerAPI.getObjectProperties(batchIds);
                         
                         if (!propertiesResult || propertiesResult.length === 0) {
@@ -942,10 +981,10 @@
                         
                         // Log first object structure for debugging (only first batch)
                         if (i === 0 && propertiesResult.length > 0) {
-                            console.log("Sample object properties structure:", propertiesResult[0]);
+                            console.log("Sample IfcSpace properties structure:", propertiesResult[0]);
                         }
                         
-                        // Step 3: Process each object's properties to find LongName
+                        // Step 4: Process each object's properties to find LongName
                         for (const objProps of propertiesResult) {
                             const longName = extractLongNameFromProperties(objProps);
                             
@@ -958,9 +997,9 @@
                                     continue;
                                 }
                                 
-                                console.log(`Found LongName "${longName}" for object ${objectId}`);
+                                console.log(`Found LongName "${longName}" for IfcSpace ${objectId}`);
                                 
-                                // Step 4: Match against category data arrays
+                                // Step 5: Match against category data arrays
                                 if (categoryData.erfuellt.rooms.includes(longName)) {
                                     categoryData.erfuellt.objectIds.push(objectId);
                                 }
@@ -984,6 +1023,10 @@
                     unterschritten: categoryData.unterschritten.objectIds.length,
                     ueberschritten: categoryData.ueberschritten.objectIds.length
                 });
+                
+                // Step 6: Update UI counts and apply colors
+                updateCategoryCounts();
+                await applyAllColors();
                 
             } catch (error) {
                 console.error("Error finding matching objects:", error);
