@@ -12,6 +12,16 @@ namespace RaumbuchService.Data
     public class RaumbuchContext : DbContext
     {
         /// <summary>
+        /// Static constructor to set the database initializer.
+        /// We use null initializer because we manage the schema manually via CreateSchema.sql.
+        /// </summary>
+        static RaumbuchContext()
+        {
+            // Disable automatic database creation/migration - we use manual SQL scripts
+            Database.SetInitializer<RaumbuchContext>(null);
+        }
+
+        /// <summary>
         /// Initializes a new instance of the RaumbuchContext.
         /// Uses the "RaumbuchContext" connection string from Web.config.
         /// </summary>

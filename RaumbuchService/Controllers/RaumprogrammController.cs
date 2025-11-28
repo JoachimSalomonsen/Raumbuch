@@ -262,10 +262,24 @@ namespace RaumbuchService.Controllers
                     });
                 }
             }
+            catch (System.Data.Entity.Core.EntityException ex)
+            {
+                // Database connection or entity framework error
+                System.Diagnostics.Debug.WriteLine($"Entity Framework error in GetRoomTypes: {ex.Message}");
+                var innerMessage = ex.InnerException?.Message ?? "Keine weiteren Details";
+                return InternalServerError(new Exception($"Datenbankverbindungsfehler: {innerMessage}. Bitte stellen Sie sicher, dass CreateSchema.sql ausgeführt wurde.", ex));
+            }
+            catch (System.Data.SqlClient.SqlException ex)
+            {
+                // SQL Server specific error
+                System.Diagnostics.Debug.WriteLine($"SQL error in GetRoomTypes: {ex.Message}");
+                return InternalServerError(new Exception($"SQL-Fehler: {ex.Message}. Fehlercode: {ex.Number}", ex));
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in GetRoomTypes: {ex.Message}");
-                return InternalServerError(new Exception($"Fehler beim Laden der Raumtypen: {ex.Message}", ex));
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                return InternalServerError(new Exception($"Fehler beim Laden der Raumtypen: {innerMessage}", ex));
             }
         }
 
