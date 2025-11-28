@@ -92,6 +92,16 @@ namespace RaumbuchService.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Disable pluralizing table names - use exact table names from [Table] attributes
+            modelBuilder.Conventions.Remove<System.Data.Entity.ModelConfiguration.Conventions.PluralizingTableNameConvention>();
+
+            // Explicitly map to table names (matches CreateSchema.sql exactly)
+            modelBuilder.Entity<UserAccess>().ToTable("UserAccess");
+            modelBuilder.Entity<RoomType>().ToTable("RoomType");
+            modelBuilder.Entity<Room>().ToTable("Room");
+            modelBuilder.Entity<InventoryTemplate>().ToTable("InventoryTemplate");
+            modelBuilder.Entity<RoomInventory>().ToTable("RoomInventory");
+
             // Configure UserAccess entity
             modelBuilder.Entity<UserAccess>()
                 .HasKey(ua => ua.UserID);
