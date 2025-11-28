@@ -37,9 +37,19 @@ namespace RaumbuchService.Controllers
 
         /// <summary>
         /// Gets user role from UserAccess table.
+        /// If the table is empty (first-time setup), returns "Admin" to allow initial setup.
+        /// If userId is empty but table has users, returns "NoAccess".
         /// </summary>
         private async Task<string> GetUserRoleAsync(RaumbuchContext db, string userId)
         {
+            // Check if UserAccess table is empty (first-time setup mode)
+            var hasAnyUsers = await db.UserAccess.AnyAsync();
+            if (!hasAnyUsers)
+            {
+                // Allow all operations during initial setup
+                return "Admin";
+            }
+
             if (string.IsNullOrEmpty(userId))
                 return "NoAccess";
 
@@ -699,7 +709,9 @@ namespace RaumbuchService.Controllers
                         RoomTypeID = request.RoomTypeID,
                         Name = request.Name,
                         AreaPlanned = request.AreaPlanned,
-                        AreaActual = request.AreaActual
+                        AreaActual = request.AreaActual,
+                        NetArea = request.NetArea,
+                        GrossArea = request.GrossArea
                     };
 
                     db.Rooms.Add(room);
@@ -714,9 +726,12 @@ namespace RaumbuchService.Controllers
                             RoomID = room.RoomID,
                             RoomTypeID = room.RoomTypeID,
                             RoomTypeName = roomType.Name,
+                            RoomCategory = roomType.RoomCategory,
                             Name = room.Name,
                             AreaPlanned = room.AreaPlanned,
                             AreaActual = room.AreaActual,
+                            NetArea = room.NetArea,
+                            GrossArea = room.GrossArea,
                             ModifiedByUserID = room.ModifiedByUserID,
                             ModifiedDate = room.ModifiedDate
                         }
@@ -774,6 +789,8 @@ namespace RaumbuchService.Controllers
                     room.Name = request.Name;
                     room.AreaPlanned = request.AreaPlanned;
                     room.AreaActual = request.AreaActual;
+                    room.NetArea = request.NetArea;
+                    room.GrossArea = request.GrossArea;
 
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
@@ -786,9 +803,12 @@ namespace RaumbuchService.Controllers
                             RoomID = room.RoomID,
                             RoomTypeID = room.RoomTypeID,
                             RoomTypeName = roomType.Name,
+                            RoomCategory = roomType.RoomCategory,
                             Name = room.Name,
                             AreaPlanned = room.AreaPlanned,
                             AreaActual = room.AreaActual,
+                            NetArea = room.NetArea,
+                            GrossArea = room.GrossArea,
                             ModifiedByUserID = room.ModifiedByUserID,
                             ModifiedDate = room.ModifiedDate
                         }
@@ -915,9 +935,12 @@ namespace RaumbuchService.Controllers
                         RoomID = r.RoomID,
                         RoomTypeID = r.RoomTypeID,
                         RoomTypeName = r.RoomType?.Name,
+                        RoomCategory = r.RoomType?.RoomCategory,
                         Name = r.Name,
                         AreaPlanned = r.AreaPlanned,
                         AreaActual = r.AreaActual,
+                        NetArea = r.NetArea,
+                        GrossArea = r.GrossArea,
                         // IFC Properties
                         PubliclyAccessible = r.PubliclyAccessible,
                         HandicapAccessible = r.HandicapAccessible,
@@ -1414,6 +1437,8 @@ namespace RaumbuchService.Controllers
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        public decimal? NetArea { get; set; }
+        public decimal? GrossArea { get; set; }
         // IFC Standard Properties
         public bool? PubliclyAccessible { get; set; }
         public bool? HandicapAccessible { get; set; }
@@ -1430,9 +1455,12 @@ namespace RaumbuchService.Controllers
         public int RoomID { get; set; }
         public int RoomTypeID { get; set; }
         public string RoomTypeName { get; set; }
+        public string RoomCategory { get; set; }
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        public decimal? NetArea { get; set; }
+        public decimal? GrossArea { get; set; }
         // IFC Standard Properties
         public bool? PubliclyAccessible { get; set; }
         public bool? HandicapAccessible { get; set; }

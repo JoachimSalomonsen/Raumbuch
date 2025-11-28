@@ -125,6 +125,18 @@ namespace RaumbuchService.Data
         [Column(TypeName = "decimal")]
         public decimal? AreaActual { get; set; }
 
+        /// <summary>
+        /// Net area in square meters.
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? NetArea { get; set; }
+
+        /// <summary>
+        /// Gross area in square meters.
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? GrossArea { get; set; }
+
         // ====================================================================
         // IFC Standard Properties (Pset_SpaceCommon and IfcSpace)
         // ====================================================================

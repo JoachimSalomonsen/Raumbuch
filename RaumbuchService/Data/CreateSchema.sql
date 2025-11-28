@@ -61,6 +61,8 @@ BEGIN
         [Name] NVARCHAR(100) NOT NULL,
         [AreaPlanned] DECIMAL(18,2) NULL,
         [AreaActual] DECIMAL(18,2) NULL,
+        [NetArea] DECIMAL(18,2) NULL,                   -- Net area in square meters
+        [GrossArea] DECIMAL(18,2) NULL,                 -- Gross area in square meters
         -- IFC Standard Properties (Pset_SpaceCommon and IfcSpace)
         [PubliclyAccessible] BIT NULL,              -- Pset_SpaceCommon.PubliclyAccessible
         [HandicapAccessible] BIT NULL,              -- Pset_SpaceCommon.HandicapAccessible
@@ -90,6 +92,16 @@ BEGIN
     BEGIN
         ALTER TABLE [dbo].[Room] ADD [ModifiedDate] DATETIME2 NULL;
         PRINT 'Added column: Room.ModifiedDate';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetArea')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [NetArea] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.NetArea';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossArea')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [GrossArea] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.GrossArea';
     END
     -- IFC Standard Properties
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'PubliclyAccessible')

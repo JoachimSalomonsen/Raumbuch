@@ -334,19 +334,35 @@
                         </div>
                     </div>
 
-                    <!-- Data Table - SOLL only, dynamic columns for selected inventories -->
+                    <!-- Column Visibility Controls -->
+                    <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
+                        <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-areaplanned" onchange="loadRaumprogramData()"> Fläche SOLL</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
+                    </div>
+
+                    <!-- Data Table - SOLL only, dynamic columns based on visibility settings -->
                     <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
                         <table class="analyse-table" id="raumprogramTable">
                             <thead id="raumprogramTableHead">
                                 <tr>
                                     <th>Raumtyp</th>
-                                    <th>Raum Name</th>
-                                    <th>SOLL (m²)</th>
+                                    <th>Raumkategorie</th>
+                                    <th>Raum</th>
+                                    <th>Nettofläche (m²)</th>
+                                    <th>Bruttofläche (m²)</th>
                                 </tr>
                             </thead>
                             <tbody id="raumprogramTableBody">
                                 <tr>
-                                    <td colspan="3" style="text-align:center; color:#666;">
+                                    <td colspan="5" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Klicken Sie auf "Daten laden".
                                     </td>
                                 </tr>
@@ -4083,11 +4099,22 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Render Raumprogramm data table - SOLL only with dynamic inventory columns
+         * Render Raumprogramm data table - SOLL only with dynamic columns based on visibility settings
          */
         function renderRaumprogramTable(rooms, selectedInventoryIds = []) {
             const thead = document.getElementById('raumprogramTableHead');
             const tbody = document.getElementById('raumprogramTableBody');
+            
+            // Get column visibility settings
+            const showRaumtyp = document.getElementById('col-raumtyp')?.checked ?? true;
+            const showRaumkategorie = document.getElementById('col-raumkategorie')?.checked ?? true;
+            const showRaum = document.getElementById('col-raum')?.checked ?? true;
+            const showNetArea = document.getElementById('col-netarea')?.checked ?? true;
+            const showGrossArea = document.getElementById('col-grossarea')?.checked ?? true;
+            const showAreaPlanned = document.getElementById('col-areaplanned')?.checked ?? false;
+            const showDescription = document.getElementById('col-description')?.checked ?? false;
+            const showObjectType = document.getElementById('col-objecttype')?.checked ?? false;
+            const showPredefinedType = document.getElementById('col-predefinedtype')?.checked ?? false;
             
             // Get selected inventory templates for column headers
             const templates = window.inventoryTemplates || [];
@@ -4099,7 +4126,18 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const showComment = selectedInventoryIds.length === 1;
             
             // Build dynamic headers
-            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>SOLL (m²)</th>';
+            let headerHtml = '<tr>';
+            if (showRaumtyp) headerHtml += '<th>Raumtyp</th>';
+            if (showRaumkategorie) headerHtml += '<th>Raumkategorie</th>';
+            if (showRaum) headerHtml += '<th>Raum</th>';
+            if (showNetArea) headerHtml += '<th>Nettofläche (m²)</th>';
+            if (showGrossArea) headerHtml += '<th>Bruttofläche (m²)</th>';
+            if (showAreaPlanned) headerHtml += '<th>Fläche SOLL (m²)</th>';
+            if (showDescription) headerHtml += '<th>Beschreibung</th>';
+            if (showObjectType) headerHtml += '<th>Objekttyp</th>';
+            if (showPredefinedType) headerHtml += '<th>Vordefinierter Typ</th>';
+            
+            // Add inventory columns
             selectedTemplates.forEach(t => {
                 const unit = t.unit ? ` (${t.unit})` : '';
                 headerHtml += `<th>${escapeHtml(t.propertyName)}${unit}</th>`;
@@ -4110,20 +4148,37 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             headerHtml += '</tr>';
             thead.innerHTML = headerHtml;
             
+            // Calculate column count for empty message
+            let colCount = 0;
+            if (showRaumtyp) colCount++;
+            if (showRaumkategorie) colCount++;
+            if (showRaum) colCount++;
+            if (showNetArea) colCount++;
+            if (showGrossArea) colCount++;
+            if (showAreaPlanned) colCount++;
+            if (showDescription) colCount++;
+            if (showObjectType) colCount++;
+            if (showPredefinedType) colCount++;
+            colCount += selectedTemplates.length;
+            if (showComment) colCount++;
+            
             if (!rooms || rooms.length === 0) {
-                const colspan = 3 + selectedTemplates.length + (showComment ? 1 : 0);
-                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${colCount || 5}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
                 return;
             }
             
             let html = '';
             rooms.forEach(room => {
-                const areaPlanned = room.areaPlanned || 0;
-                
                 html += '<tr>';
-                html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
-                html += `<td>${escapeHtml(room.name || '')}</td>`;
-                html += `<td>${areaPlanned.toFixed(2)}</td>`;
+                if (showRaumtyp) html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                if (showRaumkategorie) html += `<td>${escapeHtml(room.roomCategory || '')}</td>`;
+                if (showRaum) html += `<td>${escapeHtml(room.name || '')}</td>`;
+                if (showNetArea) html += `<td>${(room.netArea || 0).toFixed(2)}</td>`;
+                if (showGrossArea) html += `<td>${(room.grossArea || 0).toFixed(2)}</td>`;
+                if (showAreaPlanned) html += `<td>${(room.areaPlanned || 0).toFixed(2)}</td>`;
+                if (showDescription) html += `<td>${escapeHtml(room.description || '')}</td>`;
+                if (showObjectType) html += `<td>${escapeHtml(room.objectType || '')}</td>`;
+                if (showPredefinedType) html += `<td>${escapeHtml(room.predefinedType || '')}</td>`;
                 
                 // Add columns for each selected inventory
                 selectedTemplates.forEach(t => {
