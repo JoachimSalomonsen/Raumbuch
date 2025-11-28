@@ -14,6 +14,7 @@ namespace RaumbuchService.Controllers
     /// <summary>
     /// Controller for managing Raumprogramm (SOLL) data using Azure SQL Database.
     /// Provides CRUD operations for RoomType, InventoryTemplate, and Room data.
+    /// Implements authorization checks against UserAccess table.
     /// </summary>
     [RoutePrefix("api")]
     public class RaumprogrammController : ApiController
@@ -23,6 +24,143 @@ namespace RaumbuchService.Controllers
         public RaumprogrammController()
         {
             Directory.CreateDirectory(_tempFolder);
+        }
+
+        // ====================================================================
+        // AUTHORIZATION HELPERS
+        // ====================================================================
+
+        /// <summary>
+        /// Gets user role from UserAccess table.
+        /// </summary>
+        private async Task<string> GetUserRoleAsync(RaumbuchContext db, string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return "NoAccess";
+
+            var user = await db.UserAccess.FindAsync(userId);
+            return user?.Role ?? "NoAccess";
+        }
+
+        /// <summary>
+        /// Checks if user has read access (Reader, Editor, or Admin).
+        /// </summary>
+        private bool CanRead(string role)
+        {
+            return role == "Reader" || role == "Editor" || role == "Admin";
+        }
+
+        /// <summary>
+        /// Checks if user has write access (Editor or Admin).
+        /// </summary>
+        private bool CanWrite(string role)
+        {
+            return role == "Editor" || role == "Admin";
+        }
+
+        // ====================================================================
+        // USER ACCESS ENDPOINTS
+        // ====================================================================
+
+        /// <summary>
+        /// Gets all users with their access levels.
+        /// GET /api/useraccess
+        /// </summary>
+        [HttpGet]
+        [Route("useraccess")]
+        public async Task<IHttpActionResult> GetUserAccess()
+        {
+            try
+            {
+                using (var db = new RaumbuchContext())
+                {
+                    var users = await db.UserAccess
+                        .OrderBy(u => u.UserName)
+                        .Select(u => new UserAccessDto
+                        {
+                            UserID = u.UserID,
+                            UserName = u.UserName,
+                            Role = u.Role
+                        })
+                        .ToListAsync();
+
+                    return Ok(new UserAccessListResponse
+                    {
+                        Success = true,
+                        Message = $"{users.Count} Benutzer gefunden.",
+                        Users = users
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserAccess: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Laden der Benutzer: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Creates or updates user access.
+        /// POST /api/useraccess
+        /// </summary>
+        [HttpPost]
+        [Route("useraccess")]
+        public async Task<IHttpActionResult> UpsertUserAccess([FromBody] UserAccessRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.UserID))
+                {
+                    return BadRequest("UserID ist erforderlich.");
+                }
+
+                // Validate role
+                var validRoles = new[] { "Admin", "Editor", "Reader", "NoAccess" };
+                if (!validRoles.Contains(request.Role))
+                {
+                    return BadRequest($"Ungültige Rolle. Erlaubt: {string.Join(", ", validRoles)}");
+                }
+
+                using (var db = new RaumbuchContext())
+                {
+                    var user = await db.UserAccess.FindAsync(request.UserID);
+                    
+                    if (user == null)
+                    {
+                        user = new UserAccess
+                        {
+                            UserID = request.UserID,
+                            UserName = request.UserName,
+                            Role = request.Role
+                        };
+                        db.UserAccess.Add(user);
+                    }
+                    else
+                    {
+                        user.UserName = request.UserName;
+                        user.Role = request.Role;
+                    }
+
+                    await db.SaveChangesAsync();
+
+                    return Ok(new UserAccessResponse
+                    {
+                        Success = true,
+                        Message = "Benutzerzugriff gespeichert.",
+                        User = new UserAccessDto
+                        {
+                            UserID = user.UserID,
+                            UserName = user.UserName,
+                            Role = user.Role
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in UpsertUserAccess: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Speichern des Benutzerzugriffs: {ex.Message}", ex));
+            }
         }
 
         // ====================================================================
@@ -46,6 +184,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     // Check for duplicate name
                     bool exists = await db.RoomTypes
                         .AnyAsync(rt => rt.Name.Equals(request.Name, StringComparison.OrdinalIgnoreCase));
@@ -55,9 +200,13 @@ namespace RaumbuchService.Controllers
                         return BadRequest($"Raumtyp '{request.Name}' existiert bereits.");
                     }
 
-                    var roomType = new RoomType { Name = request.Name };
+                    var roomType = new RoomType 
+                    { 
+                        Name = request.Name,
+                        RoomCategory = request.RoomCategory
+                    };
                     db.RoomTypes.Add(roomType);
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new RoomTypeResponse
                     {
@@ -66,7 +215,10 @@ namespace RaumbuchService.Controllers
                         RoomType = new RoomTypeDto
                         {
                             RoomTypeID = roomType.RoomTypeID,
-                            Name = roomType.Name
+                            Name = roomType.Name,
+                            RoomCategory = roomType.RoomCategory,
+                            ModifiedByUserID = roomType.ModifiedByUserID,
+                            ModifiedDate = roomType.ModifiedDate
                         }
                     });
                 }
@@ -95,7 +247,10 @@ namespace RaumbuchService.Controllers
                         .Select(rt => new RoomTypeDto
                         {
                             RoomTypeID = rt.RoomTypeID,
-                            Name = rt.Name
+                            Name = rt.Name,
+                            RoomCategory = rt.RoomCategory,
+                            ModifiedByUserID = rt.ModifiedByUserID,
+                            ModifiedDate = rt.ModifiedDate
                         })
                         .ToListAsync();
 
@@ -131,6 +286,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var roomType = await db.RoomTypes.FindAsync(id);
                     if (roomType == null)
                     {
@@ -148,7 +310,8 @@ namespace RaumbuchService.Controllers
                     }
 
                     roomType.Name = request.Name;
-                    await db.SaveChangesAsync();
+                    roomType.RoomCategory = request.RoomCategory;
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new RoomTypeResponse
                     {
@@ -157,7 +320,10 @@ namespace RaumbuchService.Controllers
                         RoomType = new RoomTypeDto
                         {
                             RoomTypeID = roomType.RoomTypeID,
-                            Name = roomType.Name
+                            Name = roomType.Name,
+                            RoomCategory = roomType.RoomCategory,
+                            ModifiedByUserID = roomType.ModifiedByUserID,
+                            ModifiedDate = roomType.ModifiedDate
                         }
                     });
                 }
@@ -175,12 +341,19 @@ namespace RaumbuchService.Controllers
         /// </summary>
         [HttpDelete]
         [Route("roomtype/{id:int}")]
-        public async Task<IHttpActionResult> DeleteRoomType(int id)
+        public async Task<IHttpActionResult> DeleteRoomType(int id, [FromUri] string userId = null)
         {
             try
             {
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, userId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var roomType = await db.RoomTypes
                         .Include(rt => rt.Rooms)
                         .FirstOrDefaultAsync(rt => rt.RoomTypeID == id);
@@ -234,6 +407,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     // Check for duplicate property name
                     bool exists = await db.InventoryTemplates
                         .AnyAsync(it => it.PropertyName.Equals(request.PropertyName, StringComparison.OrdinalIgnoreCase));
@@ -245,7 +425,7 @@ namespace RaumbuchService.Controllers
 
                     var template = new InventoryTemplate { PropertyName = request.PropertyName };
                     db.InventoryTemplates.Add(template);
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new InventoryTemplateResponse
                     {
@@ -254,7 +434,9 @@ namespace RaumbuchService.Controllers
                         InventoryTemplate = new InventoryTemplateDto
                         {
                             InventoryTemplateID = template.InventoryTemplateID,
-                            PropertyName = template.PropertyName
+                            PropertyName = template.PropertyName,
+                            ModifiedByUserID = template.ModifiedByUserID,
+                            ModifiedDate = template.ModifiedDate
                         }
                     });
                 }
@@ -283,7 +465,9 @@ namespace RaumbuchService.Controllers
                         .Select(it => new InventoryTemplateDto
                         {
                             InventoryTemplateID = it.InventoryTemplateID,
-                            PropertyName = it.PropertyName
+                            PropertyName = it.PropertyName,
+                            ModifiedByUserID = it.ModifiedByUserID,
+                            ModifiedDate = it.ModifiedDate
                         })
                         .ToListAsync();
 
@@ -319,6 +503,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var template = await db.InventoryTemplates.FindAsync(id);
                     if (template == null)
                     {
@@ -336,7 +527,7 @@ namespace RaumbuchService.Controllers
                     }
 
                     template.PropertyName = request.PropertyName;
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new InventoryTemplateResponse
                     {
@@ -345,7 +536,9 @@ namespace RaumbuchService.Controllers
                         InventoryTemplate = new InventoryTemplateDto
                         {
                             InventoryTemplateID = template.InventoryTemplateID,
-                            PropertyName = template.PropertyName
+                            PropertyName = template.PropertyName,
+                            ModifiedByUserID = template.ModifiedByUserID,
+                            ModifiedDate = template.ModifiedDate
                         }
                     });
                 }
@@ -363,12 +556,19 @@ namespace RaumbuchService.Controllers
         /// </summary>
         [HttpDelete]
         [Route("inventorytemplate/{id:int}")]
-        public async Task<IHttpActionResult> DeleteInventoryTemplate(int id)
+        public async Task<IHttpActionResult> DeleteInventoryTemplate(int id, [FromUri] string userId = null)
         {
             try
             {
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, userId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var template = await db.InventoryTemplates
                         .Include(it => it.RoomInventories)
                         .FirstOrDefaultAsync(it => it.InventoryTemplateID == id);
@@ -422,6 +622,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     // Verify room type exists
                     var roomType = await db.RoomTypes.FindAsync(request.RoomTypeID);
                     if (roomType == null)
@@ -438,7 +645,7 @@ namespace RaumbuchService.Controllers
                     };
 
                     db.Rooms.Add(room);
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new RoomResponse
                     {
@@ -451,7 +658,9 @@ namespace RaumbuchService.Controllers
                             RoomTypeName = roomType.Name,
                             Name = room.Name,
                             AreaPlanned = room.AreaPlanned,
-                            AreaActual = room.AreaActual
+                            AreaActual = room.AreaActual,
+                            ModifiedByUserID = room.ModifiedByUserID,
+                            ModifiedDate = room.ModifiedDate
                         }
                     });
                 }
@@ -480,6 +689,13 @@ namespace RaumbuchService.Controllers
 
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var room = await db.Rooms
                         .Include(r => r.RoomType)
                         .FirstOrDefaultAsync(r => r.RoomID == id);
@@ -501,7 +717,7 @@ namespace RaumbuchService.Controllers
                     room.AreaPlanned = request.AreaPlanned;
                     room.AreaActual = request.AreaActual;
 
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new RoomResponse
                     {
@@ -514,7 +730,9 @@ namespace RaumbuchService.Controllers
                             RoomTypeName = roomType.Name,
                             Name = room.Name,
                             AreaPlanned = room.AreaPlanned,
-                            AreaActual = room.AreaActual
+                            AreaActual = room.AreaActual,
+                            ModifiedByUserID = room.ModifiedByUserID,
+                            ModifiedDate = room.ModifiedDate
                         }
                     });
                 }
@@ -532,12 +750,19 @@ namespace RaumbuchService.Controllers
         /// </summary>
         [HttpDelete]
         [Route("room/{id:int}")]
-        public async Task<IHttpActionResult> DeleteRoom(int id)
+        public async Task<IHttpActionResult> DeleteRoom(int id, [FromUri] string userId = null)
         {
             try
             {
                 using (var db = new RaumbuchContext())
                 {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, userId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
                     var room = await db.Rooms
                         .Include(r => r.RoomInventories)
                         .FirstOrDefaultAsync(r => r.RoomID == id);
@@ -635,6 +860,8 @@ namespace RaumbuchService.Controllers
                         Name = r.Name,
                         AreaPlanned = r.AreaPlanned,
                         AreaActual = r.AreaActual,
+                        ModifiedByUserID = r.ModifiedByUserID,
+                        ModifiedDate = r.ModifiedDate,
                         Inventory = (inventoryTemplateId.HasValue
                             ? r.RoomInventories.Where(ri => ri.InventoryTemplateID == inventoryTemplateId.Value)
                             : r.RoomInventories)
@@ -644,7 +871,10 @@ namespace RaumbuchService.Controllers
                                 InventoryTemplateID = ri.InventoryTemplateID,
                                 PropertyName = ri.InventoryTemplate?.PropertyName,
                                 ValuePlanned = ri.ValuePlanned,
-                                ValueActual = ri.ValueActual
+                                ValueActual = ri.ValueActual,
+                                Comment = ri.Comment,
+                                ModifiedByUserID = ri.ModifiedByUserID,
+                                ModifiedDate = ri.ModifiedDate
                             }).ToList()
                     }).ToList();
 
@@ -1028,16 +1258,46 @@ namespace RaumbuchService.Controllers
         public string Message { get; set; }
     }
 
+    // User Access DTOs
+    public class UserAccessRequest
+    {
+        public string UserID { get; set; }
+        public string UserName { get; set; }
+        public string Role { get; set; }
+    }
+
+    public class UserAccessDto
+    {
+        public string UserID { get; set; }
+        public string UserName { get; set; }
+        public string Role { get; set; }
+    }
+
+    public class UserAccessResponse : BaseResponse
+    {
+        public UserAccessDto User { get; set; }
+    }
+
+    public class UserAccessListResponse : BaseResponse
+    {
+        public List<UserAccessDto> Users { get; set; }
+    }
+
     // Room Type DTOs
     public class RoomTypeRequest
     {
         public string Name { get; set; }
+        public string RoomCategory { get; set; }
+        public string UserId { get; set; }
     }
 
     public class RoomTypeDto
     {
         public int RoomTypeID { get; set; }
         public string Name { get; set; }
+        public string RoomCategory { get; set; }
+        public string ModifiedByUserID { get; set; }
+        public DateTime? ModifiedDate { get; set; }
     }
 
     public class RoomTypeResponse : BaseResponse
@@ -1054,12 +1314,15 @@ namespace RaumbuchService.Controllers
     public class InventoryTemplateRequest
     {
         public string PropertyName { get; set; }
+        public string UserId { get; set; }
     }
 
     public class InventoryTemplateDto
     {
         public int InventoryTemplateID { get; set; }
         public string PropertyName { get; set; }
+        public string ModifiedByUserID { get; set; }
+        public DateTime? ModifiedDate { get; set; }
     }
 
     public class InventoryTemplateResponse : BaseResponse
@@ -1079,6 +1342,7 @@ namespace RaumbuchService.Controllers
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        public string UserId { get; set; }
     }
 
     public class RoomDto
@@ -1089,6 +1353,8 @@ namespace RaumbuchService.Controllers
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        public string ModifiedByUserID { get; set; }
+        public DateTime? ModifiedDate { get; set; }
     }
 
     public class RoomResponse : BaseResponse
@@ -1104,6 +1370,9 @@ namespace RaumbuchService.Controllers
         public string PropertyName { get; set; }
         public string ValuePlanned { get; set; }
         public string ValueActual { get; set; }
+        public string Comment { get; set; }
+        public string ModifiedByUserID { get; set; }
+        public DateTime? ModifiedDate { get; set; }
     }
 
     public class RoomWithInventoryDto : RoomDto

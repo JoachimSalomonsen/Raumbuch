@@ -220,6 +220,12 @@
                             <label for="newRoomTypeName">Neuer Raumtyp:</label>
                             <div style="display:flex; gap:10px; align-items:flex-start;">
                                 <input type="text" id="newRoomTypeName" class="form-control" placeholder="z.B. 'Büro', 'Besprechungsraum'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newRoomTypeCategory">Raumkategorie:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newRoomTypeCategory" class="form-control" placeholder="z.B. 'Arbeitsfläche', 'Gemeinschaftsfläche'" style="flex:1;">
                                 <button class="btn btn-primary" onclick="createRoomType()">➕ Hinzufügen</button>
                             </div>
                         </div>
@@ -3631,11 +3637,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     (data.roomTypes || []).forEach(rt => {
                         const option = document.createElement('option');
                         option.value = rt.roomTypeID;
-                        option.textContent = rt.name;
+                        // Display name with category if available
+                        option.textContent = rt.roomCategory ? `${rt.name} (${rt.roomCategory})` : rt.name;
                         select.appendChild(option);
                         
-                        filterSelect.appendChild(option.cloneNode(true));
-                        roomSelect.appendChild(option.cloneNode(true));
+                        const filterOption = document.createElement('option');
+                        filterOption.value = rt.roomTypeID;
+                        filterOption.textContent = rt.name;
+                        filterSelect.appendChild(filterOption);
+                        
+                        const roomOption = document.createElement('option');
+                        roomOption.value = rt.roomTypeID;
+                        roomOption.textContent = rt.name;
+                        roomSelect.appendChild(roomOption);
                     });
                     
                     console.log(`Loaded ${data.roomTypes?.length || 0} room types`);
@@ -3681,6 +3695,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         async function createRoomType() {
             const name = document.getElementById('newRoomTypeName').value.trim();
+            const roomCategory = document.getElementById('newRoomTypeCategory')?.value?.trim() || '';
             
             if (!name) {
                 showResult('masterDataResult', 'error', '⚠️ Bitte geben Sie einen Namen ein');
@@ -3693,7 +3708,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const response = await fetch(`${API_RAUMPROGRAM}/roomtype`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name })
+                    body: JSON.stringify({ 
+                        name: name,
+                        roomCategory: roomCategory
+                    })
                 });
                 
                 const data = await response.json();
@@ -3701,6 +3719,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && data.success) {
                     showResult('masterDataResult', 'success', `✅ ${data.message}`);
                     document.getElementById('newRoomTypeName').value = '';
+                    document.getElementById('newRoomTypeCategory').value = '';
                     await loadRoomTypes();
                 } else {
                     showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);

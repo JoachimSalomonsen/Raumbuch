@@ -1,9 +1,37 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RaumbuchService.Data
 {
+    /// <summary>
+    /// UserAccess entity - manages user access control.
+    /// Maps to the UserAccess table in Azure SQL.
+    /// </summary>
+    [Table("UserAccess")]
+    public class UserAccess
+    {
+        /// <summary>
+        /// Primary key - Unique ID from Trimble Connect (e.g., email or system ID).
+        /// </summary>
+        [Key]
+        [StringLength(255)]
+        public string UserID { get; set; }
+
+        /// <summary>
+        /// Display name of the user.
+        /// </summary>
+        [StringLength(100)]
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// User role: 'Admin', 'Editor', 'Reader', 'NoAccess'.
+        /// </summary>
+        [StringLength(50)]
+        public string Role { get; set; }
+    }
+
     /// <summary>
     /// RoomType entity - represents a type/category of rooms.
     /// Maps to the RoomType table in Azure SQL.
@@ -24,6 +52,29 @@ namespace RaumbuchService.Data
         [Required]
         [StringLength(100)]
         public string Name { get; set; }
+
+        /// <summary>
+        /// Standardized category for every RoomType.
+        /// </summary>
+        [StringLength(100)]
+        public string RoomCategory { get; set; }
+
+        /// <summary>
+        /// User ID who last modified this record.
+        /// </summary>
+        [StringLength(255)]
+        public string ModifiedByUserID { get; set; }
+
+        /// <summary>
+        /// Date and time when this record was last modified.
+        /// </summary>
+        public DateTime? ModifiedDate { get; set; }
+
+        /// <summary>
+        /// Navigation property for the user who modified this record.
+        /// </summary>
+        [ForeignKey("ModifiedByUserID")]
+        public virtual UserAccess ModifiedByUser { get; set; }
 
         /// <summary>
         /// Navigation property for rooms of this type.
@@ -75,6 +126,23 @@ namespace RaumbuchService.Data
         public decimal? AreaActual { get; set; }
 
         /// <summary>
+        /// User ID who last modified this record.
+        /// </summary>
+        [StringLength(255)]
+        public string ModifiedByUserID { get; set; }
+
+        /// <summary>
+        /// Date and time when this record was last modified.
+        /// </summary>
+        public DateTime? ModifiedDate { get; set; }
+
+        /// <summary>
+        /// Navigation property for the user who modified this record.
+        /// </summary>
+        [ForeignKey("ModifiedByUserID")]
+        public virtual UserAccess ModifiedByUser { get; set; }
+
+        /// <summary>
         /// Navigation property for room type.
         /// </summary>
         [ForeignKey("RoomTypeID")]
@@ -111,6 +179,23 @@ namespace RaumbuchService.Data
         [Required]
         [StringLength(100)]
         public string PropertyName { get; set; }
+
+        /// <summary>
+        /// User ID who last modified this record.
+        /// </summary>
+        [StringLength(255)]
+        public string ModifiedByUserID { get; set; }
+
+        /// <summary>
+        /// Date and time when this record was last modified.
+        /// </summary>
+        public DateTime? ModifiedDate { get; set; }
+
+        /// <summary>
+        /// Navigation property for the user who modified this record.
+        /// </summary>
+        [ForeignKey("ModifiedByUserID")]
+        public virtual UserAccess ModifiedByUser { get; set; }
 
         /// <summary>
         /// Navigation property for room inventory items using this template.
@@ -158,6 +243,28 @@ namespace RaumbuchService.Data
         /// </summary>
         [StringLength(255)]
         public string ValueActual { get; set; }
+
+        /// <summary>
+        /// Free-text commentary for specific inventory items.
+        /// </summary>
+        public string Comment { get; set; }
+
+        /// <summary>
+        /// User ID who last modified this record.
+        /// </summary>
+        [StringLength(255)]
+        public string ModifiedByUserID { get; set; }
+
+        /// <summary>
+        /// Date and time when this record was last modified.
+        /// </summary>
+        public DateTime? ModifiedDate { get; set; }
+
+        /// <summary>
+        /// Navigation property for the user who modified this record.
+        /// </summary>
+        [ForeignKey("ModifiedByUserID")]
+        public virtual UserAccess ModifiedByUser { get; set; }
 
         /// <summary>
         /// Navigation property for room.

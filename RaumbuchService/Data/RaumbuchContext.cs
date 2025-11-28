@@ -1,4 +1,7 @@
+using System;
 using System.Data.Entity;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RaumbuchService.Data
 {
@@ -20,6 +23,11 @@ namespace RaumbuchService.Data
         }
 
         /// <summary>
+        /// User access control table.
+        /// </summary>
+        public DbSet<UserAccess> UserAccess { get; set; }
+
+        /// <summary>
         /// Room types (Raumtyp) - the main categorization for rooms.
         /// </summary>
         public DbSet<RoomType> RoomTypes { get; set; }
@@ -39,9 +47,57 @@ namespace RaumbuchService.Data
         /// </summary>
         public DbSet<RoomInventory> RoomInventories { get; set; }
 
+        /// <summary>
+        /// Saves changes and automatically populates audit fields.
+        /// </summary>
+        /// <param name="userId">The user ID performing the operation.</param>
+        public async Task<int> SaveChangesWithAuditAsync(string userId)
+        {
+            var now = DateTime.UtcNow;
+
+            foreach (var entry in ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                var entity = entry.Entity;
+
+                // Set audit fields using reflection
+                var modifiedByProperty = entity.GetType().GetProperty("ModifiedByUserID");
+                var modifiedDateProperty = entity.GetType().GetProperty("ModifiedDate");
+
+                if (modifiedByProperty != null && !string.IsNullOrEmpty(userId))
+                {
+                    modifiedByProperty.SetValue(entity, userId);
+                }
+
+                if (modifiedDateProperty != null)
+                {
+                    modifiedDateProperty.SetValue(entity, now);
+                }
+            }
+
+            return await base.SaveChangesAsync();
+        }
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure UserAccess entity
+            modelBuilder.Entity<UserAccess>()
+                .HasKey(ua => ua.UserID);
+
+            modelBuilder.Entity<UserAccess>()
+                .Property(ua => ua.UserID)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<UserAccess>()
+                .Property(ua => ua.UserName)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<UserAccess>()
+                .Property(ua => ua.Role)
+                .HasMaxLength(50);
 
             // Configure RoomType entity
             modelBuilder.Entity<RoomType>()
@@ -51,6 +107,19 @@ namespace RaumbuchService.Data
                 .Property(rt => rt.Name)
                 .IsRequired()
                 .HasMaxLength(100);
+
+            modelBuilder.Entity<RoomType>()
+                .Property(rt => rt.RoomCategory)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<RoomType>()
+                .Property(rt => rt.ModifiedByUserID)
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<RoomType>()
+                .HasOptional(rt => rt.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(rt => rt.ModifiedByUserID);
 
             // Configure Room entity
             modelBuilder.Entity<Room>()
@@ -70,9 +139,18 @@ namespace RaumbuchService.Data
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<Room>()
+                .Property(r => r.ModifiedByUserID)
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<Room>()
                 .HasRequired(r => r.RoomType)
                 .WithMany(rt => rt.Rooms)
                 .HasForeignKey(r => r.RoomTypeID);
+
+            modelBuilder.Entity<Room>()
+                .HasOptional(r => r.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(r => r.ModifiedByUserID);
 
             // Configure InventoryTemplate entity
             modelBuilder.Entity<InventoryTemplate>()
@@ -82,6 +160,15 @@ namespace RaumbuchService.Data
                 .Property(it => it.PropertyName)
                 .IsRequired()
                 .HasMaxLength(100);
+
+            modelBuilder.Entity<InventoryTemplate>()
+                .Property(it => it.ModifiedByUserID)
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<InventoryTemplate>()
+                .HasOptional(it => it.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(it => it.ModifiedByUserID);
 
             // Configure RoomInventory entity
             modelBuilder.Entity<RoomInventory>()
@@ -96,6 +183,14 @@ namespace RaumbuchService.Data
                 .HasMaxLength(255);
 
             modelBuilder.Entity<RoomInventory>()
+                .Property(ri => ri.Comment)
+                .HasColumnType("nvarchar(max)");
+
+            modelBuilder.Entity<RoomInventory>()
+                .Property(ri => ri.ModifiedByUserID)
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<RoomInventory>()
                 .HasRequired(ri => ri.Room)
                 .WithMany(r => r.RoomInventories)
                 .HasForeignKey(ri => ri.RoomID);
@@ -104,6 +199,11 @@ namespace RaumbuchService.Data
                 .HasRequired(ri => ri.InventoryTemplate)
                 .WithMany(it => it.RoomInventories)
                 .HasForeignKey(ri => ri.InventoryTemplateID);
+
+            modelBuilder.Entity<RoomInventory>()
+                .HasOptional(ri => ri.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(ri => ri.ModifiedByUserID);
         }
     }
 }
