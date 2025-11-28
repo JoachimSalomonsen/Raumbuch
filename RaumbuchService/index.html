@@ -19,22 +19,32 @@
         <!-- =============================== -->
         <nav class="tc-tabs">
             <div class="tc-tab active" onclick="openTab('tab-konfig')">
-                <img src="img/settings.png" class="tc-tab-icon" />
+                <img src="Img/settings.png" class="tc-tab-icon" />
                 <span>Einstellungen</span>
             </div>
 
+            <div class="tc-tab" onclick="openTab('tab-raumprogramm')">
+                <img src="Img/book.png" class="tc-tab-icon" />
+                <span>Raumprogramm</span>
+            </div>
+
+            <div class="tc-tab" onclick="openTab('tab-ausgefuehrt')">
+                <img src="Img/book.png" class="tc-tab-icon" />
+                <span>Ausgeführt</span>
+            </div>
+
             <div class="tc-tab" onclick="openTab('tab-analyse')">
-                <img src="img/analyse.png" class="tc-tab-icon" />
+                <img src="Img/analyse.png" class="tc-tab-icon" />
                 <span>Analyse</span>
             </div>
 
             <div class="tc-tab" onclick="openTab('tab-ausstattung')">
-                <img src="img/material.png" class="tc-tab-icon" />
+                <img src="Img/material.png" class="tc-tab-icon" />
                 <span>Ausstattungen</span>
             </div>
 
             <div class="tc-tab" onclick="openTab('tab-bcf')">
-                <img src="img/mail.png" class="tc-tab-icon" />
+                <img src="Img/mail.png" class="tc-tab-icon" />
                 <span>Nachricht</span>
             </div>
         </nav>
@@ -199,6 +209,296 @@
 
 
             </div> <!-- END TAB 1 -->
+
+            <!-- ========================================================= -->
+            <!-- TAB - RAUMPROGRAMM (SOLL Data Management)                 -->
+            <!-- ========================================================= -->
+            <div id="tab-raumprogramm" class="tab-content">
+
+                <!-- Master Data Management -->
+                <section class="card">
+                    <h2>Stammdaten verwalten</h2>
+                    
+                    <div class="subsection">
+                        <h3>Raumtypen</h3>
+                        <div class="form-group">
+                            <label for="newRoomTypeName">Neuer Raumtyp:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newRoomTypeName" class="form-control" placeholder="z.B. 'Büro', 'Besprechungsraum'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newRoomTypeCategory">Raumkategorie:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newRoomTypeCategory" class="form-control" placeholder="z.B. 'Arbeitsfläche', 'Gemeinschaftsfläche'" style="flex:1;">
+                                <button class="btn btn-primary" onclick="createRoomType()">➕ Hinzufügen</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Vorhandene Raumtypen:</label>
+                            <select id="existingRoomTypes" class="form-control" size="5" style="width:100%;">
+                                <option value="">-- Laden Sie die Daten --</option>
+                            </select>
+                            <div style="margin-top:10px;">
+                                <button class="btn btn-secondary" onclick="loadRoomTypes()">🔄 Laden</button>
+                                <button class="btn btn-danger" onclick="deleteSelectedRoomType()">🗑️ Löschen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="margin:20px 0;">
+
+                    <div class="subsection">
+                        <h3>Ausstattungseigenschaften (Inventory Templates)</h3>
+                        <div class="form-group">
+                            <label for="newInventoryPropertyName">Neue Eigenschaft:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newInventoryPropertyName" class="form-control" placeholder="z.B. 'Bodenbelag', 'Beleuchtung'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newInventoryDataType">Datentyp:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <select id="newInventoryDataType" class="form-control" style="width:200px;">
+                                    <option value="Text">Text</option>
+                                    <option value="Number">Zahl (Number)</option>
+                                    <option value="Integer">Ganzzahl (Integer)</option>
+                                    <option value="Decimal">Dezimalzahl (Decimal)</option>
+                                    <option value="Boolean">Ja/Nein (Boolean)</option>
+                                </select>
+                                <input type="text" id="newInventoryUnit" class="form-control" placeholder="Einheit (z.B. m², kg, Stück)" style="width:180px;">
+                                <button class="btn btn-primary" onclick="createInventoryTemplate()">➕ Hinzufügen</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Vorhandene Eigenschaften:</label>
+                            <select id="existingInventoryTemplates" class="form-control" size="5" style="width:100%;" multiple>
+                                <option value="">-- Laden Sie die Daten --</option>
+                            </select>
+                            <small>Mehrfachauswahl: Strg+Klick für mehrere Inventare</small>
+                            <div style="margin-top:10px;">
+                                <button class="btn btn-secondary" onclick="loadInventoryTemplates()">🔄 Laden</button>
+                                <button class="btn btn-danger" onclick="deleteSelectedInventoryTemplate()">🗑️ Löschen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="masterDataResult" class="result"></div>
+                </section>
+
+                <!-- Räume verwalten (Room Management) - SOLL only, IST moved to Ausgeführt tab -->
+                <section class="card">
+                    <h2>Räume verwalten (SOLL)</h2>
+                    <div class="form-group">
+                        <label for="roomRoomType">Raumtyp:</label>
+                        <select id="roomRoomType" class="form-control">
+                            <option value="">-- Raumtyp auswählen --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="roomName">Raum Name:</label>
+                        <input type="text" id="roomName" class="form-control" placeholder="z.B. 'Büro 101'">
+                    </div>
+                    <div class="form-group">
+                        <label for="roomAreaPlanned">Fläche SOLL (m²):</label>
+                        <input type="number" id="roomAreaPlanned" class="form-control" step="0.01" placeholder="0.00" style="max-width:200px;">
+                    </div>
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" onclick="createRoom()">➕ Raum hinzufügen</button>
+                    </div>
+                    <div id="roomManagementResult" class="result"></div>
+                </section>
+
+                <!-- Raumprogramm Overview -->
+                <section class="card">
+                    <h2>Raumprogramm Übersicht (SOLL)</h2>
+                    <p>Zeigt die geplanten (SOLL) Werte. Für IST-Werte nutzen Sie den Tab "Ausgeführt".</p>
+                    
+                    <!-- Filters -->
+                    <div class="filter-controls">
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="raumprogram-filter-roomtype">Raumtyp:</label>
+                            <select id="raumprogram-filter-roomtype" class="form-control" style="width:200px;" onchange="loadRaumprogramData()">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="raumprogram-filter-inventory">Inventar:</label>
+                            <select id="raumprogram-filter-inventory" class="form-control" style="width:200px;" multiple onchange="loadRaumprogramData()" title="Strg+Klick für Mehrfachauswahl">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block;">
+                            <label for="raumprogram-search">Suche:</label>
+                            <input type="text" id="raumprogram-search" class="form-control" placeholder="Raum suchen..." style="width:200px;" onkeyup="loadRaumprogramData()">
+                        </div>
+                    </div>
+
+                    <!-- Column Visibility Controls -->
+                    <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
+                        <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-areaplanned" onchange="loadRaumprogramData()"> Fläche SOLL</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
+                    </div>
+
+                    <!-- Data Table - SOLL only, dynamic columns based on visibility settings -->
+                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
+                        <table class="analyse-table" id="raumprogramTable">
+                            <thead id="raumprogramTableHead">
+                                <tr>
+                                    <th>Raumtyp</th>
+                                    <th>Raumkategorie</th>
+                                    <th>Raum</th>
+                                    <th>Nettofläche (m²)</th>
+                                    <th>Bruttofläche (m²)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="raumprogramTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center; color:#666;">
+                                        Keine Daten vorhanden. Klicken Sie auf "Daten laden".
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span id="raumprogramPaginationInfo">Seite 1 von 1</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary" id="raumprogramPrevPage" onclick="loadRaumprogramData(currentRaumprogramPage - 1)" disabled>◀ Zurück</button>
+                            <button class="btn btn-secondary" id="raumprogramNextPage" onclick="loadRaumprogramData(currentRaumprogramPage + 1)" disabled>Weiter ▶</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="loadRaumprogramData()">📥 Daten laden</button>
+                        <button class="btn btn-secondary" onclick="refreshAllMasterData()">🔄 Stammdaten aktualisieren</button>
+                    </div>
+                    <div id="raumprogramResult" class="result"></div>
+                </section>
+
+                <!-- Import/Export -->
+                <section class="card">
+                    <h2>Import / Export</h2>
+                    <p>Excel-Daten importieren oder exportieren</p>
+
+                    <div class="form-group">
+                        <label for="raumprogramImportFile">Excel-Datei für Import:</label>
+                        <select id="raumprogramImportFile" class="form-control">
+                            <option value="">-- Datei auswählen (nach "Dateien laden" in Einstellungen) --</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="importRaumprogramFromExcel()">📥 Import (Excel → SQL)</button>
+                        <button class="btn btn-secondary" onclick="exportRaumprogramToExcel()">📤 Export (SQL → Excel)</button>
+                    </div>
+                    <div id="importExportResult" class="result"></div>
+                </section>
+
+            </div> <!-- END TAB RAUMPROGRAMM -->
+
+            <!-- ========================================================= -->
+            <!-- TAB - AUSGEFÜHRT (IST/Actuals Data Management)            -->
+            <!-- ========================================================= -->
+            <div id="tab-ausgefuehrt" class="tab-content">
+
+                <section class="card">
+                    <h2>Ausgeführt (IST-Werte)</h2>
+                    <p>Hier werden die tatsächlichen (IST) Werte der Räume und Inventare erfasst und verwaltet.</p>
+                    
+                    <!-- Filters -->
+                    <div class="filter-controls">
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="ist-filter-roomtype">Raumtyp:</label>
+                            <select id="ist-filter-roomtype" class="form-control" style="width:200px;" onchange="loadIstData()">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="ist-filter-inventory">Inventar:</label>
+                            <select id="ist-filter-inventory" class="form-control" style="width:200px;" multiple onchange="loadIstData()" title="Strg+Klick für Mehrfachauswahl">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block;">
+                            <label for="ist-search">Suche:</label>
+                            <input type="text" id="ist-search" class="form-control" placeholder="Raum suchen..." style="width:200px;" onkeyup="loadIstData()">
+                        </div>
+                    </div>
+
+                    <!-- Data Table - IST values with comparison to SOLL -->
+                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
+                        <table class="analyse-table" id="istTable">
+                            <thead id="istTableHead">
+                                <tr>
+                                    <th>Raumtyp</th>
+                                    <th>Raum Name</th>
+                                    <th>IST Fläche (m²)</th>
+                                    <th>Kommentar</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="istTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center; color:#666;">
+                                        Keine Daten vorhanden. Klicken Sie auf "Daten laden".
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span id="istPaginationInfo">Seite 1 von 1</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary" id="istPrevPage" onclick="loadIstData(currentIstPage - 1)" disabled>◀ Zurück</button>
+                            <button class="btn btn-secondary" id="istNextPage" onclick="loadIstData(currentIstPage + 1)" disabled>Weiter ▶</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="loadIstData()">📥 Daten laden</button>
+                        <button class="btn btn-secondary" onclick="syncIstFromIfc()" title="Coming Soon">🔄 IST aus IFC aktualisieren</button>
+                        <button class="btn btn-primary" onclick="saveIstChanges()" title="Coming Soon">💾 Änderungen speichern</button>
+                        <small style="display:block; margin-top:5px; color:#666;">Hinweis: IFC-Synchronisation und Speichern werden in einer zukünftigen Version implementiert.</small>
+                    </div>
+                    <div id="istResult" class="result"></div>
+                </section>
+
+                <!-- IFC Data Source -->
+                <section class="card">
+                    <h2>IFC Datenquelle <span style="font-size:0.7em; color:#666;">(Coming Soon)</span></h2>
+                    <p>Wählen Sie eine IFC-Datei aus, um IST-Werte automatisch zu extrahieren.</p>
+                    
+                    <div class="form-group">
+                        <label for="istIfcFile">IFC-Datei mit IfcSpaces:</label>
+                        <select id="istIfcFile" class="form-control">
+                            <option value="">-- IFC auswählen nach "Dateien laden" in Einstellungen --</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="extractIstFromIfc()" title="Coming Soon">📊 IST aus IFC extrahieren</button>
+                    </div>
+                    <div id="ifcExtractionResult" class="result"></div>
+                </section>
+
+            </div> <!-- END TAB AUSGEFÜHRT -->
 
             <!-- ========================================================= -->
             <!-- TAB 2 – ANALYSE (SOLL/IST + ZUSAMMENFASSUNG)              -->
@@ -470,10 +770,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         let trimbleConnect = {
             accessToken: null,
             projectId: null,
+            userId: null,  // Current user ID for authorization
             isEmbedded: false,
             isWorkspaceApp: false, // New flag for Workspace API
             consentStatus: 'pending' // pending, granted, denied
         };
+
+        /**
+         * Get the current user ID for authorization
+         * Returns the user ID from Trimble Connect context, or null if not available
+         */
+        function getCurrentUserId() {
+            return trimbleConnect.userId || null;
+        }
 
         // Helper functions to expose to app.js for Workspace API integration
         window.setWorkspaceToken = function(token) {
@@ -484,6 +793,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             
             // Try to auto-load configs if we also have project ID
             tryAutoLoadConfigs();
+        };
+
+        window.setWorkspaceUserId = function(userId) {
+            console.log('Setting workspace user ID from app.js:', userId);
+            trimbleConnect.userId = userId;
         };
 
         window.setWorkspaceProjectId = function(projectId) {
@@ -641,7 +955,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             document.getElementById(tabId).classList.add('active');
 
             // activate tab button
-            const index = ['tab-konfig', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
+            const index = ['tab-konfig', 'tab-raumprogramm', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
             document.querySelectorAll('.tc-tab')[index].classList.add('active');
             
             // Auto-load data when Analyse tab is opened
@@ -650,6 +964,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (raumbuchFileId && getToken()) {
                     loadAnalyseData();
                 }
+            }
+            
+            // Auto-load data when Raumprogramm tab is opened
+            if (tabId === 'tab-raumprogramm') {
+                refreshAllMasterData();
             }
         }
 
@@ -3409,6 +3728,748 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 console.error('Error updating IST values:', error);
                 showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
             }
+        }
+
+        // ====================================================================
+        //  RAUMPROGRAMM TAB FUNCTIONS (SQL Database)
+        // ====================================================================
+        
+        const API_RAUMPROGRAM = '/api';
+        let currentRaumprogramPage = 1;
+        const raumprogramPageSize = 50;
+        
+        /**
+         * Refresh all master data (room types and inventory templates)
+         */
+        async function refreshAllMasterData() {
+            await Promise.all([
+                loadRoomTypes(),
+                loadInventoryTemplates()
+            ]);
+        }
+        
+        /**
+         * Load room types from database
+         */
+        async function loadRoomTypes() {
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/roomtype`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const select = document.getElementById('existingRoomTypes');
+                    const filterSelect = document.getElementById('raumprogram-filter-roomtype');
+                    const istFilterSelect = document.getElementById('ist-filter-roomtype');
+                    const roomSelect = document.getElementById('roomRoomType');
+                    
+                    select.innerHTML = '';
+                    filterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    if (istFilterSelect) istFilterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    roomSelect.innerHTML = '<option value="">-- Raumtyp auswählen --</option>';
+                    
+                    (data.roomTypes || []).forEach(rt => {
+                        const option = document.createElement('option');
+                        option.value = rt.roomTypeID;
+                        // Display name with category if available
+                        option.textContent = rt.roomCategory ? `${rt.name} (${rt.roomCategory})` : rt.name;
+                        select.appendChild(option);
+                        
+                        const filterOption = document.createElement('option');
+                        filterOption.value = rt.roomTypeID;
+                        filterOption.textContent = rt.name;
+                        filterSelect.appendChild(filterOption);
+                        
+                        if (istFilterSelect) {
+                            istFilterSelect.appendChild(filterOption.cloneNode(true));
+                        }
+                        
+                        const roomOption = document.createElement('option');
+                        roomOption.value = rt.roomTypeID;
+                        roomOption.textContent = rt.name;
+                        roomSelect.appendChild(roomOption);
+                    });
+                    
+                    console.log(`Loaded ${data.roomTypes?.length || 0} room types`);
+                }
+            } catch (error) {
+                console.error('Error loading room types:', error);
+            }
+        }
+        
+        /**
+         * Load inventory templates from database
+         */
+        async function loadInventoryTemplates() {
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/inventorytemplate`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const select = document.getElementById('existingInventoryTemplates');
+                    const filterSelect = document.getElementById('raumprogram-filter-inventory');
+                    const istFilterSelect = document.getElementById('ist-filter-inventory');
+                    
+                    select.innerHTML = '';
+                    filterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    if (istFilterSelect) istFilterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    
+                    // Store inventory templates globally for dynamic table columns
+                    window.inventoryTemplates = data.inventoryTemplates || [];
+                    
+                    (data.inventoryTemplates || []).forEach(it => {
+                        const option = document.createElement('option');
+                        option.value = it.inventoryTemplateID;
+                        // Show DataType and Unit in the display
+                        let displayText = it.propertyName;
+                        if (it.dataType && it.dataType !== 'Text') {
+                            displayText += ` [${it.dataType}]`;
+                        }
+                        if (it.unit) {
+                            displayText += ` (${it.unit})`;
+                        }
+                        option.textContent = displayText;
+                        select.appendChild(option);
+                        
+                        const filterOption = document.createElement('option');
+                        filterOption.value = it.inventoryTemplateID;
+                        filterOption.textContent = it.propertyName;
+                        filterSelect.appendChild(filterOption);
+                        
+                        if (istFilterSelect) {
+                            istFilterSelect.appendChild(filterOption.cloneNode(true));
+                        }
+                    });
+                    
+                    console.log(`Loaded ${data.inventoryTemplates?.length || 0} inventory templates`);
+                }
+            } catch (error) {
+                console.error('Error loading inventory templates:', error);
+            }
+        }
+        
+        /**
+         * Create a new room type
+         */
+        async function createRoomType() {
+            const name = document.getElementById('newRoomTypeName').value.trim();
+            const roomCategory = document.getElementById('newRoomTypeCategory')?.value?.trim() || '';
+            
+            if (!name) {
+                showResult('masterDataResult', 'error', '⚠️ Bitte geben Sie einen Namen ein');
+                return;
+            }
+            
+            showResult('masterDataResult', 'loading', '⏳ Erstelle Raumtyp...');
+            
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/roomtype`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name: name,
+                        roomCategory: roomCategory,
+                        userId: getCurrentUserId()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('masterDataResult', 'success', `✅ ${data.message}`);
+                    document.getElementById('newRoomTypeName').value = '';
+                    document.getElementById('newRoomTypeCategory').value = '';
+                    await loadRoomTypes();
+                } else {
+                    showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('masterDataResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Delete selected room type
+         */
+        async function deleteSelectedRoomType() {
+            const select = document.getElementById('existingRoomTypes');
+            const selectedId = select.value;
+            
+            if (!selectedId) {
+                showResult('masterDataResult', 'error', '⚠️ Bitte wählen Sie einen Raumtyp aus');
+                return;
+            }
+            
+            const selectedText = select.options[select.selectedIndex].textContent;
+            if (!confirm(`Möchten Sie den Raumtyp "${selectedText}" wirklich löschen?`)) {
+                return;
+            }
+            
+            showResult('masterDataResult', 'loading', '⏳ Lösche Raumtyp...');
+            
+            try {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/roomtype/${selectedId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/roomtype/${selectedId}`;
+                const response = await fetch(url, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('masterDataResult', 'success', `✅ ${data.message}`);
+                    await loadRoomTypes();
+                } else {
+                    showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('masterDataResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Create a new inventory template
+         */
+        async function createInventoryTemplate() {
+            const propertyName = document.getElementById('newInventoryPropertyName').value.trim();
+            const dataType = document.getElementById('newInventoryDataType')?.value || 'Text';
+            const unit = document.getElementById('newInventoryUnit')?.value?.trim() || '';
+            
+            if (!propertyName) {
+                showResult('masterDataResult', 'error', '⚠️ Bitte geben Sie einen Eigenschaftsnamen ein');
+                return;
+            }
+            
+            showResult('masterDataResult', 'loading', '⏳ Erstelle Ausstattungseigenschaft...');
+            
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/inventorytemplate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        propertyName: propertyName,
+                        dataType: dataType,
+                        unit: unit || null,
+                        userId: getCurrentUserId()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('masterDataResult', 'success', `✅ ${data.message}`);
+                    document.getElementById('newInventoryPropertyName').value = '';
+                    document.getElementById('newInventoryUnit').value = '';
+                    await loadInventoryTemplates();
+                } else {
+                    showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('masterDataResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Delete selected inventory template
+         */
+        async function deleteSelectedInventoryTemplate() {
+            const select = document.getElementById('existingInventoryTemplates');
+            const selectedId = select.value;
+            
+            if (!selectedId) {
+                showResult('masterDataResult', 'error', '⚠️ Bitte wählen Sie eine Eigenschaft aus');
+                return;
+            }
+            
+            const selectedText = select.options[select.selectedIndex].textContent;
+            if (!confirm(`Möchten Sie die Eigenschaft "${selectedText}" wirklich löschen?`)) {
+                return;
+            }
+            
+            showResult('masterDataResult', 'loading', '⏳ Lösche Eigenschaft...');
+            
+            try {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/inventorytemplate/${selectedId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/inventorytemplate/${selectedId}`;
+                const response = await fetch(url, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('masterDataResult', 'success', `✅ ${data.message}`);
+                    await loadInventoryTemplates();
+                } else {
+                    showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('masterDataResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Create a new room - SOLL only (IST values managed in Ausgeführt tab)
+         */
+        async function createRoom() {
+            const roomTypeId = document.getElementById('roomRoomType').value;
+            const name = document.getElementById('roomName').value.trim();
+            const areaPlanned = document.getElementById('roomAreaPlanned').value;
+            
+            if (!roomTypeId || !name) {
+                showResult('roomManagementResult', 'error', '⚠️ Bitte Raumtyp und Name eingeben');
+                return;
+            }
+            
+            showResult('roomManagementResult', 'loading', '⏳ Erstelle Raum...');
+            
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/room`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        roomTypeID: parseInt(roomTypeId),
+                        name: name,
+                        areaPlanned: areaPlanned ? parseFloat(areaPlanned) : null,
+                        areaActual: null, // IST values managed in Ausgeführt tab
+                        userId: getCurrentUserId()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('roomManagementResult', 'success', `✅ ${data.message}`);
+                    document.getElementById('roomName').value = '';
+                    document.getElementById('roomAreaPlanned').value = '';
+                    await loadRaumprogramData();
+                } else {
+                    showResult('roomManagementResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('roomManagementResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Load Raumprogramm data with pagination and filters
+         */
+        async function loadRaumprogramData(page = 1) {
+            if (page < 1) page = 1;
+            currentRaumprogramPage = page;
+            
+            const roomTypeId = document.getElementById('raumprogram-filter-roomtype')?.value || '';
+            const inventoryId = document.getElementById('raumprogram-filter-inventory')?.value || '';
+            const search = document.getElementById('raumprogram-search')?.value?.trim() || '';
+            
+            showResult('raumprogramResult', 'loading', '⏳ Lade Raumprogramm-Daten...');
+            
+            try {
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${raumprogramPageSize}`;
+                if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                
+                // Handle multiple inventory selection
+                const inventorySelect = document.getElementById('raumprogram-filter-inventory');
+                const selectedInventories = Array.from(inventorySelect?.selectedOptions || [])
+                    .map(opt => opt.value)
+                    .filter(v => v);
+                if (selectedInventories.length === 1) {
+                    url += `&inventoryTemplateId=${selectedInventories[0]}`;
+                }
+                
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    renderRaumprogramTable(data.rooms || [], selectedInventories);
+                    updateRaumprogramPagination(data);
+                    showResult('raumprogramResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
+                } else {
+                    showResult('raumprogramResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
+                }
+            } catch (error) {
+                console.error('Error loading Raumprogramm data:', error);
+                showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Render Raumprogramm data table - SOLL only with dynamic columns based on visibility settings
+         */
+        function renderRaumprogramTable(rooms, selectedInventoryIds = []) {
+            const thead = document.getElementById('raumprogramTableHead');
+            const tbody = document.getElementById('raumprogramTableBody');
+            
+            // Get column visibility settings
+            const showRaumtyp = document.getElementById('col-raumtyp')?.checked ?? true;
+            const showRaumkategorie = document.getElementById('col-raumkategorie')?.checked ?? true;
+            const showRaum = document.getElementById('col-raum')?.checked ?? true;
+            const showNetArea = document.getElementById('col-netarea')?.checked ?? true;
+            const showGrossArea = document.getElementById('col-grossarea')?.checked ?? true;
+            const showAreaPlanned = document.getElementById('col-areaplanned')?.checked ?? false;
+            const showDescription = document.getElementById('col-description')?.checked ?? false;
+            const showObjectType = document.getElementById('col-objecttype')?.checked ?? false;
+            const showPredefinedType = document.getElementById('col-predefinedtype')?.checked ?? false;
+            
+            // Get selected inventory templates for column headers
+            const templates = window.inventoryTemplates || [];
+            const selectedTemplates = selectedInventoryIds.length > 0 
+                ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
+                : [];
+            
+            // Show comment column only when single inventory selected
+            const showComment = selectedInventoryIds.length === 1;
+            
+            // Build dynamic headers
+            let headerHtml = '<tr>';
+            if (showRaumtyp) headerHtml += '<th>Raumtyp</th>';
+            if (showRaumkategorie) headerHtml += '<th>Raumkategorie</th>';
+            if (showRaum) headerHtml += '<th>Raum</th>';
+            if (showNetArea) headerHtml += '<th>Nettofläche (m²)</th>';
+            if (showGrossArea) headerHtml += '<th>Bruttofläche (m²)</th>';
+            if (showAreaPlanned) headerHtml += '<th>Fläche SOLL (m²)</th>';
+            if (showDescription) headerHtml += '<th>Beschreibung</th>';
+            if (showObjectType) headerHtml += '<th>Objekttyp</th>';
+            if (showPredefinedType) headerHtml += '<th>Vordefinierter Typ</th>';
+            
+            // Add inventory columns
+            selectedTemplates.forEach(t => {
+                const unit = t.unit ? ` (${t.unit})` : '';
+                headerHtml += `<th>${escapeHtml(t.propertyName)}${unit}</th>`;
+            });
+            if (showComment) {
+                headerHtml += '<th>Kommentar</th>';
+            }
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
+            
+            // Calculate column count for empty message
+            let colCount = 0;
+            if (showRaumtyp) colCount++;
+            if (showRaumkategorie) colCount++;
+            if (showRaum) colCount++;
+            if (showNetArea) colCount++;
+            if (showGrossArea) colCount++;
+            if (showAreaPlanned) colCount++;
+            if (showDescription) colCount++;
+            if (showObjectType) colCount++;
+            if (showPredefinedType) colCount++;
+            colCount += selectedTemplates.length;
+            if (showComment) colCount++;
+            
+            if (!rooms || rooms.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colCount || 5}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
+                return;
+            }
+            
+            let html = '';
+            rooms.forEach(room => {
+                html += '<tr>';
+                if (showRaumtyp) html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                if (showRaumkategorie) html += `<td>${escapeHtml(room.roomCategory || '')}</td>`;
+                if (showRaum) html += `<td>${escapeHtml(room.name || '')}</td>`;
+                if (showNetArea) html += `<td>${(room.netArea || 0).toFixed(2)}</td>`;
+                if (showGrossArea) html += `<td>${(room.grossArea || 0).toFixed(2)}</td>`;
+                if (showAreaPlanned) html += `<td>${(room.areaPlanned || 0).toFixed(2)}</td>`;
+                if (showDescription) html += `<td>${escapeHtml(room.description || '')}</td>`;
+                if (showObjectType) html += `<td>${escapeHtml(room.objectType || '')}</td>`;
+                if (showPredefinedType) html += `<td>${escapeHtml(room.predefinedType || '')}</td>`;
+                
+                // Add columns for each selected inventory
+                selectedTemplates.forEach(t => {
+                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
+                    const value = inv?.valuePlanned || '-';
+                    html += `<td>${escapeHtml(value)}</td>`;
+                });
+                
+                // Add comment column if single inventory selected
+                if (showComment) {
+                    const inv = (room.inventory || [])[0];
+                    const comment = inv?.comment || '';
+                    html += `<td>${escapeHtml(comment)}</td>`;
+                }
+                
+                html += '</tr>';
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        /**
+         * Update pagination controls
+         */
+        function updateRaumprogramPagination(data) {
+            const prevBtn = document.getElementById('raumprogramPrevPage');
+            const nextBtn = document.getElementById('raumprogramNextPage');
+            const info = document.getElementById('raumprogramPaginationInfo');
+            
+            prevBtn.disabled = data.page <= 1;
+            nextBtn.disabled = data.page >= data.totalPages;
+            info.textContent = `Seite ${data.page} von ${data.totalPages || 1} (${data.totalCount} Einträge)`;
+        }
+        
+        /**
+         * Delete a room
+         */
+        async function deleteRoom(roomId) {
+            if (!confirm('Möchten Sie diesen Raum wirklich löschen?')) {
+                return;
+            }
+            
+            showResult('raumprogramResult', 'loading', '⏳ Lösche Raum...');
+            
+            try {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/room/${roomId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/room/${roomId}`;
+                const response = await fetch(url, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('raumprogramResult', 'success', `✅ ${data.message}`);
+                    await loadRaumprogramData(currentRaumprogramPage);
+                } else {
+                    showResult('raumprogramResult', 'error', `❌ ${data.message || 'Fehler'}`);
+                }
+            } catch (error) {
+                showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Import Raumprogramm from Excel
+         */
+        async function importRaumprogramFromExcel() {
+            const token = getToken();
+            const fileId = document.getElementById('raumprogramImportFile')?.value;
+            
+            if (!token || !fileId) {
+                showResult('importExportResult', 'error', '⚠️ Bitte Token und Datei auswählen');
+                return;
+            }
+            
+            showResult('importExportResult', 'loading', '⏳ Importiere Daten aus Excel...');
+            
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/raumprogram/import`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        fileId: fileId,
+                        columnMappings: {
+                            raumtypColumn: 0,
+                            roomNameColumn: 1,
+                            areaPlannedColumn: 2,
+                            areaActualColumn: 3
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let msg = `✅ ${data.message}<br>`;
+                    msg += `Raumtypen erstellt: ${data.roomTypesCreated || 0}<br>`;
+                    msg += `Räume erstellt: ${data.roomsCreated || 0}<br>`;
+                    msg += `Räume aktualisiert: ${data.roomsUpdated || 0}`;
+                    showResult('importExportResult', 'success', msg);
+                    await refreshAllMasterData();
+                    await loadRaumprogramData();
+                } else {
+                    showResult('importExportResult', 'error', `❌ ${data.message || 'Import fehlgeschlagen'}`);
+                }
+            } catch (error) {
+                showResult('importExportResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Export Raumprogramm to Excel
+         */
+        async function exportRaumprogramToExcel() {
+            const token = getToken();
+            const targetFolder = getTargetFolder();
+            
+            if (!token || !targetFolder) {
+                showResult('importExportResult', 'error', '⚠️ Bitte Token und Zielordner in Einstellungen konfigurieren');
+                return;
+            }
+            
+            showResult('importExportResult', 'loading', '⏳ Exportiere Daten nach Excel...');
+            
+            try {
+                const response = await fetch(`${API_RAUMPROGRAM}/raumprogram/export`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        targetFolderId: targetFolder
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('importExportResult', 'success', `✅ ${data.message}<br>Datei: ${data.fileName}`);
+                } else {
+                    showResult('importExportResult', 'error', `❌ ${data.message || 'Export fehlgeschlagen'}`);
+                }
+            } catch (error) {
+                showResult('importExportResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        // ====================================================================
+        //  AUSGEFÜHRT (IST) TAB FUNCTIONS
+        // ====================================================================
+        
+        let currentIstPage = 1;
+        const istPageSize = 50;
+        
+        /**
+         * Load IST data with pagination and filters
+         */
+        async function loadIstData(page = 1) {
+            if (page < 1) page = 1;
+            currentIstPage = page;
+            
+            const roomTypeId = document.getElementById('ist-filter-roomtype')?.value || '';
+            const search = document.getElementById('ist-search')?.value?.trim() || '';
+            
+            showResult('istResult', 'loading', '⏳ Lade IST-Daten...');
+            
+            try {
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${istPageSize}`;
+                if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    renderIstTable(data.rooms || []);
+                    updateIstPagination(data);
+                    showResult('istResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
+                } else {
+                    showResult('istResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
+                }
+            } catch (error) {
+                console.error('Error loading IST data:', error);
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Render IST data table - shows IST values for editing
+         */
+        function renderIstTable(rooms) {
+            const thead = document.getElementById('istTableHead');
+            const tbody = document.getElementById('istTableBody');
+            
+            // Get selected inventory templates
+            const inventorySelect = document.getElementById('ist-filter-inventory');
+            const selectedInventoryIds = Array.from(inventorySelect?.selectedOptions || [])
+                .map(opt => opt.value)
+                .filter(v => v);
+            
+            const templates = window.inventoryTemplates || [];
+            const selectedTemplates = selectedInventoryIds.length > 0 
+                ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
+                : [];
+            
+            // Show comment column only when single inventory selected
+            const showComment = selectedInventoryIds.length === 1;
+            
+            // Build dynamic headers
+            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>IST (m²)</th>';
+            selectedTemplates.forEach(t => {
+                const unit = t.unit ? ` (${t.unit})` : '';
+                headerHtml += `<th>IST: ${escapeHtml(t.propertyName)}${unit}</th>`;
+            });
+            if (showComment) {
+                headerHtml += '<th>Kommentar</th>';
+            }
+            headerHtml += '<th>Aktionen</th></tr>';
+            thead.innerHTML = headerHtml;
+            
+            if (!rooms || rooms.length === 0) {
+                const colspan = 4 + selectedTemplates.length + (showComment ? 1 : 0);
+                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
+                return;
+            }
+            
+            let html = '';
+            rooms.forEach(room => {
+                const areaActual = room.areaActual || 0;
+                
+                html += `<tr data-room-id="${room.roomID}">`;
+                html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                html += `<td>${escapeHtml(room.name || '')}</td>`;
+                html += `<td><input type="number" class="form-control ist-input" data-field="areaActual" value="${areaActual}" step="0.01" style="width:100px;"></td>`;
+                
+                // Add columns for each selected inventory (IST values)
+                selectedTemplates.forEach(t => {
+                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
+                    const value = inv?.valueActual || '';
+                    html += `<td><input type="text" class="form-control ist-input" data-template-id="${t.inventoryTemplateID}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
+                });
+                
+                // Add comment input if single inventory selected
+                if (showComment) {
+                    const inv = (room.inventory || [])[0];
+                    const comment = inv?.comment || '';
+                    html += `<td><input type="text" class="form-control ist-input" data-field="comment" value="${escapeHtml(comment)}" style="width:150px;"></td>`;
+                }
+                
+                html += `<td><button class="btn btn-danger btn-sm" onclick="deleteRoom(${room.roomID})" title="Löschen">🗑️</button></td>`;
+                html += '</tr>';
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        /**
+         * Update IST pagination controls
+         */
+        function updateIstPagination(data) {
+            const prevBtn = document.getElementById('istPrevPage');
+            const nextBtn = document.getElementById('istNextPage');
+            const info = document.getElementById('istPaginationInfo');
+            
+            if (prevBtn) prevBtn.disabled = data.page <= 1;
+            if (nextBtn) nextBtn.disabled = data.page >= data.totalPages;
+            if (info) info.textContent = `Seite ${data.page} von ${data.totalPages || 1} (${data.totalCount} Einträge)`;
+        }
+        
+        /**
+         * Save IST changes
+         */
+        async function saveIstChanges() {
+            showResult('istResult', 'info', '⚠️ IST-Werte speichern wird in einer zukünftigen Version implementiert.');
+        }
+        
+        /**
+         * Sync IST values from IFC
+         */
+        async function syncIstFromIfc() {
+            showResult('istResult', 'info', '⚠️ IFC-Synchronisation wird in einer zukünftigen Version implementiert.');
+        }
+        
+        /**
+         * Extract IST values from IFC file
+         */
+        async function extractIstFromIfc() {
+            showResult('ifcExtractionResult', 'info', '⚠️ IFC-Extraktion wird in einer zukünftigen Version implementiert.');
         }
 
         // Initialize date picker with today's date as default
