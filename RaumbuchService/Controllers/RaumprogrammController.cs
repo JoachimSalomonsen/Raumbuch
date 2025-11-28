@@ -27,107 +27,6 @@ namespace RaumbuchService.Controllers
         }
 
         // ====================================================================
-        // DATABASE DIAGNOSTIC ENDPOINT
-        // ====================================================================
-
-        /// <summary>
-        /// Diagnostic endpoint to test database connectivity.
-        /// GET /api/raumprogram/dbtest
-        /// </summary>
-        [HttpGet]
-        [Route("raumprogram/dbtest")]
-        public async Task<IHttpActionResult> TestDatabaseConnection()
-        {
-            var result = new Dictionary<string, object>
-            {
-                { "timestamp", DateTime.UtcNow.ToString("O") },
-                { "status", "checking" }
-            };
-
-            try
-            {
-                using (var db = new RaumbuchContext())
-                {
-                    // Test basic connection
-                    result["connectionTest"] = "starting";
-                    var canConnect = await db.Database.Connection.OpenAsync()
-                        .ContinueWith(t => !t.IsFaulted);
-                    result["connectionTest"] = canConnect ? "success" : "failed";
-                    
-                    if (db.Database.Connection.State == System.Data.ConnectionState.Open)
-                    {
-                        db.Database.Connection.Close();
-                    }
-
-                    // Test if tables exist by trying to count records
-                    result["tables"] = new Dictionary<string, object>();
-                    
-                    try
-                    {
-                        var userCount = await db.UserAccess.CountAsync();
-                        ((Dictionary<string, object>)result["tables"])["UserAccess"] = $"OK ({userCount} records)";
-                    }
-                    catch (Exception ex)
-                    {
-                        ((Dictionary<string, object>)result["tables"])["UserAccess"] = $"ERROR: {ex.Message}";
-                    }
-
-                    try
-                    {
-                        var roomTypeCount = await db.RoomTypes.CountAsync();
-                        ((Dictionary<string, object>)result["tables"])["RoomType"] = $"OK ({roomTypeCount} records)";
-                    }
-                    catch (Exception ex)
-                    {
-                        ((Dictionary<string, object>)result["tables"])["RoomType"] = $"ERROR: {ex.Message}";
-                    }
-
-                    try
-                    {
-                        var roomCount = await db.Rooms.CountAsync();
-                        ((Dictionary<string, object>)result["tables"])["Room"] = $"OK ({roomCount} records)";
-                    }
-                    catch (Exception ex)
-                    {
-                        ((Dictionary<string, object>)result["tables"])["Room"] = $"ERROR: {ex.Message}";
-                    }
-
-                    try
-                    {
-                        var inventoryCount = await db.InventoryTemplates.CountAsync();
-                        ((Dictionary<string, object>)result["tables"])["InventoryTemplate"] = $"OK ({inventoryCount} records)";
-                    }
-                    catch (Exception ex)
-                    {
-                        ((Dictionary<string, object>)result["tables"])["InventoryTemplate"] = $"ERROR: {ex.Message}";
-                    }
-
-                    try
-                    {
-                        var roomInvCount = await db.RoomInventories.CountAsync();
-                        ((Dictionary<string, object>)result["tables"])["RoomInventory"] = $"OK ({roomInvCount} records)";
-                    }
-                    catch (Exception ex)
-                    {
-                        ((Dictionary<string, object>)result["tables"])["RoomInventory"] = $"ERROR: {ex.Message}";
-                    }
-
-                    result["status"] = "completed";
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                result["status"] = "error";
-                result["error"] = ex.Message;
-                result["innerError"] = ex.InnerException?.Message;
-                result["stackTrace"] = ex.StackTrace;
-                return Ok(result);
-            }
-        }
-
-        // ====================================================================
         // AUTHORIZATION HELPERS
         // ====================================================================
 
@@ -520,6 +419,13 @@ namespace RaumbuchService.Controllers
                     return BadRequest("PropertyName ist erforderlich.");
                 }
 
+                // Validate DataType if provided
+                var validDataTypes = new[] { "Text", "Number", "Boolean", "Integer", "Decimal" };
+                if (!string.IsNullOrWhiteSpace(request.DataType) && !validDataTypes.Contains(request.DataType))
+                {
+                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", validDataTypes)}");
+                }
+
                 using (var db = new RaumbuchContext())
                 {
                     // Authorization check
@@ -538,7 +444,12 @@ namespace RaumbuchService.Controllers
                         return BadRequest($"Ausstattungseigenschaft '{request.PropertyName}' existiert bereits.");
                     }
 
-                    var template = new InventoryTemplate { PropertyName = request.PropertyName };
+                    var template = new InventoryTemplate 
+                    { 
+                        PropertyName = request.PropertyName,
+                        DataType = request.DataType ?? "Text",
+                        Unit = request.Unit
+                    };
                     db.InventoryTemplates.Add(template);
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
@@ -550,6 +461,8 @@ namespace RaumbuchService.Controllers
                         {
                             InventoryTemplateID = template.InventoryTemplateID,
                             PropertyName = template.PropertyName,
+                            DataType = template.DataType,
+                            Unit = template.Unit,
                             ModifiedByUserID = template.ModifiedByUserID,
                             ModifiedDate = template.ModifiedDate
                         }
@@ -581,6 +494,8 @@ namespace RaumbuchService.Controllers
                         {
                             InventoryTemplateID = it.InventoryTemplateID,
                             PropertyName = it.PropertyName,
+                            DataType = it.DataType,
+                            Unit = it.Unit,
                             ModifiedByUserID = it.ModifiedByUserID,
                             ModifiedDate = it.ModifiedDate
                         })
@@ -630,6 +545,13 @@ namespace RaumbuchService.Controllers
                     return BadRequest("PropertyName ist erforderlich.");
                 }
 
+                // Validate DataType if provided
+                var validDataTypes = new[] { "Text", "Number", "Boolean", "Integer", "Decimal" };
+                if (!string.IsNullOrWhiteSpace(request.DataType) && !validDataTypes.Contains(request.DataType))
+                {
+                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", validDataTypes)}");
+                }
+
                 using (var db = new RaumbuchContext())
                 {
                     // Authorization check
@@ -656,6 +578,8 @@ namespace RaumbuchService.Controllers
                     }
 
                     template.PropertyName = request.PropertyName;
+                    template.DataType = request.DataType ?? template.DataType ?? "Text";
+                    template.Unit = request.Unit;
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
                     return Ok(new InventoryTemplateResponse
@@ -666,6 +590,8 @@ namespace RaumbuchService.Controllers
                         {
                             InventoryTemplateID = template.InventoryTemplateID,
                             PropertyName = template.PropertyName,
+                            DataType = template.DataType,
+                            Unit = template.Unit,
                             ModifiedByUserID = template.ModifiedByUserID,
                             ModifiedDate = template.ModifiedDate
                         }
@@ -989,6 +915,14 @@ namespace RaumbuchService.Controllers
                         Name = r.Name,
                         AreaPlanned = r.AreaPlanned,
                         AreaActual = r.AreaActual,
+                        // IFC Properties
+                        PubliclyAccessible = r.PubliclyAccessible,
+                        HandicapAccessible = r.HandicapAccessible,
+                        IsExternal = r.IsExternal,
+                        Description = r.Description,
+                        ObjectType = r.ObjectType,
+                        PredefinedType = r.PredefinedType,
+                        ElevationWithFlooring = r.ElevationWithFlooring,
                         ModifiedByUserID = r.ModifiedByUserID,
                         ModifiedDate = r.ModifiedDate,
                         Inventory = (inventoryTemplateId.HasValue
@@ -999,6 +933,8 @@ namespace RaumbuchService.Controllers
                                 RoomInventoryID = ri.RoomInventoryID,
                                 InventoryTemplateID = ri.InventoryTemplateID,
                                 PropertyName = ri.InventoryTemplate?.PropertyName,
+                                DataType = ri.InventoryTemplate?.DataType,
+                                Unit = ri.InventoryTemplate?.Unit,
                                 ValuePlanned = ri.ValuePlanned,
                                 ValueActual = ri.ValueActual,
                                 Comment = ri.Comment,
@@ -1443,6 +1379,8 @@ namespace RaumbuchService.Controllers
     public class InventoryTemplateRequest
     {
         public string PropertyName { get; set; }
+        public string DataType { get; set; }
+        public string Unit { get; set; }
         public string UserId { get; set; }
     }
 
@@ -1450,6 +1388,8 @@ namespace RaumbuchService.Controllers
     {
         public int InventoryTemplateID { get; set; }
         public string PropertyName { get; set; }
+        public string DataType { get; set; }
+        public string Unit { get; set; }
         public string ModifiedByUserID { get; set; }
         public DateTime? ModifiedDate { get; set; }
     }
@@ -1471,6 +1411,14 @@ namespace RaumbuchService.Controllers
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        // IFC Standard Properties
+        public bool? PubliclyAccessible { get; set; }
+        public bool? HandicapAccessible { get; set; }
+        public bool? IsExternal { get; set; }
+        public string Description { get; set; }
+        public string ObjectType { get; set; }
+        public string PredefinedType { get; set; }
+        public decimal? ElevationWithFlooring { get; set; }
         public string UserId { get; set; }
     }
 
@@ -1482,6 +1430,14 @@ namespace RaumbuchService.Controllers
         public string Name { get; set; }
         public decimal? AreaPlanned { get; set; }
         public decimal? AreaActual { get; set; }
+        // IFC Standard Properties
+        public bool? PubliclyAccessible { get; set; }
+        public bool? HandicapAccessible { get; set; }
+        public bool? IsExternal { get; set; }
+        public string Description { get; set; }
+        public string ObjectType { get; set; }
+        public string PredefinedType { get; set; }
+        public decimal? ElevationWithFlooring { get; set; }
         public string ModifiedByUserID { get; set; }
         public DateTime? ModifiedDate { get; set; }
     }
@@ -1497,6 +1453,8 @@ namespace RaumbuchService.Controllers
         public int RoomInventoryID { get; set; }
         public int InventoryTemplateID { get; set; }
         public string PropertyName { get; set; }
+        public string DataType { get; set; }
+        public string Unit { get; set; }
         public string ValuePlanned { get; set; }
         public string ValueActual { get; set; }
         public string Comment { get; set; }

@@ -125,6 +125,56 @@ namespace RaumbuchService.Data
         [Column(TypeName = "decimal")]
         public decimal? AreaActual { get; set; }
 
+        // ====================================================================
+        // IFC Standard Properties (Pset_SpaceCommon and IfcSpace)
+        // ====================================================================
+
+        /// <summary>
+        /// Pset_SpaceCommon.PubliclyAccessible [Boolean]
+        /// Indicates whether the space is publicly accessible.
+        /// </summary>
+        public bool? PubliclyAccessible { get; set; }
+
+        /// <summary>
+        /// Pset_SpaceCommon.HandicapAccessible [Boolean]
+        /// Indicates whether the space is handicap accessible.
+        /// </summary>
+        public bool? HandicapAccessible { get; set; }
+
+        /// <summary>
+        /// Pset_SpaceCommon.IsExternal [Boolean]
+        /// Indicates whether the space is external or internal.
+        /// </summary>
+        public bool? IsExternal { get; set; }
+
+        /// <summary>
+        /// IfcSpace.Description [Text]
+        /// A textual description of the space.
+        /// </summary>
+        [StringLength(500)]
+        public string Description { get; set; }
+
+        /// <summary>
+        /// IfcSpace.ObjectType [Label]
+        /// The type/class of the space object.
+        /// </summary>
+        [StringLength(100)]
+        public string ObjectType { get; set; }
+
+        /// <summary>
+        /// IfcSpace.PredefinedType {NOTDEFINED; USERDEFINED; SPACE; PARKING; INTERNAL; EXTERNAL; BERTH; GFA}
+        /// The predefined type of the space.
+        /// </summary>
+        [StringLength(50)]
+        public string PredefinedType { get; set; }
+
+        /// <summary>
+        /// IfcSpace.ElevationWithFlooring [LengthMeasure]
+        /// The elevation of the space with flooring in meters.
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? ElevationWithFlooring { get; set; }
+
         /// <summary>
         /// User ID who last modified this record.
         /// </summary>
@@ -181,6 +231,19 @@ namespace RaumbuchService.Data
         public string PropertyName { get; set; }
 
         /// <summary>
+        /// Data type for the property value.
+        /// Allowed values: 'Text', 'Number', 'Boolean', 'Integer', 'Decimal'
+        /// </summary>
+        [StringLength(50)]
+        public string DataType { get; set; }
+
+        /// <summary>
+        /// Unit of measurement for Number types (e.g., 'm²', 'kg', 'Stück').
+        /// </summary>
+        [StringLength(50)]
+        public string Unit { get; set; }
+
+        /// <summary>
         /// User ID who last modified this record.
         /// </summary>
         [StringLength(255)]
@@ -205,6 +268,7 @@ namespace RaumbuchService.Data
         public InventoryTemplate()
         {
             RoomInventories = new HashSet<RoomInventory>();
+            DataType = "Text"; // Default to text
         }
     }
 

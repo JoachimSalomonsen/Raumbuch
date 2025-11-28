@@ -52,7 +52,7 @@ BEGIN
 END
 GO
 
--- Create Room table
+-- Create Room table with IFC Standard Properties
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[Room] (
@@ -61,6 +61,14 @@ BEGIN
         [Name] NVARCHAR(100) NOT NULL,
         [AreaPlanned] DECIMAL(18,2) NULL,
         [AreaActual] DECIMAL(18,2) NULL,
+        -- IFC Standard Properties (Pset_SpaceCommon and IfcSpace)
+        [PubliclyAccessible] BIT NULL,              -- Pset_SpaceCommon.PubliclyAccessible
+        [HandicapAccessible] BIT NULL,              -- Pset_SpaceCommon.HandicapAccessible
+        [IsExternal] BIT NULL,                      -- Pset_SpaceCommon.IsExternal
+        [Description] NVARCHAR(500) NULL,           -- IfcSpace.Description
+        [ObjectType] NVARCHAR(100) NULL,            -- IfcSpace.ObjectType
+        [PredefinedType] NVARCHAR(50) NULL,         -- IfcSpace.PredefinedType {NOTDEFINED|USERDEFINED|SPACE|PARKING|INTERNAL|EXTERNAL|BERTH|GFA}
+        [ElevationWithFlooring] DECIMAL(18,4) NULL, -- IfcSpace.ElevationWithFlooring
         [ModifiedByUserID] NVARCHAR(255) NULL,
         [ModifiedDate] DATETIME2 NULL,
         CONSTRAINT [FK_Room_RoomType] FOREIGN KEY ([RoomTypeID]) 
@@ -83,15 +91,53 @@ BEGIN
         ALTER TABLE [dbo].[Room] ADD [ModifiedDate] DATETIME2 NULL;
         PRINT 'Added column: Room.ModifiedDate';
     END
+    -- IFC Standard Properties
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'PubliclyAccessible')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [PubliclyAccessible] BIT NULL;
+        PRINT 'Added column: Room.PubliclyAccessible';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'HandicapAccessible')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [HandicapAccessible] BIT NULL;
+        PRINT 'Added column: Room.HandicapAccessible';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'IsExternal')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [IsExternal] BIT NULL;
+        PRINT 'Added column: Room.IsExternal';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'Description')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [Description] NVARCHAR(500) NULL;
+        PRINT 'Added column: Room.Description';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'ObjectType')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [ObjectType] NVARCHAR(100) NULL;
+        PRINT 'Added column: Room.ObjectType';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'PredefinedType')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [PredefinedType] NVARCHAR(50) NULL;
+        PRINT 'Added column: Room.PredefinedType';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'ElevationWithFlooring')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [ElevationWithFlooring] DECIMAL(18,4) NULL;
+        PRINT 'Added column: Room.ElevationWithFlooring';
+    END
 END
 GO
 
--- Create InventoryTemplate table
+-- Create InventoryTemplate table with DataType and Unit
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[InventoryTemplate]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[InventoryTemplate] (
         [InventoryTemplateID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         [PropertyName] NVARCHAR(100) NOT NULL,
+        [DataType] NVARCHAR(50) NULL DEFAULT 'Text',  -- Text, Number, Boolean, Integer, Decimal
+        [Unit] NVARCHAR(50) NULL,                      -- e.g., 'm²', 'kg', 'Stück'
         [ModifiedByUserID] NVARCHAR(255) NULL,
         [ModifiedDate] DATETIME2 NULL,
         CONSTRAINT [FK_InventoryTemplate_UserAccess] FOREIGN KEY ([ModifiedByUserID]) 
@@ -102,6 +148,16 @@ END
 ELSE
 BEGIN
     -- Add new columns if table exists but columns don't
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[InventoryTemplate]') AND name = 'DataType')
+    BEGIN
+        ALTER TABLE [dbo].[InventoryTemplate] ADD [DataType] NVARCHAR(50) NULL DEFAULT 'Text';
+        PRINT 'Added column: InventoryTemplate.DataType';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[InventoryTemplate]') AND name = 'Unit')
+    BEGIN
+        ALTER TABLE [dbo].[InventoryTemplate] ADD [Unit] NVARCHAR(50) NULL;
+        PRINT 'Added column: InventoryTemplate.Unit';
+    END
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[InventoryTemplate]') AND name = 'ModifiedByUserID')
     BEGIN
         ALTER TABLE [dbo].[InventoryTemplate] ADD [ModifiedByUserID] NVARCHAR(255) NULL;
@@ -193,12 +249,12 @@ INSERT INTO [dbo].[RoomType] ([Name], [RoomCategory]) VALUES ('Küche', 'Versorg
 INSERT INTO [dbo].[RoomType] ([Name], [RoomCategory]) VALUES ('WC', 'Sanitärfläche');
 INSERT INTO [dbo].[RoomType] ([Name], [RoomCategory]) VALUES ('Flur', 'Verkehrsfläche');
 
--- Sample Inventory Templates
-INSERT INTO [dbo].[InventoryTemplate] ([PropertyName]) VALUES ('Bodenbelag');
-INSERT INTO [dbo].[InventoryTemplate] ([PropertyName]) VALUES ('Beleuchtung');
-INSERT INTO [dbo].[InventoryTemplate] ([PropertyName]) VALUES ('Klimaanlage');
-INSERT INTO [dbo].[InventoryTemplate] ([PropertyName]) VALUES ('Netzwerk');
-INSERT INTO [dbo].[InventoryTemplate] ([PropertyName]) VALUES ('Möblierung');
+-- Sample Inventory Templates with DataType
+INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Bodenbelag', 'Text', NULL);
+INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Beleuchtung', 'Text', NULL);
+INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Klimaanlage', 'Boolean', NULL);
+INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Netzwerk', 'Text', NULL);
+INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Anzahl Arbeitsplätze', 'Integer', 'Stück');
 */
 
 PRINT 'Database schema setup complete.';

@@ -28,6 +28,11 @@
                 <span>Raumprogramm</span>
             </div>
 
+            <div class="tc-tab" onclick="openTab('tab-ausgefuehrt')">
+                <img src="Img/book.png" class="tc-tab-icon" />
+                <span>Ausgeführt</span>
+            </div>
+
             <div class="tc-tab" onclick="openTab('tab-analyse')">
                 <img src="Img/analyse.png" class="tc-tab-icon" />
                 <span>Analyse</span>
@@ -249,14 +254,28 @@
                             <label for="newInventoryPropertyName">Neue Eigenschaft:</label>
                             <div style="display:flex; gap:10px; align-items:flex-start;">
                                 <input type="text" id="newInventoryPropertyName" class="form-control" placeholder="z.B. 'Bodenbelag', 'Beleuchtung'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newInventoryDataType">Datentyp:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <select id="newInventoryDataType" class="form-control" style="width:200px;">
+                                    <option value="Text">Text</option>
+                                    <option value="Number">Zahl (Number)</option>
+                                    <option value="Integer">Ganzzahl (Integer)</option>
+                                    <option value="Decimal">Dezimalzahl (Decimal)</option>
+                                    <option value="Boolean">Ja/Nein (Boolean)</option>
+                                </select>
+                                <input type="text" id="newInventoryUnit" class="form-control" placeholder="Einheit (z.B. m², kg, Stück)" style="width:180px;">
                                 <button class="btn btn-primary" onclick="createInventoryTemplate()">➕ Hinzufügen</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Vorhandene Eigenschaften:</label>
-                            <select id="existingInventoryTemplates" class="form-control" size="5" style="width:100%;">
+                            <select id="existingInventoryTemplates" class="form-control" size="5" style="width:100%;" multiple>
                                 <option value="">-- Laden Sie die Daten --</option>
                             </select>
+                            <small>Mehrfachauswahl: Strg+Klick für mehrere Inventare</small>
                             <div style="margin-top:10px;">
                                 <button class="btn btn-secondary" onclick="loadInventoryTemplates()">🔄 Laden</button>
                                 <button class="btn btn-danger" onclick="deleteSelectedInventoryTemplate()">🗑️ Löschen</button>
@@ -267,9 +286,9 @@
                     <div id="masterDataResult" class="result"></div>
                 </section>
 
-                <!-- Räume verwalten (Room Management) -->
+                <!-- Räume verwalten (Room Management) - SOLL only, IST moved to Ausgeführt tab -->
                 <section class="card">
-                    <h2>Räume verwalten</h2>
+                    <h2>Räume verwalten (SOLL)</h2>
                     <div class="form-group">
                         <label for="roomRoomType">Raumtyp:</label>
                         <select id="roomRoomType" class="form-control">
@@ -280,15 +299,9 @@
                         <label for="roomName">Raum Name:</label>
                         <input type="text" id="roomName" class="form-control" placeholder="z.B. 'Büro 101'">
                     </div>
-                    <div style="display:flex; gap:20px;">
-                        <div class="form-group" style="flex:1;">
-                            <label for="roomAreaPlanned">Fläche SOLL (m²):</label>
-                            <input type="number" id="roomAreaPlanned" class="form-control" step="0.01" placeholder="0.00">
-                        </div>
-                        <div class="form-group" style="flex:1;">
-                            <label for="roomAreaActual">Fläche IST (m²):</label>
-                            <input type="number" id="roomAreaActual" class="form-control" step="0.01" placeholder="0.00">
-                        </div>
+                    <div class="form-group">
+                        <label for="roomAreaPlanned">Fläche SOLL (m²):</label>
+                        <input type="number" id="roomAreaPlanned" class="form-control" step="0.01" placeholder="0.00" style="max-width:200px;">
                     </div>
                     <div style="margin-top:10px;">
                         <button class="btn btn-primary" onclick="createRoom()">➕ Raum hinzufügen</button>
@@ -298,7 +311,8 @@
 
                 <!-- Raumprogramm Overview -->
                 <section class="card">
-                    <h2>Raumprogramm Übersicht</h2>
+                    <h2>Raumprogramm Übersicht (SOLL)</h2>
+                    <p>Zeigt die geplanten (SOLL) Werte. Für IST-Werte nutzen Sie den Tab "Ausgeführt".</p>
                     
                     <!-- Filters -->
                     <div class="filter-controls">
@@ -310,7 +324,7 @@
                         </div>
                         <div class="form-group" style="display:inline-block; margin-right:15px;">
                             <label for="raumprogram-filter-inventory">Inventar:</label>
-                            <select id="raumprogram-filter-inventory" class="form-control" style="width:200px;" onchange="loadRaumprogramData()">
+                            <select id="raumprogram-filter-inventory" class="form-control" style="width:200px;" multiple onchange="loadRaumprogramData()" title="Strg+Klick für Mehrfachauswahl">
                                 <option value="">-- Alle --</option>
                             </select>
                         </div>
@@ -320,23 +334,19 @@
                         </div>
                     </div>
 
-                    <!-- Data Table -->
-                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto;">
+                    <!-- Data Table - SOLL only, dynamic columns for selected inventories -->
+                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
                         <table class="analyse-table" id="raumprogramTable">
-                            <thead>
+                            <thead id="raumprogramTableHead">
                                 <tr>
                                     <th>Raumtyp</th>
                                     <th>Raum Name</th>
                                     <th>SOLL (m²)</th>
-                                    <th>IST (m²)</th>
-                                    <th>Abweichung</th>
-                                    <th>Status</th>
-                                    <th>Aktionen</th>
                                 </tr>
                             </thead>
                             <tbody id="raumprogramTableBody">
                                 <tr>
-                                    <td colspan="7" style="text-align:center; color:#666;">
+                                    <td colspan="3" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Klicken Sie auf "Daten laden".
                                     </td>
                                 </tr>
@@ -382,6 +392,96 @@
                 </section>
 
             </div> <!-- END TAB RAUMPROGRAMM -->
+
+            <!-- ========================================================= -->
+            <!-- TAB - AUSGEFÜHRT (IST/Actuals Data Management)            -->
+            <!-- ========================================================= -->
+            <div id="tab-ausgefuehrt" class="tab-content">
+
+                <section class="card">
+                    <h2>Ausgeführt (IST-Werte)</h2>
+                    <p>Hier werden die tatsächlichen (IST) Werte der Räume und Inventare erfasst und verwaltet.</p>
+                    
+                    <!-- Filters -->
+                    <div class="filter-controls">
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="ist-filter-roomtype">Raumtyp:</label>
+                            <select id="ist-filter-roomtype" class="form-control" style="width:200px;" onchange="loadIstData()">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block; margin-right:15px;">
+                            <label for="ist-filter-inventory">Inventar:</label>
+                            <select id="ist-filter-inventory" class="form-control" style="width:200px;" multiple onchange="loadIstData()" title="Strg+Klick für Mehrfachauswahl">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:inline-block;">
+                            <label for="ist-search">Suche:</label>
+                            <input type="text" id="ist-search" class="form-control" placeholder="Raum suchen..." style="width:200px;" onkeyup="loadIstData()">
+                        </div>
+                    </div>
+
+                    <!-- Data Table - IST values with comparison to SOLL -->
+                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
+                        <table class="analyse-table" id="istTable">
+                            <thead id="istTableHead">
+                                <tr>
+                                    <th>Raumtyp</th>
+                                    <th>Raum Name</th>
+                                    <th>IST Fläche (m²)</th>
+                                    <th>Kommentar</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="istTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center; color:#666;">
+                                        Keine Daten vorhanden. Klicken Sie auf "Daten laden".
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span id="istPaginationInfo">Seite 1 von 1</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary" id="istPrevPage" onclick="loadIstData(currentIstPage - 1)" disabled>◀ Zurück</button>
+                            <button class="btn btn-secondary" id="istNextPage" onclick="loadIstData(currentIstPage + 1)" disabled>Weiter ▶</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="loadIstData()">📥 Daten laden</button>
+                        <button class="btn btn-secondary" onclick="syncIstFromIfc()">🔄 IST aus IFC aktualisieren</button>
+                        <button class="btn btn-primary" onclick="saveIstChanges()">💾 Änderungen speichern</button>
+                    </div>
+                    <div id="istResult" class="result"></div>
+                </section>
+
+                <!-- IFC Data Source -->
+                <section class="card">
+                    <h2>IFC Datenquelle</h2>
+                    <p>Wählen Sie eine IFC-Datei aus, um IST-Werte automatisch zu extrahieren.</p>
+                    
+                    <div class="form-group">
+                        <label for="istIfcFile">IFC-Datei mit IfcSpaces:</label>
+                        <select id="istIfcFile" class="form-control">
+                            <option value="">-- IFC auswählen nach "Dateien laden" in Einstellungen --</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="extractIstFromIfc()">📊 IST aus IFC extrahieren</button>
+                    </div>
+                    <div id="ifcExtractionResult" class="result"></div>
+                </section>
+
+            </div> <!-- END TAB AUSGEFÜHRT -->
 
             <!-- ========================================================= -->
             <!-- TAB 2 – ANALYSE (SOLL/IST + ZUSAMMENFASSUNG)              -->
@@ -3642,10 +3742,12 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && data.success) {
                     const select = document.getElementById('existingRoomTypes');
                     const filterSelect = document.getElementById('raumprogram-filter-roomtype');
+                    const istFilterSelect = document.getElementById('ist-filter-roomtype');
                     const roomSelect = document.getElementById('roomRoomType');
                     
                     select.innerHTML = '';
                     filterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    if (istFilterSelect) istFilterSelect.innerHTML = '<option value="">-- Alle --</option>';
                     roomSelect.innerHTML = '<option value="">-- Raumtyp auswählen --</option>';
                     
                     (data.roomTypes || []).forEach(rt => {
@@ -3659,6 +3761,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         filterOption.value = rt.roomTypeID;
                         filterOption.textContent = rt.name;
                         filterSelect.appendChild(filterOption);
+                        
+                        if (istFilterSelect) {
+                            istFilterSelect.appendChild(filterOption.cloneNode(true));
+                        }
                         
                         const roomOption = document.createElement('option');
                         roomOption.value = rt.roomTypeID;
@@ -3684,17 +3790,37 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && data.success) {
                     const select = document.getElementById('existingInventoryTemplates');
                     const filterSelect = document.getElementById('raumprogram-filter-inventory');
+                    const istFilterSelect = document.getElementById('ist-filter-inventory');
                     
                     select.innerHTML = '';
                     filterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    if (istFilterSelect) istFilterSelect.innerHTML = '<option value="">-- Alle --</option>';
+                    
+                    // Store inventory templates globally for dynamic table columns
+                    window.inventoryTemplates = data.inventoryTemplates || [];
                     
                     (data.inventoryTemplates || []).forEach(it => {
                         const option = document.createElement('option');
                         option.value = it.inventoryTemplateID;
-                        option.textContent = it.propertyName;
+                        // Show DataType and Unit in the display
+                        let displayText = it.propertyName;
+                        if (it.dataType && it.dataType !== 'Text') {
+                            displayText += ` [${it.dataType}]`;
+                        }
+                        if (it.unit) {
+                            displayText += ` (${it.unit})`;
+                        }
+                        option.textContent = displayText;
                         select.appendChild(option);
                         
-                        filterSelect.appendChild(option.cloneNode(true));
+                        const filterOption = document.createElement('option');
+                        filterOption.value = it.inventoryTemplateID;
+                        filterOption.textContent = it.propertyName;
+                        filterSelect.appendChild(filterOption);
+                        
+                        if (istFilterSelect) {
+                            istFilterSelect.appendChild(filterOption.cloneNode(true));
+                        }
                     });
                     
                     console.log(`Loaded ${data.inventoryTemplates?.length || 0} inventory templates`);
@@ -3790,6 +3916,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         async function createInventoryTemplate() {
             const propertyName = document.getElementById('newInventoryPropertyName').value.trim();
+            const dataType = document.getElementById('newInventoryDataType')?.value || 'Text';
+            const unit = document.getElementById('newInventoryUnit')?.value?.trim() || '';
             
             if (!propertyName) {
                 showResult('masterDataResult', 'error', '⚠️ Bitte geben Sie einen Eigenschaftsnamen ein');
@@ -3804,6 +3932,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         propertyName: propertyName,
+                        dataType: dataType,
+                        unit: unit || null,
                         userId: getCurrentUserId()
                     })
                 });
@@ -3813,6 +3943,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (response.ok && data.success) {
                     showResult('masterDataResult', 'success', `✅ ${data.message}`);
                     document.getElementById('newInventoryPropertyName').value = '';
+                    document.getElementById('newInventoryUnit').value = '';
                     await loadInventoryTemplates();
                 } else {
                     showResult('masterDataResult', 'error', `❌ ${data.message || 'Fehler'}`);
@@ -3864,13 +3995,12 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Create a new room
+         * Create a new room - SOLL only (IST values managed in Ausgeführt tab)
          */
         async function createRoom() {
             const roomTypeId = document.getElementById('roomRoomType').value;
             const name = document.getElementById('roomName').value.trim();
             const areaPlanned = document.getElementById('roomAreaPlanned').value;
-            const areaActual = document.getElementById('roomAreaActual').value;
             
             if (!roomTypeId || !name) {
                 showResult('roomManagementResult', 'error', '⚠️ Bitte Raumtyp und Name eingeben');
@@ -3887,7 +4017,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         roomTypeID: parseInt(roomTypeId),
                         name: name,
                         areaPlanned: areaPlanned ? parseFloat(areaPlanned) : null,
-                        areaActual: areaActual ? parseFloat(areaActual) : null,
+                        areaActual: null, // IST values managed in Ausgeführt tab
                         userId: getCurrentUserId()
                     })
                 });
@@ -3898,7 +4028,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     showResult('roomManagementResult', 'success', `✅ ${data.message}`);
                     document.getElementById('roomName').value = '';
                     document.getElementById('roomAreaPlanned').value = '';
-                    document.getElementById('roomAreaActual').value = '';
                     await loadRaumprogramData();
                 } else {
                     showResult('roomManagementResult', 'error', `❌ ${data.message || 'Fehler'}`);
@@ -3924,14 +4053,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             try {
                 let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${raumprogramPageSize}`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
-                if (inventoryId) url += `&inventoryTemplateId=${inventoryId}`;
+                
+                // Handle multiple inventory selection
+                const inventorySelect = document.getElementById('raumprogram-filter-inventory');
+                const selectedInventories = Array.from(inventorySelect?.selectedOptions || [])
+                    .map(opt => opt.value)
+                    .filter(v => v);
+                if (selectedInventories.length === 1) {
+                    url += `&inventoryTemplateId=${selectedInventories[0]}`;
+                }
+                
                 if (search) url += `&search=${encodeURIComponent(search)}`;
                 
                 const response = await fetch(url);
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    renderRaumprogramTable(data.rooms || []);
+                    renderRaumprogramTable(data.rooms || [], selectedInventories);
                     updateRaumprogramPagination(data);
                     showResult('raumprogramResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
                 } else {
@@ -3944,46 +4082,63 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Render Raumprogramm data table
+         * Render Raumprogramm data table - SOLL only with dynamic inventory columns
          */
-        function renderRaumprogramTable(rooms) {
+        function renderRaumprogramTable(rooms, selectedInventoryIds = []) {
+            const thead = document.getElementById('raumprogramTableHead');
             const tbody = document.getElementById('raumprogramTableBody');
             
+            // Get selected inventory templates for column headers
+            const templates = window.inventoryTemplates || [];
+            const selectedTemplates = selectedInventoryIds.length > 0 
+                ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
+                : [];
+            
+            // Show comment column only when single inventory selected
+            const showComment = selectedInventoryIds.length === 1;
+            
+            // Build dynamic headers
+            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>SOLL (m²)</th>';
+            selectedTemplates.forEach(t => {
+                const unit = t.unit ? ` (${t.unit})` : '';
+                headerHtml += `<th>${escapeHtml(t.propertyName)}${unit}</th>`;
+            });
+            if (showComment) {
+                headerHtml += '<th>Kommentar</th>';
+            }
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
+            
             if (!rooms || rooms.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>';
+                const colspan = 3 + selectedTemplates.length + (showComment ? 1 : 0);
+                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
                 return;
             }
             
             let html = '';
             rooms.forEach(room => {
                 const areaPlanned = room.areaPlanned || 0;
-                const areaActual = room.areaActual || 0;
-                const percentage = areaPlanned > 0 ? (areaActual / areaPlanned) * 100 : 0;
-                const deviation = percentage - 100;
                 
-                let status = 'Erfüllt';
-                let rowClass = 'analyse-row-ok';
-                if (deviation < -10) {
-                    status = 'Unterschritten';
-                    rowClass = 'analyse-row-under';
-                } else if (deviation > 10) {
-                    status = 'Überschritten';
-                    rowClass = 'analyse-row-over';
+                html += '<tr>';
+                html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                html += `<td>${escapeHtml(room.name || '')}</td>`;
+                html += `<td>${areaPlanned.toFixed(2)}</td>`;
+                
+                // Add columns for each selected inventory
+                selectedTemplates.forEach(t => {
+                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
+                    const value = inv?.valuePlanned || '-';
+                    html += `<td>${escapeHtml(value)}</td>`;
+                });
+                
+                // Add comment column if single inventory selected
+                if (showComment) {
+                    const inv = (room.inventory || [])[0];
+                    const comment = inv?.comment || '';
+                    html += `<td>${escapeHtml(comment)}</td>`;
                 }
                 
-                html += `
-                    <tr class="${rowClass}">
-                        <td>${escapeHtml(room.roomTypeName || '')}</td>
-                        <td>${escapeHtml(room.name || '')}</td>
-                        <td>${areaPlanned.toFixed(2)}</td>
-                        <td>${areaActual.toFixed(2)}</td>
-                        <td>${percentage.toFixed(1)}%</td>
-                        <td><span class="status-badge ${status === 'Erfüllt' ? 'status-ok' : status === 'Unterschritten' ? 'status-under' : 'status-over'}">${status}</span></td>
-                        <td>
-                            <button class="btn btn-danger btn-sm" onclick="deleteRoom(${room.roomID})" title="Löschen">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                html += '</tr>';
             });
             
             tbody.innerHTML = html;
@@ -4116,6 +4271,149 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             } catch (error) {
                 showResult('importExportResult', 'error', `❌ Fehler: ${error.message}`);
             }
+        }
+
+        // ====================================================================
+        //  AUSGEFÜHRT (IST) TAB FUNCTIONS
+        // ====================================================================
+        
+        let currentIstPage = 1;
+        const istPageSize = 50;
+        
+        /**
+         * Load IST data with pagination and filters
+         */
+        async function loadIstData(page = 1) {
+            if (page < 1) page = 1;
+            currentIstPage = page;
+            
+            const roomTypeId = document.getElementById('ist-filter-roomtype')?.value || '';
+            const search = document.getElementById('ist-search')?.value?.trim() || '';
+            
+            showResult('istResult', 'loading', '⏳ Lade IST-Daten...');
+            
+            try {
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${istPageSize}`;
+                if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    renderIstTable(data.rooms || []);
+                    updateIstPagination(data);
+                    showResult('istResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
+                } else {
+                    showResult('istResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
+                }
+            } catch (error) {
+                console.error('Error loading IST data:', error);
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Render IST data table - shows IST values for editing
+         */
+        function renderIstTable(rooms) {
+            const thead = document.getElementById('istTableHead');
+            const tbody = document.getElementById('istTableBody');
+            
+            // Get selected inventory templates
+            const inventorySelect = document.getElementById('ist-filter-inventory');
+            const selectedInventoryIds = Array.from(inventorySelect?.selectedOptions || [])
+                .map(opt => opt.value)
+                .filter(v => v);
+            
+            const templates = window.inventoryTemplates || [];
+            const selectedTemplates = selectedInventoryIds.length > 0 
+                ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
+                : [];
+            
+            // Show comment column only when single inventory selected
+            const showComment = selectedInventoryIds.length === 1;
+            
+            // Build dynamic headers
+            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>IST (m²)</th>';
+            selectedTemplates.forEach(t => {
+                const unit = t.unit ? ` (${t.unit})` : '';
+                headerHtml += `<th>IST: ${escapeHtml(t.propertyName)}${unit}</th>`;
+            });
+            if (showComment) {
+                headerHtml += '<th>Kommentar</th>';
+            }
+            headerHtml += '<th>Aktionen</th></tr>';
+            thead.innerHTML = headerHtml;
+            
+            if (!rooms || rooms.length === 0) {
+                const colspan = 4 + selectedTemplates.length + (showComment ? 1 : 0);
+                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
+                return;
+            }
+            
+            let html = '';
+            rooms.forEach(room => {
+                const areaActual = room.areaActual || 0;
+                
+                html += `<tr data-room-id="${room.roomID}">`;
+                html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                html += `<td>${escapeHtml(room.name || '')}</td>`;
+                html += `<td><input type="number" class="form-control ist-input" data-field="areaActual" value="${areaActual}" step="0.01" style="width:100px;"></td>`;
+                
+                // Add columns for each selected inventory (IST values)
+                selectedTemplates.forEach(t => {
+                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
+                    const value = inv?.valueActual || '';
+                    html += `<td><input type="text" class="form-control ist-input" data-template-id="${t.inventoryTemplateID}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
+                });
+                
+                // Add comment input if single inventory selected
+                if (showComment) {
+                    const inv = (room.inventory || [])[0];
+                    const comment = inv?.comment || '';
+                    html += `<td><input type="text" class="form-control ist-input" data-field="comment" value="${escapeHtml(comment)}" style="width:150px;"></td>`;
+                }
+                
+                html += `<td><button class="btn btn-danger btn-sm" onclick="deleteRoom(${room.roomID})" title="Löschen">🗑️</button></td>`;
+                html += '</tr>';
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        /**
+         * Update IST pagination controls
+         */
+        function updateIstPagination(data) {
+            const prevBtn = document.getElementById('istPrevPage');
+            const nextBtn = document.getElementById('istNextPage');
+            const info = document.getElementById('istPaginationInfo');
+            
+            if (prevBtn) prevBtn.disabled = data.page <= 1;
+            if (nextBtn) nextBtn.disabled = data.page >= data.totalPages;
+            if (info) info.textContent = `Seite ${data.page} von ${data.totalPages || 1} (${data.totalCount} Einträge)`;
+        }
+        
+        /**
+         * Save IST changes
+         */
+        async function saveIstChanges() {
+            showResult('istResult', 'info', '⚠️ IST-Werte speichern wird in einer zukünftigen Version implementiert.');
+        }
+        
+        /**
+         * Sync IST values from IFC
+         */
+        async function syncIstFromIfc() {
+            showResult('istResult', 'info', '⚠️ IFC-Synchronisation wird in einer zukünftigen Version implementiert.');
+        }
+        
+        /**
+         * Extract IST values from IFC file
+         */
+        async function extractIstFromIfc() {
+            showResult('ifcExtractionResult', 'info', '⚠️ IFC-Extraktion wird in einer zukünftigen Version implementiert.');
         }
 
         // Initialize date picker with today's date as default
