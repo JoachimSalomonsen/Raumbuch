@@ -27,6 +27,107 @@ namespace RaumbuchService.Controllers
         }
 
         // ====================================================================
+        // DATABASE DIAGNOSTIC ENDPOINT
+        // ====================================================================
+
+        /// <summary>
+        /// Diagnostic endpoint to test database connectivity.
+        /// GET /api/raumprogram/dbtest
+        /// </summary>
+        [HttpGet]
+        [Route("raumprogram/dbtest")]
+        public async Task<IHttpActionResult> TestDatabaseConnection()
+        {
+            var result = new Dictionary<string, object>
+            {
+                { "timestamp", DateTime.UtcNow.ToString("O") },
+                { "status", "checking" }
+            };
+
+            try
+            {
+                using (var db = new RaumbuchContext())
+                {
+                    // Test basic connection
+                    result["connectionTest"] = "starting";
+                    var canConnect = await db.Database.Connection.OpenAsync()
+                        .ContinueWith(t => !t.IsFaulted);
+                    result["connectionTest"] = canConnect ? "success" : "failed";
+                    
+                    if (db.Database.Connection.State == System.Data.ConnectionState.Open)
+                    {
+                        db.Database.Connection.Close();
+                    }
+
+                    // Test if tables exist by trying to count records
+                    result["tables"] = new Dictionary<string, object>();
+                    
+                    try
+                    {
+                        var userCount = await db.UserAccess.CountAsync();
+                        ((Dictionary<string, object>)result["tables"])["UserAccess"] = $"OK ({userCount} records)";
+                    }
+                    catch (Exception ex)
+                    {
+                        ((Dictionary<string, object>)result["tables"])["UserAccess"] = $"ERROR: {ex.Message}";
+                    }
+
+                    try
+                    {
+                        var roomTypeCount = await db.RoomTypes.CountAsync();
+                        ((Dictionary<string, object>)result["tables"])["RoomType"] = $"OK ({roomTypeCount} records)";
+                    }
+                    catch (Exception ex)
+                    {
+                        ((Dictionary<string, object>)result["tables"])["RoomType"] = $"ERROR: {ex.Message}";
+                    }
+
+                    try
+                    {
+                        var roomCount = await db.Rooms.CountAsync();
+                        ((Dictionary<string, object>)result["tables"])["Room"] = $"OK ({roomCount} records)";
+                    }
+                    catch (Exception ex)
+                    {
+                        ((Dictionary<string, object>)result["tables"])["Room"] = $"ERROR: {ex.Message}";
+                    }
+
+                    try
+                    {
+                        var inventoryCount = await db.InventoryTemplates.CountAsync();
+                        ((Dictionary<string, object>)result["tables"])["InventoryTemplate"] = $"OK ({inventoryCount} records)";
+                    }
+                    catch (Exception ex)
+                    {
+                        ((Dictionary<string, object>)result["tables"])["InventoryTemplate"] = $"ERROR: {ex.Message}";
+                    }
+
+                    try
+                    {
+                        var roomInvCount = await db.RoomInventories.CountAsync();
+                        ((Dictionary<string, object>)result["tables"])["RoomInventory"] = $"OK ({roomInvCount} records)";
+                    }
+                    catch (Exception ex)
+                    {
+                        ((Dictionary<string, object>)result["tables"])["RoomInventory"] = $"ERROR: {ex.Message}";
+                    }
+
+                    result["status"] = "completed";
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                result["status"] = "error";
+                result["error"] = ex.Message;
+                result["innerError"] = ex.InnerException?.Message;
+                result["stackTrace"] = ex.StackTrace;
+                return Ok(result);
+            }
+        }
+
+        // ====================================================================
         // AUTHORIZATION HELPERS
         // ====================================================================
 
@@ -493,10 +594,24 @@ namespace RaumbuchService.Controllers
                     });
                 }
             }
+            catch (System.Data.Entity.Core.EntityException ex)
+            {
+                // Database connection or entity framework error
+                System.Diagnostics.Debug.WriteLine($"Entity Framework error in GetInventoryTemplates: {ex.Message}");
+                var innerMessage = ex.InnerException?.Message ?? "Keine weiteren Details";
+                return InternalServerError(new Exception($"Datenbankverbindungsfehler: {innerMessage}. Bitte stellen Sie sicher, dass CreateSchema.sql ausgeführt wurde.", ex));
+            }
+            catch (System.Data.SqlClient.SqlException ex)
+            {
+                // SQL Server specific error
+                System.Diagnostics.Debug.WriteLine($"SQL error in GetInventoryTemplates: {ex.Message}");
+                return InternalServerError(new Exception($"SQL-Fehler: {ex.Message}. Fehlercode: {ex.Number}", ex));
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in GetInventoryTemplates: {ex.Message}");
-                return InternalServerError(new Exception($"Fehler beim Laden der Ausstattungseigenschaften: {ex.Message}", ex));
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                return InternalServerError(new Exception($"Fehler beim Laden der Ausstattungseigenschaften: {innerMessage}", ex));
             }
         }
 
