@@ -217,6 +217,11 @@ namespace RaumbuchService.Data
     public class InventoryTemplate
     {
         /// <summary>
+        /// Default DataType value for new inventory templates.
+        /// </summary>
+        public const string DefaultDataType = "Text";
+
+        /// <summary>
         /// Primary key, auto-incremented.
         /// </summary>
         [Key]
@@ -268,7 +273,7 @@ namespace RaumbuchService.Data
         public InventoryTemplate()
         {
             RoomInventories = new HashSet<RoomInventory>();
-            DataType = "Text"; // Default to text
+            DataType = DefaultDataType;
         }
     }
 

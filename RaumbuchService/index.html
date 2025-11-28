@@ -457,15 +457,16 @@
 
                     <div style="margin-top:15px;">
                         <button class="btn btn-primary" onclick="loadIstData()">📥 Daten laden</button>
-                        <button class="btn btn-secondary" onclick="syncIstFromIfc()">🔄 IST aus IFC aktualisieren</button>
-                        <button class="btn btn-primary" onclick="saveIstChanges()">💾 Änderungen speichern</button>
+                        <button class="btn btn-secondary" onclick="syncIstFromIfc()" title="Coming Soon">🔄 IST aus IFC aktualisieren</button>
+                        <button class="btn btn-primary" onclick="saveIstChanges()" title="Coming Soon">💾 Änderungen speichern</button>
+                        <small style="display:block; margin-top:5px; color:#666;">Hinweis: IFC-Synchronisation und Speichern werden in einer zukünftigen Version implementiert.</small>
                     </div>
                     <div id="istResult" class="result"></div>
                 </section>
 
                 <!-- IFC Data Source -->
                 <section class="card">
-                    <h2>IFC Datenquelle</h2>
+                    <h2>IFC Datenquelle <span style="font-size:0.7em; color:#666;">(Coming Soon)</span></h2>
                     <p>Wählen Sie eine IFC-Datei aus, um IST-Werte automatisch zu extrahieren.</p>
                     
                     <div class="form-group">
@@ -476,7 +477,7 @@
                     </div>
                     
                     <div style="margin-top:15px;">
-                        <button class="btn btn-primary" onclick="extractIstFromIfc()">📊 IST aus IFC extrahieren</button>
+                        <button class="btn btn-primary" onclick="extractIstFromIfc()" title="Coming Soon">📊 IST aus IFC extrahieren</button>
                     </div>
                     <div id="ifcExtractionResult" class="result"></div>
                 </section>

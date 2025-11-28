@@ -20,6 +20,11 @@ namespace RaumbuchService.Controllers
     public class RaumprogrammController : ApiController
     {
         private readonly string _tempFolder = Path.Combine(Path.GetTempPath(), "Raumbuch");
+        
+        /// <summary>
+        /// Valid DataType values for InventoryTemplate.
+        /// </summary>
+        private static readonly string[] ValidDataTypes = { "Text", "Number", "Boolean", "Integer", "Decimal" };
 
         public RaumprogrammController()
         {
@@ -420,10 +425,9 @@ namespace RaumbuchService.Controllers
                 }
 
                 // Validate DataType if provided
-                var validDataTypes = new[] { "Text", "Number", "Boolean", "Integer", "Decimal" };
-                if (!string.IsNullOrWhiteSpace(request.DataType) && !validDataTypes.Contains(request.DataType))
+                if (!string.IsNullOrWhiteSpace(request.DataType) && !ValidDataTypes.Contains(request.DataType))
                 {
-                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", validDataTypes)}");
+                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", ValidDataTypes)}");
                 }
 
                 using (var db = new RaumbuchContext())
@@ -447,7 +451,7 @@ namespace RaumbuchService.Controllers
                     var template = new InventoryTemplate 
                     { 
                         PropertyName = request.PropertyName,
-                        DataType = request.DataType ?? "Text",
+                        DataType = request.DataType ?? InventoryTemplate.DefaultDataType,
                         Unit = request.Unit
                     };
                     db.InventoryTemplates.Add(template);
@@ -546,10 +550,9 @@ namespace RaumbuchService.Controllers
                 }
 
                 // Validate DataType if provided
-                var validDataTypes = new[] { "Text", "Number", "Boolean", "Integer", "Decimal" };
-                if (!string.IsNullOrWhiteSpace(request.DataType) && !validDataTypes.Contains(request.DataType))
+                if (!string.IsNullOrWhiteSpace(request.DataType) && !ValidDataTypes.Contains(request.DataType))
                 {
-                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", validDataTypes)}");
+                    return BadRequest($"Ungültiger DataType. Erlaubt: {string.Join(", ", ValidDataTypes)}");
                 }
 
                 using (var db = new RaumbuchContext())
@@ -578,7 +581,7 @@ namespace RaumbuchService.Controllers
                     }
 
                     template.PropertyName = request.PropertyName;
-                    template.DataType = request.DataType ?? template.DataType ?? "Text";
+                    template.DataType = request.DataType ?? template.DataType ?? InventoryTemplate.DefaultDataType;
                     template.Unit = request.Unit;
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
