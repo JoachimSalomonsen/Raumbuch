@@ -23,7 +23,7 @@
                 <span>Einstellungen</span>
             </div>
 
-            <div class="tc-tab" onclick="openTab('tab-raumprogram')">
+            <div class="tc-tab" onclick="openTab('tab-raumprogramm')">
                 <img src="Img/book.png" class="tc-tab-icon" />
                 <span>Raumprogramm</span>
             </div>
@@ -208,7 +208,7 @@
             <!-- ========================================================= -->
             <!-- TAB - RAUMPROGRAMM (SOLL Data Management)                 -->
             <!-- ========================================================= -->
-            <div id="tab-raumprogram" class="tab-content">
+            <div id="tab-raumprogramm" class="tab-content">
 
                 <!-- Master Data Management -->
                 <section class="card">
@@ -818,7 +818,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             document.getElementById(tabId).classList.add('active');
 
             // activate tab button
-            const index = ['tab-konfig', 'tab-raumprogram', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
+            const index = ['tab-konfig', 'tab-raumprogramm', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
             document.querySelectorAll('.tc-tab')[index].classList.add('active');
             
             // Auto-load data when Analyse tab is opened
@@ -830,7 +830,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             }
             
             // Auto-load data when Raumprogramm tab is opened
-            if (tabId === 'tab-raumprogram') {
+            if (tabId === 'tab-raumprogramm') {
                 refreshAllMasterData();
             }
         }

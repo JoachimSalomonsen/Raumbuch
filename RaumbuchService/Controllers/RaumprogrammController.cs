@@ -771,7 +771,7 @@ namespace RaumbuchService.Controllers
                                 {
                                     roomType = new RoomType { Name = raumtypName };
                                     db.RoomTypes.Add(roomType);
-                                    await db.SaveChangesAsync();
+                                    // Save immediately to get the ID - necessary for FK relationship
                                     existingRoomTypes[raumtypName.ToLower()] = roomType;
                                     roomTypesCreated++;
                                 }
@@ -783,7 +783,7 @@ namespace RaumbuchService.Controllers
                                 {
                                     room = new Room
                                     {
-                                        RoomTypeID = roomType.RoomTypeID,
+                                        RoomType = roomType, // Use navigation property instead of ID
                                         Name = roomName,
                                         AreaPlanned = areaPlanned,
                                         AreaActual = areaActual
@@ -809,6 +809,7 @@ namespace RaumbuchService.Controllers
                                 }
                             }
 
+                            // Save all changes in a single batch operation
                             await db.SaveChangesAsync();
                         }
 
