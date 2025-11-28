@@ -653,10 +653,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         let trimbleConnect = {
             accessToken: null,
             projectId: null,
+            userId: null,  // Current user ID for authorization
             isEmbedded: false,
             isWorkspaceApp: false, // New flag for Workspace API
             consentStatus: 'pending' // pending, granted, denied
         };
+
+        /**
+         * Get the current user ID for authorization
+         * Returns the user ID from Trimble Connect context, or null if not available
+         */
+        function getCurrentUserId() {
+            return trimbleConnect.userId || null;
+        }
 
         // Helper functions to expose to app.js for Workspace API integration
         window.setWorkspaceToken = function(token) {
@@ -667,6 +676,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             
             // Try to auto-load configs if we also have project ID
             tryAutoLoadConfigs();
+        };
+
+        window.setWorkspaceUserId = function(userId) {
+            console.log('Setting workspace user ID from app.js:', userId);
+            trimbleConnect.userId = userId;
         };
 
         window.setWorkspaceProjectId = function(projectId) {
@@ -3710,7 +3724,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         name: name,
-                        roomCategory: roomCategory
+                        roomCategory: roomCategory,
+                        userId: getCurrentUserId()
                     })
                 });
                 
@@ -3749,7 +3764,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             showResult('masterDataResult', 'loading', '⏳ Lösche Raumtyp...');
             
             try {
-                const response = await fetch(`${API_RAUMPROGRAM}/roomtype/${selectedId}`, {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/roomtype/${selectedId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/roomtype/${selectedId}`;
+                const response = await fetch(url, {
                     method: 'DELETE'
                 });
                 
@@ -3783,7 +3802,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const response = await fetch(`${API_RAUMPROGRAM}/inventorytemplate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ propertyName: propertyName })
+                    body: JSON.stringify({ 
+                        propertyName: propertyName,
+                        userId: getCurrentUserId()
+                    })
                 });
                 
                 const data = await response.json();
@@ -3820,7 +3842,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             showResult('masterDataResult', 'loading', '⏳ Lösche Eigenschaft...');
             
             try {
-                const response = await fetch(`${API_RAUMPROGRAM}/inventorytemplate/${selectedId}`, {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/inventorytemplate/${selectedId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/inventorytemplate/${selectedId}`;
+                const response = await fetch(url, {
                     method: 'DELETE'
                 });
                 
@@ -3861,7 +3887,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         roomTypeID: parseInt(roomTypeId),
                         name: name,
                         areaPlanned: areaPlanned ? parseFloat(areaPlanned) : null,
-                        areaActual: areaActual ? parseFloat(areaActual) : null
+                        areaActual: areaActual ? parseFloat(areaActual) : null,
+                        userId: getCurrentUserId()
                     })
                 });
                 
@@ -3986,7 +4013,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             showResult('raumprogramResult', 'loading', '⏳ Lösche Raum...');
             
             try {
-                const response = await fetch(`${API_RAUMPROGRAM}/room/${roomId}`, {
+                const userId = getCurrentUserId();
+                const url = userId 
+                    ? `${API_RAUMPROGRAM}/room/${roomId}?userId=${encodeURIComponent(userId)}`
+                    : `${API_RAUMPROGRAM}/room/${roomId}`;
+                const response = await fetch(url, {
                     method: 'DELETE'
                 });
                 
