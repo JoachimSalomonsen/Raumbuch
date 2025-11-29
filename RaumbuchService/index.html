@@ -4400,8 +4400,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Used for interpreting stored boolean values from inventory
          */
         function isTruthyBooleanValue(value) {
-            if (!value) return false;
-            const upperVal = value.toString().toUpperCase().trim();
+            if (value === null || value === undefined || value === '') return false;
+            const upperVal = String(value).toUpperCase().trim();
             return ['JA', 'YES', 'TRUE', '1'].includes(upperVal);
         }
 
@@ -4458,7 +4458,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         async function saveSingleCell(input) {
             const row = input.closest('tr');
             const roomId = parseInt(row?.dataset?.roomId);
-            if (!roomId) return;
+            if (isNaN(roomId) || roomId <= 0) return;
             
             try {
                 // Show saving indicator
@@ -4467,6 +4467,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (input.classList.contains('inventory-input')) {
                     // Save inventory value
                     const templateId = parseInt(input.dataset.templateId);
+                    if (isNaN(templateId) || templateId <= 0) return;
+                    
                     const dataType = input.dataset.datatype || 'text';
                     let value;
                     
@@ -4480,6 +4482,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 } else if (input.classList.contains('inventory-comment')) {
                     // Save inventory comment
                     const templateId = parseInt(input.dataset.templateId);
+                    if (isNaN(templateId) || templateId <= 0) return;
+                    
                     await updateRoomInventory(roomId, templateId, null, input.value);
                 } else {
                     // Save room field
@@ -4524,30 +4528,31 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Attach autosave event listeners to all editable cells
-         * Call this after rendering the table
+         * Set up event delegation for autosave on the table body
+         * This is more efficient than attaching listeners to each input
          */
+        let autosaveListenersAttached = false;
+        
         function attachAutosaveListeners() {
-            const inputs = document.querySelectorAll('#raumprogramTableBody .soll-input');
-            inputs.forEach(input => {
-                // Remove existing listeners to avoid duplicates
-                input.removeEventListener('input', handleAutosaveInput);
-                input.removeEventListener('change', handleAutosaveChange);
-                
-                if (input.type === 'checkbox') {
-                    input.addEventListener('change', handleAutosaveChange);
-                } else {
-                    input.addEventListener('input', handleAutosaveInput);
+            if (autosaveListenersAttached) return;
+            
+            const tbody = document.getElementById('raumprogramTableBody');
+            if (!tbody) return;
+            
+            // Use event delegation - single listener on parent
+            tbody.addEventListener('input', (e) => {
+                if (e.target.classList.contains('soll-input')) {
+                    handleCellAutosave(e.target);
                 }
             });
-        }
-        
-        function handleAutosaveInput(e) {
-            handleCellAutosave(e.target);
-        }
-        
-        function handleAutosaveChange(e) {
-            handleCellAutosave(e.target);
+            
+            tbody.addEventListener('change', (e) => {
+                if (e.target.classList.contains('soll-input') && e.target.type === 'checkbox') {
+                    handleCellAutosave(e.target);
+                }
+            });
+            
+            autosaveListenersAttached = true;
         }
 
         /**
