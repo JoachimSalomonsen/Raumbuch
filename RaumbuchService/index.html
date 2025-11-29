@@ -264,17 +264,23 @@
                         </div>
                     </div>
 
-                    <!-- Column Visibility Controls - Moved before table -->
+                    <!-- Column Visibility Controls and Autosave Toggle -->
                     <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
-                        <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
+                        <div style="margin-bottom:8px;">
+                            <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
+                        </div>
+                        <div style="border-top:1px solid #ddd; padding-top:8px;">
+                            <label style="font-weight:bold; margin-right:15px;">Einstellungen:</label>
+                            <label style="margin-right:10px; color:#0066cc;"><input type="checkbox" id="soll-autosave" checked> Änderungen automatisch speichern</label>
+                        </div>
                     </div>
 
                     <!-- Data Table - SOLL only, editable columns -->
@@ -4137,10 +4143,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         async function updateSollIndicatorsFromApi(roomTypeId, selectedInventories) {
             try {
-                // Fetch all rooms without pagination and without search filter for accurate indicator counts
+                // Get current search filter to apply to indicators as well
+                const search = document.getElementById('raumprogram-search')?.value?.trim() || '';
+                
+                // Fetch all rooms with the same filters (including search) for accurate indicator counts
                 // Note: The inventory filter is applied client-side since the API only supports single inventory filtering
                 let url = `${API_RAUMPROGRAM}/raumprogram?page=1&pageSize=10000`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
                 // Don't filter by inventory in API - we handle multiple selections client-side
 
                 const response = await fetch(url);
@@ -4262,7 +4272,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
                     const value = inv?.valuePlanned || '';
                     const inputType = getInputTypeForDataType(t.dataType);
-                    html += `<td><input type="${inputType}" class="form-control soll-input inventory-input" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
+                    const dataType = t.dataType?.toLowerCase() || 'text';
+                    
+                    if (dataType === 'boolean') {
+                        // For boolean, use checkbox with checked attribute
+                        const isChecked = isTruthyBooleanValue(value) ? 'checked' : '';
+                        html += `<td style="text-align:center;"><input type="checkbox" class="soll-input inventory-input inventory-boolean" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" data-datatype="boolean" ${isChecked} style="width:20px; height:20px;"></td>`;
+                    } else {
+                        html += `<td><input type="${inputType}" class="form-control soll-input inventory-input" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" data-datatype="${dataType}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
+                    }
                 });
 
                 // Add comment column if single inventory selected
@@ -4279,11 +4297,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             });
 
             tbody.innerHTML = html;
+            
+            // Attach autosave listeners after rendering
+            attachAutosaveListeners();
         }
 
         /**
          * Update the SOLL page indicator cards based on current filtered data
-         * Indicators update based on Raumtyp and Inventar filters (not room name search)
+         * Indicators update based on Raumtyp and Inventar filters AND search filter
          */
         function updateSollIndicators(rooms, selectedInventoryIds = []) {
             const templates = window.inventoryTemplates || [];
@@ -4375,6 +4396,161 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         /**
+         * Check if a value represents a truthy boolean
+         * Used for interpreting stored boolean values from inventory
+         */
+        function isTruthyBooleanValue(value) {
+            if (!value) return false;
+            const upperVal = value.toString().toUpperCase().trim();
+            return ['JA', 'YES', 'TRUE', '1'].includes(upperVal);
+        }
+
+        // ====================================================================
+        // AUTOSAVE FUNCTIONALITY
+        // ====================================================================
+        
+        // Autosave debounce timers - one per cell
+        const autosaveTimers = new Map();
+        const AUTOSAVE_DELAY = 800; // ms
+        
+        /**
+         * Check if autosave is enabled
+         */
+        function isAutosaveEnabled() {
+            return document.getElementById('soll-autosave')?.checked ?? true;
+        }
+        
+        /**
+         * Handle cell change for autosave
+         * @param {HTMLElement} input - The input element that changed
+         */
+        function handleCellAutosave(input) {
+            if (!isAutosaveEnabled()) return;
+            
+            const key = getCellKey(input);
+            
+            // Clear existing timer for this cell
+            if (autosaveTimers.has(key)) {
+                clearTimeout(autosaveTimers.get(key));
+            }
+            
+            // Set new timer
+            autosaveTimers.set(key, setTimeout(async () => {
+                await saveSingleCell(input);
+                autosaveTimers.delete(key);
+            }, AUTOSAVE_DELAY));
+        }
+        
+        /**
+         * Get unique key for a cell
+         */
+        function getCellKey(input) {
+            const row = input.closest('tr');
+            const roomId = row?.dataset?.roomId || '';
+            const field = input.dataset?.field || '';
+            const templateId = input.dataset?.templateId || '';
+            return `${roomId}-${field}-${templateId}`;
+        }
+        
+        /**
+         * Save a single cell value
+         */
+        async function saveSingleCell(input) {
+            const row = input.closest('tr');
+            const roomId = parseInt(row?.dataset?.roomId);
+            if (!roomId) return;
+            
+            try {
+                // Show saving indicator
+                input.style.backgroundColor = '#fff3cd';
+                
+                if (input.classList.contains('inventory-input')) {
+                    // Save inventory value
+                    const templateId = parseInt(input.dataset.templateId);
+                    const dataType = input.dataset.datatype || 'text';
+                    let value;
+                    
+                    if (dataType === 'boolean') {
+                        value = input.checked ? 'TRUE' : 'FALSE';
+                    } else {
+                        value = input.value;
+                    }
+                    
+                    await updateRoomInventory(roomId, templateId, value, null);
+                } else if (input.classList.contains('inventory-comment')) {
+                    // Save inventory comment
+                    const templateId = parseInt(input.dataset.templateId);
+                    await updateRoomInventory(roomId, templateId, null, input.value);
+                } else {
+                    // Save room field
+                    const field = input.dataset.field;
+                    if (field) {
+                        const originalRoom = window.currentRooms?.find(r => r.roomID === roomId);
+                        if (originalRoom) {
+                            const roomData = {
+                                roomID: roomId,
+                                name: originalRoom.name,
+                                roomTypeID: originalRoom.roomTypeID,
+                                userId: getCurrentUserId()
+                            };
+                            
+                            if (input.type === 'number') {
+                                roomData[field] = input.value ? parseFloat(input.value) : null;
+                            } else if (input.type === 'checkbox') {
+                                roomData[field] = input.checked;
+                            } else {
+                                roomData[field] = input.value || null;
+                            }
+                            
+                            await updateSollRoom(roomId, roomData);
+                        }
+                    }
+                }
+                
+                // Show success
+                input.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    input.style.backgroundColor = '';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Autosave error:', error);
+                // Show error
+                input.style.backgroundColor = '#f8d7da';
+                setTimeout(() => {
+                    input.style.backgroundColor = '';
+                }, 2000);
+            }
+        }
+        
+        /**
+         * Attach autosave event listeners to all editable cells
+         * Call this after rendering the table
+         */
+        function attachAutosaveListeners() {
+            const inputs = document.querySelectorAll('#raumprogramTableBody .soll-input');
+            inputs.forEach(input => {
+                // Remove existing listeners to avoid duplicates
+                input.removeEventListener('input', handleAutosaveInput);
+                input.removeEventListener('change', handleAutosaveChange);
+                
+                if (input.type === 'checkbox') {
+                    input.addEventListener('change', handleAutosaveChange);
+                } else {
+                    input.addEventListener('input', handleAutosaveInput);
+                }
+            });
+        }
+        
+        function handleAutosaveInput(e) {
+            handleCellAutosave(e.target);
+        }
+        
+        function handleAutosaveChange(e) {
+            handleCellAutosave(e.target);
+        }
+
+        /**
          * Load predefined types for dropdown
          */
         async function loadPredefinedTypes() {
@@ -4394,22 +4570,63 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         /**
          * Load all SOLL data - refreshes room types, rooms, inventory templates, and predefined types
+         * Shows progress bar during loading
          */
         async function loadAllSollData() {
-            showResult('raumprogramResult', 'loading', '⏳ Lade alle Daten...');
+            const resultDiv = document.getElementById('raumprogramResult');
+            
+            // Show progress bar
+            resultDiv.innerHTML = `
+                <div style="padding: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #0066cc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span>Lade Daten...</span>
+                    </div>
+                    <div style="margin-top: 10px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                        <div id="loadingProgress" style="height: 6px; background: linear-gradient(90deg, #0066cc, #00aaff); width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <small id="loadingStatus" style="color: #666;">Initialisiere...</small>
+                </div>
+            `;
+            resultDiv.className = 'result info';
+            
+            // Add CSS for spinner animation if not present
+            if (!document.getElementById('spinner-style')) {
+                const style = document.createElement('style');
+                style.id = 'spinner-style';
+                style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+                document.head.appendChild(style);
+            }
+            
+            const progressBar = document.getElementById('loadingProgress');
+            const statusText = document.getElementById('loadingStatus');
             
             try {
-                // Load all data in parallel
-                await Promise.all([
-                    loadRoomTypes(),
-                    loadInventoryTemplates(),
-                    loadPredefinedTypes()
-                ]);
+                // Step 1: Load room types (25%)
+                statusText.textContent = 'Lade Raumtypen...';
+                progressBar.style.width = '10%';
+                await loadRoomTypes();
+                progressBar.style.width = '25%';
                 
-                // Then load room data
+                // Step 2: Load inventory templates (50%)
+                statusText.textContent = 'Lade Inventarvorlagen...';
+                await loadInventoryTemplates();
+                progressBar.style.width = '50%';
+                
+                // Step 3: Load predefined types (65%)
+                statusText.textContent = 'Lade vordefinierte Typen...';
+                await loadPredefinedTypes();
+                progressBar.style.width = '65%';
+                
+                // Step 4: Load room data (100%)
+                statusText.textContent = 'Lade Räume...';
                 await loadRaumprogramData();
+                progressBar.style.width = '100%';
                 
-                showResult('raumprogramResult', 'success', '✅ Alle Daten geladen');
+                // Show success message after short delay
+                setTimeout(() => {
+                    showResult('raumprogramResult', 'success', '✅ Alle Daten erfolgreich geladen');
+                }, 300);
             } catch (error) {
                 console.error('Error loading all SOLL data:', error);
                 showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
@@ -4469,8 +4686,17 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     for (const invInput of inventoryInputs) {
                         const templateId = parseInt(invInput.dataset.templateId);
                         const invRoomId = parseInt(invInput.dataset.roomId);
+                        const dataType = invInput.dataset.datatype || 'text';
+                        
                         if (templateId && invRoomId) {
-                            await updateRoomInventory(invRoomId, templateId, invInput.value, null);
+                            let value;
+                            if (dataType === 'boolean') {
+                                // Convert checkbox checked state to string value
+                                value = invInput.checked ? 'TRUE' : 'FALSE';
+                            } else {
+                                value = invInput.value;
+                            }
+                            await updateRoomInventory(invRoomId, templateId, value, null);
                         }
                     }
                     

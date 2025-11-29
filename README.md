@@ -438,9 +438,9 @@ The indicators update dynamically based on:
 |--------|---------------------|
 | **Raumtyp** | ✅ Recalculates for selected room type only |
 | **Inventar** | ✅ Recalculates inventory sum for selected templates only |
-| **Room Name Search** | ❌ Does NOT affect indicators (only affects table) |
+| **Room Name Search** | ✅ Indicators update to match filtered results |
 
-When both Raumtyp and Inventar filters are active, indicators reflect the intersection (logical AND).
+When multiple filters are active, indicators reflect the intersection (logical AND).
 
 ### Visual Design
 
@@ -504,6 +504,29 @@ The **"Daten laden"** button refreshes:
 4. Predefined types for dropdown (`PredefinedRoomType`)
 5. Room inventory values (`RoomInventory.ValuePlanned`)
 6. **Indicator cards** (Raumtypen, Räume, Inventarobjekte)
+
+**Progress Bar:** While loading, a progress bar is displayed showing the loading status for each step (room types → inventory templates → predefined types → rooms).
+
+### Autosave Feature
+
+Changes made in the SOLL table are automatically saved with a debounce delay of ~800ms after the last change:
+
+- **Enabled by default**: Autosave is enabled by default
+- **Toggle**: Use the "Änderungen automatisch speichern" checkbox in the settings section to enable/disable
+- **Visual feedback**: 
+  - Yellow background during save
+  - Green background on success
+  - Red background on error
+- **Works for**: Room fields (NetAreaPlanned, GrossAreaPlanned, Description, ObjectType, PredefinedType) and Inventory values
+
+When autosave is disabled, use the "Änderungen speichern" button to manually save all changes.
+
+### Boolean Inventory Values
+
+Boolean inventory values are handled as checkboxes:
+- **Display**: Checkbox input for Boolean DataType
+- **Storage**: `TRUE` or `FALSE` string values in `RoomInventory.ValuePlanned`
+- **Interpretation**: The following values are interpreted as `true`: `JA`, `YES`, `TRUE`, `1`
 
 ### Delete Functionality
 
