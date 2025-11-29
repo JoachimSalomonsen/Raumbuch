@@ -213,6 +213,25 @@
             <!-- TAB - RAUMPROGRAMM (SOLL Data Management)                 -->
             <!-- ========================================================= -->
             <div id="tab-raumprogramm" class="tab-content active">
+                <!-- KPI Indicators Widget - Matching Analyse page style -->
+                <section class="card kpi-widget">
+                    <h2>Übersicht</h2>
+                    <div class="kpi-container">
+                        <div class="kpi-item">
+                            <span class="kpi-label">Raumtypen</span>
+                            <span class="kpi-value" id="sollKpiRoomTypes">0</span>
+                        </div>
+                        <div class="kpi-item">
+                            <span class="kpi-label">Räume</span>
+                            <span class="kpi-value" id="sollKpiRooms">0</span>
+                        </div>
+                        <div class="kpi-item">
+                            <span class="kpi-label">Inventarobjekte</span>
+                            <span class="kpi-value" id="sollKpiInventory">0</span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Raumprogramm Overview - Moved to top -->
                 <section class="card">
                     <h2>Raumprogramm Übersicht (SOLL)</h2>
@@ -4073,15 +4092,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             showResult('raumprogramResult', 'loading', '⏳ Lade Raumprogramm-Daten...');
 
+            // Handle multiple inventory selection
+            const inventorySelect = document.getElementById('raumprogram-filter-inventory');
+            const selectedInventories = Array.from(inventorySelect?.selectedOptions || [])
+                .map(opt => opt.value)
+                .filter(v => v);
+
             try {
                 let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${raumprogramPageSize}`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
 
-                // Handle multiple inventory selection
-                const inventorySelect = document.getElementById('raumprogram-filter-inventory');
-                const selectedInventories = Array.from(inventorySelect?.selectedOptions || [])
-                    .map(opt => opt.value)
-                    .filter(v => v);
                 if (selectedInventories.length === 1) {
                     url += `&inventoryTemplateId=${selectedInventories[0]}`;
                 }
@@ -4097,12 +4117,39 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     renderRaumprogramTable(data.rooms || [], selectedInventories);
                     updateRaumprogramPagination(data);
                     showResult('raumprogramResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
+                    
+                    // Update indicators - need to fetch full data without search filter and without pagination
+                    await updateSollIndicatorsFromApi(roomTypeId, selectedInventories);
                 } else {
                     showResult('raumprogramResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
                 }
             } catch (error) {
                 console.error('Error loading Raumprogramm data:', error);
                 showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Fetch data for indicators - without search filter, with full result set
+         * Only applies Raumtyp and Inventar filters
+         */
+        async function updateSollIndicatorsFromApi(roomTypeId, selectedInventories) {
+            try {
+                // Fetch all rooms without pagination and without search filter for accurate indicator counts
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=1&pageSize=1000`;
+                if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                if (selectedInventories.length === 1) {
+                    url += `&inventoryTemplateId=${selectedInventories[0]}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    updateSollIndicators(data.rooms || [], selectedInventories);
+                }
+            } catch (error) {
+                console.error('Error updating indicators:', error);
             }
         }
 
@@ -4231,6 +4278,83 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             });
 
             tbody.innerHTML = html;
+        }
+
+        /**
+         * Update the SOLL page indicator cards based on current filtered data
+         * Indicators update based on Raumtyp and Inventar filters (not room name search)
+         */
+        function updateSollIndicators(rooms, selectedInventoryIds = []) {
+            const templates = window.inventoryTemplates || [];
+            
+            // Filter inventory templates based on selection
+            const selectedTemplates = selectedInventoryIds.length > 0
+                ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
+                : templates;
+            
+            // 1. Count distinct room types
+            const uniqueRoomTypes = new Set(rooms.map(r => r.roomTypeID));
+            const roomTypeCount = uniqueRoomTypes.size;
+            
+            // 2. Count total rooms
+            const roomCount = rooms.length;
+            
+            // 3. Calculate inventory sum based on DataType interpretation
+            let inventoryTotal = 0;
+            
+            rooms.forEach(room => {
+                const inventoryItems = room.inventory || [];
+                
+                inventoryItems.forEach(inv => {
+                    // Only count if in selected inventory templates (or all if none selected)
+                    if (selectedInventoryIds.length > 0 && 
+                        !selectedInventoryIds.includes(String(inv.inventoryTemplateID))) {
+                        return;
+                    }
+                    
+                    // Find the template to get DataType
+                    const template = templates.find(t => t.inventoryTemplateID === inv.inventoryTemplateID);
+                    const dataType = template?.dataType?.toLowerCase() || 'text';
+                    const value = inv.valuePlanned;
+                    
+                    if (!value || value === '') {
+                        return; // Empty values are ignored
+                    }
+                    
+                    // Interpret based on DataType
+                    switch(dataType) {
+                        case 'number':
+                        case 'integer':
+                        case 'decimal':
+                            // Parse as number (no thousand separators)
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                                inventoryTotal += numValue;
+                            }
+                            break;
+                        case 'boolean':
+                            // Check for truthy values
+                            const boolVal = value.toString().toUpperCase().trim();
+                            if (['JA', 'YES', 'TRUE', '1'].includes(boolVal)) {
+                                inventoryTotal += 1;
+                            }
+                            // FALSE/NO/0 counts as 0 (no addition)
+                            break;
+                        case 'text':
+                        default:
+                            // Non-empty text counts as 1
+                            if (value.toString().trim() !== '') {
+                                inventoryTotal += 1;
+                            }
+                            break;
+                    }
+                });
+            });
+            
+            // Update the indicator elements
+            document.getElementById('sollKpiRoomTypes').textContent = roomTypeCount.toString();
+            document.getElementById('sollKpiRooms').textContent = roomCount.toString();
+            document.getElementById('sollKpiInventory').textContent = inventoryTotal.toString();
         }
 
         /**

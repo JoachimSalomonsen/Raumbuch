@@ -407,6 +407,51 @@ The `RoomInventory` table continues to use `ValuePlanned` (SOLL) and `ValueActua
 
 ---
 
+## 📊 SOLL Page Indicator Cards
+
+The "Raumprogramm Übersicht (SOLL)" page features three indicator cards at the top, styled identically to the Analyse page indicators.
+
+### Indicators
+
+| Indicator | Title | Calculation |
+|-----------|-------|-------------|
+| **Raumtypen** | Count of distinct room types | Number of unique `RoomTypeID` values in filtered results |
+| **Räume** | Count of rooms | Total number of rooms (`RoomID`) in filtered results |
+| **Inventarobjekte** | Sum of inventory values | Calculated based on `DataType` interpretation (see below) |
+
+### Inventory Value Interpretation
+
+Inventory values (`RoomInventory.ValuePlanned`) are interpreted based on `InventoryTemplate.DataType`:
+
+| DataType | Interpretation |
+|----------|---------------|
+| `Number`, `Integer`, `Decimal` | Parse as numeric value and add to sum |
+| `Boolean` | `JA`, `YES`, `TRUE`, `1` = count as 1; `NEIN`, `NO`, `FALSE`, `0` = count as 0 |
+| `Text` | Non-empty text = count as 1; Empty = count as 0 |
+| Empty/Null | Ignored (count as 0) |
+
+### Filtering Behavior
+
+The indicators update dynamically based on:
+
+| Filter | Effect on Indicators |
+|--------|---------------------|
+| **Raumtyp** | ✅ Recalculates for selected room type only |
+| **Inventar** | ✅ Recalculates inventory sum for selected templates only |
+| **Room Name Search** | ❌ Does NOT affect indicators (only affects table) |
+
+When both Raumtyp and Inventar filters are active, indicators reflect the intersection (logical AND).
+
+### Visual Design
+
+The indicator cards match the Analyse page design:
+- Blue gradient background
+- White text
+- Same card layout, typography, and spacing
+- Responsive flex container
+
+---
+
 ## ✏️ Editable SOLL Table (Raumprogramm Übersicht)
 
 The "Raumprogramm Übersicht (SOLL)" page features an **editable table** that allows direct in-cell editing of room data.
@@ -458,6 +503,7 @@ The **"Daten laden"** button refreshes:
 3. Inventory templates (`InventoryTemplate`)
 4. Predefined types for dropdown (`PredefinedRoomType`)
 5. Room inventory values (`RoomInventory.ValuePlanned`)
+6. **Indicator cards** (Raumtypen, Räume, Inventarobjekte)
 
 ### Delete Functionality
 
