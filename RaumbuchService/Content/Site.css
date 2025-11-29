@@ -62,6 +62,8 @@ html, body {
     /* Tab & Button Specific Shades */
     --tc-tab-hover: #1f5d8f;
     --tc-primary-blue-active: #004578;
+    --tc-btn-danger: #ed9f9f;
+    --tc-btn-danger-hover: var(--tc-error-red);
     /* Shadows */
     --tc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --tc-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.12);
@@ -337,6 +339,26 @@ small {
 
     .btn-secondary:active {
         background-color: color-mix(in srgb, var(--tc-secondary-grey) 60%, black);
+    }
+
+.btn-success {
+    background: var(--success-color);
+    color: var(--tc-bg-card);
+}
+
+    .btn-success:hover:not(:disabled) {
+        /* Replaced hardcoded hover color with variable */
+        background: var(--tc-success-hover);
+    }
+
+.btn-danger {
+    background: var((--tc-btn-danger);
+    color: var(--tc-bg-card);
+}
+
+    .btn-danger:hover:not(:disabled) {
+        /* Replaced hardcoded hover color with variable */
+        background: var(--tc-btn-danger-hover);
     }
 
 /* ------------------------------------------------------------
