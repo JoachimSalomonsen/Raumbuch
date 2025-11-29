@@ -4132,15 +4132,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         /**
          * Fetch data for indicators - without search filter, with full result set
          * Only applies Raumtyp and Inventar filters
+         * Note: Uses large pageSize to get all rooms. For very large datasets, 
+         * consider implementing a dedicated backend endpoint for indicator calculations.
          */
         async function updateSollIndicatorsFromApi(roomTypeId, selectedInventories) {
             try {
                 // Fetch all rooms without pagination and without search filter for accurate indicator counts
-                let url = `${API_RAUMPROGRAM}/raumprogram?page=1&pageSize=1000`;
+                // Note: The inventory filter is applied client-side since the API only supports single inventory filtering
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=1&pageSize=10000`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
-                if (selectedInventories.length === 1) {
-                    url += `&inventoryTemplateId=${selectedInventories[0]}`;
-                }
+                // Don't filter by inventory in API - we handle multiple selections client-side
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -4326,9 +4327,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         case 'number':
                         case 'integer':
                         case 'decimal':
-                            // Parse as number (no thousand separators)
-                            const numValue = parseFloat(value);
-                            if (!isNaN(numValue)) {
+                            // Parse as number using Number() for strict validation
+                            const numValue = Number(value);
+                            if (!isNaN(numValue) && isFinite(numValue)) {
                                 inventoryTotal += numValue;
                             }
                             break;
