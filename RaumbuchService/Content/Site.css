@@ -1,17 +1,17 @@
 ﻿/*
-* ESSENSIELLT: Sørg for at rot-elementene tar opp hele plassen for å unngå scrollbars og layout-problemer i iframes.
+* ESSENTIAL: Ensure root elements take up full space to prevent scrollbars and layout issues in iframes.
 */
 html, body {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Fjerner scrollbars på selve vinduet */
+    overflow: hidden; /* Removes scrollbars on the window itself */
     box-sizing: border-box;
 }
 
 /*
-* Hovedcontaineren må også ta opp 100% av plassen til body/html og sette opp flex for å stable elementer.
+* The main container must also take up 100% of body/html space and set up flex to stack elements.
 */
 .app-container {
     width: 100%;
@@ -68,7 +68,7 @@ html, body {
     --tc-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
     /* Layout Variables */
     --tab-height: 70px;
-    --page-margin: 20px; /* Variabel for den ønskede 20px paddingen */
+    --page-margin: 20px; /* Variable for the desired 20px padding */
 }
 
 /* ------------------------------------------------------------
@@ -98,18 +98,18 @@ body {
     display: flex;
     justify-content: center; /* Center the tabs horizontally */
     align-items: center;
-    /* Endret for å bruke 100% siden .app-container er 100% */
+    /* Modified to use 100% since .app-container is 100% */
     width: 100%;
-    /* Fjernet margin-left calc - dette er ikke nødvendig når .app-container er 100% bred og body er 0 padding/margin */
+    /* Removed margin-left calc - this is not necessary when .app-container is 100% wide and body is 0 padding/margin */
     margin: 0;
-    margin-top: 0; /* Fjerner margin på toppen */
+    margin-top: 0; /* Removes margin on top */
     background-color: var(--tc-dark-blue);
     padding: 0;
     border-bottom: none;
     height: var(--tab-height);
     position: relative;
     box-sizing: border-box;
-    /* Sikrer at tab-baren vises over eventuell container-margin */
+    /* Ensures the tab bar is displayed above any container margin */
     z-index: 10;
 }
 
@@ -173,7 +173,7 @@ body {
 .container {
     /* Set Top Margin to 0 */
     margin: 0 auto var(--page-margin) auto;
-    /* No dobbel padding */
+    /* No double padding */
     max-width: 100%;
     background: var(--tc-bg-card);
     border-radius: 0px;
@@ -207,10 +207,10 @@ header {
     MAIN CONTENT AREA
     ------------------------------------------------------------ */
 main {
-    /* NYTT: Bruker variabelen for 20px padding (var(--page-margin)) */
-    padding: var(--page-margin); /* Setter 20px padding rundt innholdet */
-    flex-grow: 1; /* Lar main fylle all ledig plass i .app-container */
-    overflow-y: auto; /* Lar innholdet i main scrolle hvis det er for langt */
+    /* NEW: Uses the variable for 20px padding (var(--page-margin)) */
+    padding: var(--page-margin); /* Sets 20px padding around the content */
+    flex-grow: 1; /* Allows main to fill all available space in .app-container */
+    overflow-y: auto; /* Allows content in main to scroll if it is too long */
     box-sizing: border-box;
 }
 
@@ -462,14 +462,14 @@ footer {
     color: var(--tc-error-red);
 }
 
-/* FJERNET: Denne er nå erstattet av 'main { padding: var(--page-margin); }' */
+/* REMOVED: This is now replaced by 'main { padding: var(--page-margin); }' */
 .body-content {
     margin-top: 15px;
     padding-left: 15px;
     padding-right: 15px;
 }
 
-/* Sett bredde på skjemainndataelementene siden de er 100% brede som standard */
+/* Set width for form input elements since they are 100% wide by default */
 input,
 select,
 textarea {
