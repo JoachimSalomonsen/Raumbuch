@@ -151,11 +151,19 @@ namespace RaumbuchService.Data
                 .HasMaxLength(100);
 
             modelBuilder.Entity<Room>()
-                .Property(r => r.AreaPlanned)
+                .Property(r => r.NetAreaPlanned)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<Room>()
-                .Property(r => r.AreaActual)
+                .Property(r => r.NetAreaActual)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.GrossAreaPlanned)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.GrossAreaActual)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<Room>()

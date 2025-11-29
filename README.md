@@ -314,6 +314,99 @@ The analysis can be configured with custom tolerance values (e.g., ±5%).
 
 ---
 
+## 🗄️ Database Schema Changes (Room Table)
+
+### Current Room Table Structure
+
+The Room table has been updated to use separate SOLL (planned) and IST (actual) columns for both net and gross areas:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `RoomID` | INT | Primary key, auto-incremented |
+| `RoomTypeID` | INT | Foreign key to RoomType |
+| `Name` | NVARCHAR(100) | Room name |
+| `NetAreaPlanned` | DECIMAL(18,2) | Planned net area (SOLL) in m² |
+| `NetAreaActual` | DECIMAL(18,2) | Actual net area (IST) in m² |
+| `GrossAreaPlanned` | DECIMAL(18,2) | Planned gross area (SOLL) in m² |
+| `GrossAreaActual` | DECIMAL(18,2) | Actual gross area (IST) in m² |
+| `PubliclyAccessible` | BIT | IFC Pset_SpaceCommon.PubliclyAccessible |
+| `HandicapAccessible` | BIT | IFC Pset_SpaceCommon.HandicapAccessible |
+| `IsExternal` | BIT | IFC Pset_SpaceCommon.IsExternal |
+| `Description` | NVARCHAR(500) | IFC IfcSpace.Description |
+| `ObjectType` | NVARCHAR(100) | IFC IfcSpace.ObjectType |
+| `PredefinedType` | NVARCHAR(50) | IFC IfcSpace.PredefinedType |
+| `ElevationWithFlooring` | DECIMAL(18,4) | IFC IfcSpace.ElevationWithFlooring |
+| `ModifiedByUserID` | NVARCHAR(255) | User who last modified |
+| `ModifiedDate` | DATETIME2 | Last modification date |
+
+### Migration Notes
+
+**⚠️ Important:** If you are upgrading from a previous version, the following columns have been **removed**:
+
+| Removed Column | Replaced By |
+|----------------|-------------|
+| `AreaPlanned` | `NetAreaPlanned` |
+| `AreaActual` | `NetAreaActual` |
+| `NetArea` | `NetAreaPlanned` / `NetAreaActual` |
+| `GrossArea` | `GrossAreaPlanned` / `GrossAreaActual` |
+
+### SOLL/IST Separation
+
+The new column structure separates planned (SOLL) and actual (IST) values:
+
+**SOLL Pages (Raumprogramm Übersicht):**
+- Use `NetAreaPlanned` for planned net area
+- Use `GrossAreaPlanned` for planned gross area
+
+**IST Pages (Ausgeführt):**
+- Use `NetAreaActual` for actual net area
+- Use `GrossAreaActual` for actual gross area
+
+### Example Queries
+
+**Get SOLL values for room program overview:**
+```sql
+SELECT r.Name, r.NetAreaPlanned, r.GrossAreaPlanned, rt.Name AS RoomType
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+ORDER BY rt.Name, r.Name;
+```
+
+**Get IST values for actual data view:**
+```sql
+SELECT r.Name, r.NetAreaActual, r.GrossAreaActual, rt.Name AS RoomType
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+ORDER BY rt.Name, r.Name;
+```
+
+**Compare SOLL vs IST (Analysis):**
+```sql
+SELECT 
+    rt.Name AS RoomType,
+    SUM(r.NetAreaPlanned) AS TotalNetAreaPlanned,
+    SUM(r.NetAreaActual) AS TotalNetAreaActual,
+    CASE 
+        WHEN SUM(r.NetAreaPlanned) > 0 
+        THEN (SUM(r.NetAreaActual) / SUM(r.NetAreaPlanned)) * 100 
+        ELSE 0 
+    END AS PercentageFulfilled
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+GROUP BY rt.Name
+ORDER BY rt.Name;
+```
+
+### RoomInventory SOLL/IST Handling
+
+The `RoomInventory` table continues to use `ValuePlanned` (SOLL) and `ValueActual` (IST) for dynamic property values:
+
+- **SOLL pages** must use `ValuePlanned`
+- **IST pages** must use `ValueActual`
+- The `DataType` from `InventoryTemplate` should be respected when displaying/editing values
+
+---
+
 ## 👤 Support
 
 - **Developer**: Joachim Salomonsen

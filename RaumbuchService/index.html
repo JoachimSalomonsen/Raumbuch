@@ -450,14 +450,15 @@
                                 <tr>
                                     <th>Raumtyp</th>
                                     <th>Raum Name</th>
-                                    <th>IST Fläche (m²)</th>
+                                    <th>Nettofläche (m²)</th>
+                                    <th>Bruttofläche (m²)</th>
                                     <th>Kommentar</th>
                                     <th>Aktionen</th>
                                 </tr>
                             </thead>
                             <tbody id="istTableBody">
                                 <tr>
-                                    <td colspan="5" style="text-align:center; color:#666;">
+                                    <td colspan="6" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Klicken Sie auf "Daten laden".
                                     </td>
                                 </tr>
@@ -4036,8 +4037,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     body: JSON.stringify({
                         roomTypeID: parseInt(roomTypeId),
                         name: name,
-                        areaPlanned: areaPlanned ? parseFloat(areaPlanned) : null,
-                        areaActual: null, // IST values managed in Ausgeführt tab
+                        netAreaPlanned: areaPlanned ? parseFloat(areaPlanned) : null,
+                        netAreaActual: null, // IST values managed in Ausgeführt tab
+                        grossAreaPlanned: null,
+                        grossAreaActual: null,
                         userId: getCurrentUserId()
                     })
                 });
@@ -4176,9 +4179,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 if (showRaumtyp) html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
                 if (showRaumkategorie) html += `<td>${escapeHtml(room.roomCategory || '')}</td>`;
                 if (showRaum) html += `<td>${escapeHtml(room.name || '')}</td>`;
-                if (showNetArea) html += `<td>${(room.netArea || 0).toFixed(2)}</td>`;
-                if (showGrossArea) html += `<td>${(room.grossArea || 0).toFixed(2)}</td>`;
-                if (showAreaPlanned) html += `<td>${(room.areaPlanned || 0).toFixed(2)}</td>`;
+                if (showNetArea) html += `<td>${(room.netAreaPlanned || 0).toFixed(2)}</td>`;
+                if (showGrossArea) html += `<td>${(room.grossAreaPlanned || 0).toFixed(2)}</td>`;
+                if (showAreaPlanned) html += `<td>${(room.netAreaPlanned || 0).toFixed(2)}</td>`;
                 if (showDescription) html += `<td>${escapeHtml(room.description || '')}</td>`;
                 if (showObjectType) html += `<td>${escapeHtml(room.objectType || '')}</td>`;
                 if (showPredefinedType) html += `<td>${escapeHtml(room.predefinedType || '')}</td>`;
@@ -4393,8 +4396,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             // Show comment column only when single inventory selected
             const showComment = selectedInventoryIds.length === 1;
 
-            // Build dynamic headers
-            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>IST (m²)</th>';
+            // Build dynamic headers with NetAreaActual and GrossAreaActual
+            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>Nettofläche (m²)</th><th>Bruttofläche (m²)</th>';
             selectedTemplates.forEach(t => {
                 const unit = t.unit ? ` (${t.unit})` : '';
                 headerHtml += `<th>IST: ${escapeHtml(t.propertyName)}${unit}</th>`;
@@ -4406,19 +4409,21 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             thead.innerHTML = headerHtml;
 
             if (!rooms || rooms.length === 0) {
-                const colspan = 4 + selectedTemplates.length + (showComment ? 1 : 0);
+                const colspan = 5 + selectedTemplates.length + (showComment ? 1 : 0);
                 tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
                 return;
             }
 
             let html = '';
             rooms.forEach(room => {
-                const areaActual = room.areaActual || 0;
+                const netAreaActual = room.netAreaActual || 0;
+                const grossAreaActual = room.grossAreaActual || 0;
 
                 html += `<tr data-room-id="${room.roomID}">`;
                 html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
                 html += `<td>${escapeHtml(room.name || '')}</td>`;
-                html += `<td><input type="number" class="form-control ist-input" data-field="areaActual" value="${areaActual}" step="0.01" style="width:100px;"></td>`;
+                html += `<td><input type="number" class="form-control ist-input" data-field="netAreaActual" value="${netAreaActual}" step="0.01" style="width:100px;"></td>`;
+                html += `<td><input type="number" class="form-control ist-input" data-field="grossAreaActual" value="${grossAreaActual}" step="0.01" style="width:100px;"></td>`;
 
                 // Add columns for each selected inventory (IST values)
                 selectedTemplates.forEach(t => {
