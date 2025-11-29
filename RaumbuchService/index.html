@@ -4173,12 +4173,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 return;
             }
 
-            // Build predefined types options HTML
+            // Get predefined types for dropdown
             const predefinedTypes = window.predefinedTypes || [];
-            let predefinedOptionsHtml = '<option value="">--</option>';
-            predefinedTypes.forEach(pt => {
-                predefinedOptionsHtml += `<option value="${escapeHtml(pt.name)}">${escapeHtml(pt.name)}</option>`;
-            });
 
             let html = '';
             rooms.forEach(room => {
@@ -4218,20 +4214,14 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
                     const value = inv?.valuePlanned || '';
                     const inputType = getInputTypeForDataType(t.dataType);
-                    html += `<td><input type="${inputType}" class="form-control soll-input inventory-input" 
-                        data-template-id="${t.inventoryTemplateID}" 
-                        data-room-id="${room.roomID}"
-                        value="${escapeHtml(value)}" style="width:120px;"></td>`;
+                    html += `<td><input type="${inputType}" class="form-control soll-input inventory-input" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
                 });
 
                 // Add comment column if single inventory selected
                 if (showComment && selectedTemplates.length === 1) {
                     const inv = (room.inventory || []).find(i => i.inventoryTemplateID === selectedTemplates[0].inventoryTemplateID);
                     const comment = inv?.comment || '';
-                    html += `<td><input type="text" class="form-control soll-input inventory-comment" 
-                        data-template-id="${selectedTemplates[0].inventoryTemplateID}"
-                        data-room-id="${room.roomID}"
-                        value="${escapeHtml(comment)}" style="width:150px;"></td>`;
+                    html += `<td><input type="text" class="form-control soll-input inventory-comment" data-template-id="${selectedTemplates[0].inventoryTemplateID}" data-room-id="${room.roomID}" value="${escapeHtml(comment)}" style="width:150px;"></td>`;
                 }
 
                 // Actions column with delete button

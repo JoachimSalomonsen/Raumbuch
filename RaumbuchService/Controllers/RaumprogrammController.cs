@@ -895,6 +895,8 @@ namespace RaumbuchService.Controllers
         /// <summary>
         /// Gets all PredefinedRoomType values for dropdown.
         /// These are the IFC standard values for IfcSpace.PredefinedType.
+        /// Note: These values match the CHECK constraint in the database (dbo.PredefinedRoomType)
+        /// and are IFC standard values that rarely change.
         /// GET /api/predefinedtypes
         /// </summary>
         [HttpGet]
@@ -904,7 +906,8 @@ namespace RaumbuchService.Controllers
             try
             {
                 // IFC standard values for IfcSpace.PredefinedType
-                // As defined in the database CHECK constraint
+                // These match the CHECK constraint in the database and are IFC standard values
+                // Note: If you need to load from database, query PredefinedRoomType table instead
                 var predefinedTypes = new List<PredefinedTypeDto>
                 {
                     new PredefinedTypeDto { Name = "NOTDEFINED", Description = "Not defined" },
