@@ -99,8 +99,13 @@ function handleCommand(command) {
     console.log("Command received:", command);
 
     switch (command) {
-        case "menu_raumbuch":
-            activateTab("tab-konfig");
+       
+        case "menu_raumprogramm":
+            activateTab("tab-raumprogramm");
+            break;
+
+        case "menu_ausgefuehrt":
+            activateTab("tab-ausgefuehrt");
             break;
 
         case "menu_analyse":
@@ -115,47 +120,17 @@ function handleCommand(command) {
             activateTab("tab-bcf");
             break;
 
+        case "menu_konfig":
+            activateTab("tab-konfig");
+            break;
+
         default:
             console.warn("Unknown command:", command);
     }
 }
 
 
-// -------------------------------
-// Activate correct HTML tab
-// -------------------------------
-function activateTab(tabId) {
-    console.log("Activating tab:", tabId);
-    
-    // Use the existing openTab function from index.html if available
-    if (typeof window.openTab === 'function') {
-        window.openTab(tabId);
-    } else {
-        // Fallback to manual tab switching
-        // Hide all tabs
-        document.querySelectorAll(".tab-content").forEach(tab => {
-            tab.classList.remove('active');
-        });
 
-        // Show the selected tab
-        const tab = document.getElementById(tabId);
-        if (tab) {
-            tab.classList.add('active');
-        }
-
-        // Update top-tab visuals (existing UI)
-        document.querySelectorAll(".tc-tab").forEach(btn => {
-            btn.classList.remove("active");
-        });
-        
-        // Find and activate the corresponding tab button
-        const index = ['tab-konfig', 'tab-analyse', 'tab-ausstattung', 'tab-bcf'].indexOf(tabId);
-        const tabButtons = document.querySelectorAll('.tc-tab');
-        if (tabButtons[index]) {
-            tabButtons[index].classList.add('active');
-        }
-    }
-}
 
 
 init();
