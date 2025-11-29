@@ -55,7 +55,7 @@
             <!-- ========================================================= -->
             <!-- TAB 1 – KONFIGURATION + STEP 1 + STEP 3 + STEP 4          -->
             <!-- ========================================================= -->
-            <div id="tab-konfig" class="tab-content active">
+            <div id="tab-konfig" class="tab-content">
 
 
                 <!-- STEP 0 – CONFIGURATION -->
@@ -212,102 +212,7 @@
             <!-- ========================================================= -->
             <!-- TAB - RAUMPROGRAMM (SOLL Data Management)                 -->
             <!-- ========================================================= -->
-            <div id="tab-raumprogramm" class="tab-content">
-
-                <!-- Master Data Management -->
-                <section class="card">
-                    <h2>Stammdaten verwalten</h2>
-
-                    <div class="subsection">
-                        <h3>Raumtypen</h3>
-                        <div class="form-group">
-                            <label for="newRoomTypeName">Neuer Raumtyp:</label>
-                            <div style="display:flex; gap:10px; align-items:flex-start;">
-                                <input type="text" id="newRoomTypeName" class="form-control" placeholder="z.B. 'Büro', 'Besprechungsraum'" style="flex:1;">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="newRoomTypeCategory">Raumkategorie:</label>
-                            <div style="display:flex; gap:10px; align-items:flex-start;">
-                                <input type="text" id="newRoomTypeCategory" class="form-control" placeholder="z.B. 'Arbeitsfläche', 'Gemeinschaftsfläche'" style="flex:1;">
-                                <button class="btn btn-primary" onclick="createRoomType()">➕ Hinzufügen</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Vorhandene Raumtypen:</label>
-                            <select id="existingRoomTypes" class="form-control" size="5" style="width:100%;">
-                                <option value="">-- Laden Sie die Daten --</option>
-                            </select>
-                            <div style="margin-top:10px;">
-                                <button class="btn btn-secondary" onclick="loadRoomTypes()">🔄 Laden</button>
-                                <button class="btn btn-danger" onclick="deleteSelectedRoomType()">🗑️ Löschen</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr style="margin:20px 0;">
-
-                    <div class="subsection">
-                        <h3>Ausstattungseigenschaften (Inventory Templates)</h3>
-                        <div class="form-group">
-                            <label for="newInventoryPropertyName">Neue Eigenschaft:</label>
-                            <div style="display:flex; gap:10px; align-items:flex-start;">
-                                <input type="text" id="newInventoryPropertyName" class="form-control" placeholder="z.B. 'Bodenbelag', 'Beleuchtung'" style="flex:1;">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="newInventoryDataType">Datentyp:</label>
-                            <div style="display:flex; gap:10px; align-items:flex-start;">
-                                <select id="newInventoryDataType" class="form-control" style="width:200px;">
-                                    <option value="Text">Text</option>
-                                    <option value="Number">Zahl (Number)</option>
-                                    <option value="Integer">Ganzzahl (Integer)</option>
-                                    <option value="Decimal">Dezimalzahl (Decimal)</option>
-                                    <option value="Boolean">Ja/Nein (Boolean)</option>
-                                </select>
-                                <input type="text" id="newInventoryUnit" class="form-control" placeholder="Einheit (z.B. m², kg, Stück)" style="width:180px;">
-                                <button class="btn btn-primary" onclick="createInventoryTemplate()">➕ Hinzufügen</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Vorhandene Eigenschaften:</label>
-                            <select id="existingInventoryTemplates" class="form-control" size="5" style="width:100%;" multiple>
-                                <option value="">-- Laden Sie die Daten --</option>
-                            </select>
-                            <small>Mehrfachauswahl: Strg+Klick für mehrere Inventare</small>
-                            <div style="margin-top:10px;">
-                                <button class="btn btn-secondary" onclick="loadInventoryTemplates()">🔄 Laden</button>
-                                <button class="btn btn-danger" onclick="deleteSelectedInventoryTemplate()">🗑️ Löschen</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="masterDataResult" class="result"></div>
-                </section>
-
-                <!-- Räume verwalten (Room Management) - SOLL only, IST moved to Ausgeführt tab -->
-                <section class="card">
-                    <h2>Räume verwalten (SOLL)</h2>
-                    <div class="form-group">
-                        <label for="roomRoomType">Raumtyp:</label>
-                        <select id="roomRoomType" class="form-control">
-                            <option value="">-- Raumtyp auswählen --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="roomName">Raum Name:</label>
-                        <input type="text" id="roomName" class="form-control" placeholder="z.B. 'Büro 101'">
-                    </div>
-                    <div class="form-group">
-                        <label for="roomAreaPlanned">Fläche SOLL (m²):</label>
-                        <input type="number" id="roomAreaPlanned" class="form-control" step="0.01" placeholder="0.00" style="max-width:200px;">
-                    </div>
-                    <div style="margin-top:10px;">
-                        <button class="btn btn-primary" onclick="createRoom()">➕ Raum hinzufügen</button>
-                    </div>
-                    <div id="roomManagementResult" class="result"></div>
-                </section>
-
+            <div id="tab-raumprogramm" class="tab-content active">
                 <!-- Raumprogramm Overview -->
                 <section class="card">
                     <h2>Raumprogramm Übersicht (SOLL)</h2>
@@ -331,20 +236,6 @@
                             <label for="raumprogram-search">Suche:</label>
                             <input type="text" id="raumprogram-search" class="form-control" placeholder="Raum suchen..." style="width:200px;" onkeyup="loadRaumprogramData()">
                         </div>
-                    </div>
-
-                    <!-- Column Visibility Controls -->
-                    <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
-                        <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-areaplanned" onchange="loadRaumprogramData()"> Fläche SOLL</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
-                        <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
                     </div>
 
                     <!-- Data Table - SOLL only, dynamic columns based on visibility settings -->
@@ -385,8 +276,124 @@
                         <button class="btn btn-secondary" onclick="refreshAllMasterData()">🔄 Stammdaten aktualisieren</button>
                     </div>
                     <div id="raumprogramResult" class="result"></div>
+
+                    <!-- Column Visibility Controls -->
+                    <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
+                        <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumtyp" checked onchange="loadRaumprogramData()"> Raumtyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raumkategorie" checked onchange="loadRaumprogramData()"> Raumkategorie</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-raum" checked onchange="loadRaumprogramData()"> Raum</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-netarea" checked onchange="loadRaumprogramData()"> Nettofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-grossarea" checked onchange="loadRaumprogramData()"> Bruttofläche</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-areaplanned" onchange="loadRaumprogramData()"> Fläche SOLL</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-description" onchange="loadRaumprogramData()"> Beschreibung</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-objecttype" onchange="loadRaumprogramData()"> Objekttyp</label>
+                        <label style="margin-right:10px;"><input type="checkbox" id="col-predefinedtype" onchange="loadRaumprogramData()"> Vordefinierter Typ</label>
+                    </div>
+
+
                 </section>
 
+
+                <!-- Master Data Management -->
+                <section class="card">
+                    <h2>Stammdaten verwalten</h2>
+
+                    <div id="masterDataResult" class="result"></div>
+
+                    <div class="subsection">
+                        <h3>Ausstattungseigenschaften (Inventory Templates)</h3>
+                        <div class="form-group">
+                            <label for="newInventoryPropertyName">Neue Eigenschaft:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newInventoryPropertyName" class="form-control" placeholder="z.B. 'Bodenbelag', 'Beleuchtung'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newInventoryDataType">Datentyp:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <select id="newInventoryDataType" class="form-control" style="width:200px;">
+                                    <option value="Text">Text</option>
+                                    <option value="Number">Zahl (Number)</option>
+                                    <option value="Integer">Ganzzahl (Integer)</option>
+                                    <option value="Decimal">Dezimalzahl (Decimal)</option>
+                                    <option value="Boolean">Ja/Nein (Boolean)</option>
+                                </select>
+                                <input type="text" id="newInventoryUnit" class="form-control" placeholder="Einheit (z.B. m², kg, Stück)" style="width:180px;">
+                                <button class="btn btn-primary" onclick="createInventoryTemplate()">➕ Hinzufügen</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Vorhandene Eigenschaften:</label>
+                            <select id="existingInventoryTemplates" class="form-control" size="5" style="width:100%;" multiple>
+                                <option value="">-- Laden Sie die Daten --</option>
+                            </select>
+                            <small>Mehrfachauswahl: Strg+Klick für mehrere Inventare</small>
+                            <div style="margin-top:10px;">
+                                <button class="btn btn-secondary" onclick="loadInventoryTemplates()">🔄 Laden</button>
+                                <button class="btn btn-danger" onclick="deleteSelectedInventoryTemplate()">🗑️ Löschen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="margin:20px 0;">
+
+                    <!-- Räume verwalten (Room Management) - SOLL only, IST moved to Ausgeführt tab -->
+                    <h3>Räume verwalten (SOLL)</h3>
+                    <div class="form-group">
+                        <label for="roomRoomType">Raumtyp:</label>
+                        <select id="roomRoomType" class="form-control">
+                            <option value="">-- Raumtyp auswählen --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="roomName">Raum Name:</label>
+                        <input type="text" id="roomName" class="form-control" placeholder="z.B. 'Büro 101'">
+                    </div>
+                    <div class="form-group">
+                        <label for="roomAreaPlanned">Fläche SOLL (m²):</label>
+                        <input type="number" id="roomAreaPlanned" class="form-control" step="0.01" placeholder="0.00" style="max-width:200px;">
+                    </div>
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" onclick="createRoom()">➕ Raum hinzufügen</button>
+                    </div>
+                    <div id="roomManagementResult" class="result"></div>
+
+                    <hr style="margin:20px 0;">
+
+                    <div class="subsection">
+                        <h3>Raumtypen</h3>
+                        <div class="form-group">
+                            <label for="newRoomTypeName">Neuer Raumtyp:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newRoomTypeName" class="form-control" placeholder="z.B. 'Büro', 'Besprechungsraum'" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newRoomTypeCategory">Raumkategorie:</label>
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="text" id="newRoomTypeCategory" class="form-control" placeholder="z.B. 'Arbeitsfläche', 'Gemeinschaftsfläche'" style="flex:1;">
+                                <button class="btn btn-primary" onclick="createRoomType()">➕ Hinzufügen</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Vorhandene Raumtypen:</label>
+                            <select id="existingRoomTypes" class="form-control" size="5" style="width:100%;">
+                                <option value="">-- Laden Sie die Daten --</option>
+                            </select>
+                            <div style="margin-top:10px;">
+                                <button class="btn btn-secondary" onclick="loadRoomTypes()">🔄 Laden</button>
+                                <button class="btn btn-danger" onclick="deleteSelectedRoomType()">🗑️ Löschen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="margin:20px 0;">
+
+
+                </section>
+
+ 
                 <!-- Import/Export -->
                 <section class="card">
                     <h2>Import / Export</h2>

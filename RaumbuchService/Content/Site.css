@@ -251,7 +251,7 @@ small {
     font-size: 14px;
     font-weight: 600;
     font-family: 'Segoe UI', sans-serif;
-    width: 240px;
+    min-width: 150px;
     cursor: pointer;
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
     display: inline-block;
