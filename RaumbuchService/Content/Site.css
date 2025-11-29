@@ -352,7 +352,7 @@ small {
     }
 
 .btn-danger {
-    background: var((--tc-btn-danger);
+    background: var(--tc-btn-danger);
     color: var(--tc-bg-card);
 }
 
