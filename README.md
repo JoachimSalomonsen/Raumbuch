@@ -407,6 +407,67 @@ The `RoomInventory` table continues to use `ValuePlanned` (SOLL) and `ValueActua
 
 ---
 
+## ✏️ Editable SOLL Table (Raumprogramm Übersicht)
+
+The "Raumprogramm Übersicht (SOLL)" page features an **editable table** that allows direct in-cell editing of room data.
+
+### Editable Fields
+
+The following fields can be edited directly in the table:
+
+| Field | Column Name | Type | Description |
+|-------|-------------|------|-------------|
+| `NetAreaPlanned` | Nettofläche (m²) | Number | Planned net area in square meters |
+| `GrossAreaPlanned` | Bruttofläche (m²) | Number | Planned gross area in square meters |
+| `Description` | Beschreibung | Text | Room description |
+| `ObjectType` | Objekttyp | Text | IFC ObjectType |
+| `PredefinedType` | Vordefinierter Typ | Dropdown | IFC PredefinedType (see below) |
+
+### PredefinedType Dropdown
+
+The `PredefinedType` field uses a dropdown that is populated from the `PredefinedRoomType` table.
+
+**📌 Important:** The SQL for PredefinedType is fully implemented:
+- Table: `dbo.PredefinedRoomType`
+- Unique constraint on `Name`
+- CHECK constraint enforcing allowed values
+
+**Allowed Values:**
+- `NOTDEFINED`
+- `SPACE`
+- `PARKING`
+- `INTERNAL`
+- `EXTERNAL`
+- `BERTH`
+- `USERDEFINED`
+
+Frontend and backend use the existing schema without modifications.
+
+### Dynamic Inventory Columns
+
+When inventory templates are selected in the filter, additional editable columns appear:
+- Each column corresponds to an `InventoryTemplate.PropertyName`
+- Values are saved to `RoomInventory.ValuePlanned`
+- Input type respects `InventoryTemplate.DataType` (Text, Number, Boolean, Integer, Decimal)
+
+### Data Loading
+
+The **"Daten laden"** button refreshes:
+1. Room types (`RoomType`)
+2. Rooms with SOLL fields (`NetAreaPlanned`, `GrossAreaPlanned`, `Description`, `ObjectType`, `PredefinedType`)
+3. Inventory templates (`InventoryTemplate`)
+4. Predefined types for dropdown (`PredefinedRoomType`)
+5. Room inventory values (`RoomInventory.ValuePlanned`)
+
+### Delete Functionality
+
+Each row includes a delete button (🗑️) that:
+- Shows a confirmation dialog
+- Deletes the room and associated inventory items
+- Refreshes the table after deletion
+
+---
+
 ## 👤 Support
 
 - **Developer**: Joachim Salomonsen

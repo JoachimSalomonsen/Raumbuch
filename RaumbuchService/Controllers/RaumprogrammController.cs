@@ -791,6 +791,14 @@ namespace RaumbuchService.Controllers
                     room.NetAreaActual = request.NetAreaActual;
                     room.GrossAreaPlanned = request.GrossAreaPlanned;
                     room.GrossAreaActual = request.GrossAreaActual;
+                    // Update IFC Standard Properties
+                    room.Description = request.Description;
+                    room.ObjectType = request.ObjectType;
+                    room.PredefinedType = request.PredefinedType;
+                    room.PubliclyAccessible = request.PubliclyAccessible;
+                    room.HandicapAccessible = request.HandicapAccessible;
+                    room.IsExternal = request.IsExternal;
+                    room.ElevationWithFlooring = request.ElevationWithFlooring;
 
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
@@ -809,6 +817,13 @@ namespace RaumbuchService.Controllers
                             NetAreaActual = room.NetAreaActual,
                             GrossAreaPlanned = room.GrossAreaPlanned,
                             GrossAreaActual = room.GrossAreaActual,
+                            Description = room.Description,
+                            ObjectType = room.ObjectType,
+                            PredefinedType = room.PredefinedType,
+                            PubliclyAccessible = room.PubliclyAccessible,
+                            HandicapAccessible = room.HandicapAccessible,
+                            IsExternal = room.IsExternal,
+                            ElevationWithFlooring = room.ElevationWithFlooring,
                             ModifiedByUserID = room.ModifiedByUserID,
                             ModifiedDate = room.ModifiedDate
                         }
@@ -870,6 +885,134 @@ namespace RaumbuchService.Controllers
             {
                 System.Diagnostics.Debug.WriteLine($"Error in DeleteRoom: {ex.Message}");
                 return InternalServerError(new Exception($"Fehler beim Löschen des Raums: {ex.Message}", ex));
+            }
+        }
+
+        // ====================================================================
+        // PREDEFINED ROOM TYPE ENDPOINTS
+        // ====================================================================
+
+        /// <summary>
+        /// Gets all PredefinedRoomType values for dropdown.
+        /// These are the IFC standard values for IfcSpace.PredefinedType.
+        /// GET /api/predefinedtypes
+        /// </summary>
+        [HttpGet]
+        [Route("predefinedtypes")]
+        public IHttpActionResult GetPredefinedTypes()
+        {
+            try
+            {
+                // IFC standard values for IfcSpace.PredefinedType
+                // As defined in the database CHECK constraint
+                var predefinedTypes = new List<PredefinedTypeDto>
+                {
+                    new PredefinedTypeDto { Name = "NOTDEFINED", Description = "Not defined" },
+                    new PredefinedTypeDto { Name = "SPACE", Description = "General space" },
+                    new PredefinedTypeDto { Name = "PARKING", Description = "Parking space" },
+                    new PredefinedTypeDto { Name = "INTERNAL", Description = "Internal space" },
+                    new PredefinedTypeDto { Name = "EXTERNAL", Description = "External space" },
+                    new PredefinedTypeDto { Name = "BERTH", Description = "Berth/dock space" },
+                    new PredefinedTypeDto { Name = "USERDEFINED", Description = "User defined" }
+                };
+
+                return Ok(new PredefinedTypesResponse
+                {
+                    Success = true,
+                    Message = $"{predefinedTypes.Count} Vordefinierte Typen gefunden.",
+                    PredefinedTypes = predefinedTypes
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetPredefinedTypes: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Laden der vordefinierten Typen: {ex.Message}", ex));
+            }
+        }
+
+        // ====================================================================
+        // ROOM INVENTORY UPDATE ENDPOINT
+        // ====================================================================
+
+        /// <summary>
+        /// Updates or creates a RoomInventory value.
+        /// PUT /api/roominventory
+        /// </summary>
+        [HttpPut]
+        [Route("roominventory")]
+        public async Task<IHttpActionResult> UpdateRoomInventory([FromBody] RoomInventoryUpdateRequest request)
+        {
+            try
+            {
+                if (request == null || request.RoomID <= 0 || request.InventoryTemplateID <= 0)
+                {
+                    return BadRequest("RoomID und InventoryTemplateID sind erforderlich.");
+                }
+
+                using (var db = new RaumbuchContext())
+                {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
+                    // Find existing inventory item or create new one
+                    var inventory = await db.RoomInventories
+                        .FirstOrDefaultAsync(ri => ri.RoomID == request.RoomID && 
+                                                   ri.InventoryTemplateID == request.InventoryTemplateID);
+
+                    if (inventory == null)
+                    {
+                        // Verify room and template exist
+                        var room = await db.Rooms.FindAsync(request.RoomID);
+                        if (room == null)
+                        {
+                            return BadRequest($"Raum mit ID {request.RoomID} existiert nicht.");
+                        }
+
+                        var template = await db.InventoryTemplates.FindAsync(request.InventoryTemplateID);
+                        if (template == null)
+                        {
+                            return BadRequest($"Inventarvorlage mit ID {request.InventoryTemplateID} existiert nicht.");
+                        }
+
+                        inventory = new RoomInventory
+                        {
+                            RoomID = request.RoomID,
+                            InventoryTemplateID = request.InventoryTemplateID,
+                            ValuePlanned = request.ValuePlanned,
+                            ValueActual = request.ValueActual,
+                            Comment = request.Comment
+                        };
+                        db.RoomInventories.Add(inventory);
+                    }
+                    else
+                    {
+                        // Update existing
+                        if (request.ValuePlanned != null)
+                            inventory.ValuePlanned = request.ValuePlanned;
+                        if (request.ValueActual != null)
+                            inventory.ValueActual = request.ValueActual;
+                        if (request.Comment != null)
+                            inventory.Comment = request.Comment;
+                    }
+
+                    await db.SaveChangesWithAuditAsync(request.UserId);
+
+                    return Ok(new RoomInventoryUpdateResponse
+                    {
+                        Success = true,
+                        Message = "Inventarwert erfolgreich gespeichert.",
+                        RoomInventoryID = inventory.RoomInventoryID
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in UpdateRoomInventory: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Aktualisieren des Inventarwerts: {ex.Message}", ex));
             }
         }
 
@@ -1549,5 +1692,33 @@ namespace RaumbuchService.Controllers
     {
         public string FileId { get; set; }
         public string FileName { get; set; }
+    }
+
+    // PredefinedType DTOs
+    public class PredefinedTypeDto
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class PredefinedTypesResponse : BaseResponse
+    {
+        public List<PredefinedTypeDto> PredefinedTypes { get; set; }
+    }
+
+    // RoomInventory Update DTOs
+    public class RoomInventoryUpdateRequest
+    {
+        public int RoomID { get; set; }
+        public int InventoryTemplateID { get; set; }
+        public string ValuePlanned { get; set; }
+        public string ValueActual { get; set; }
+        public string Comment { get; set; }
+        public string UserId { get; set; }
+    }
+
+    public class RoomInventoryUpdateResponse : BaseResponse
+    {
+        public int RoomInventoryID { get; set; }
     }
 }
