@@ -4409,7 +4409,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             thead.innerHTML = headerHtml;
 
             if (!rooms || rooms.length === 0) {
-                const colspan = 5 + selectedTemplates.length + (showComment ? 1 : 0);
+                // Base columns: Raumtyp, Raum Name, Nettofläche, Bruttofläche, Aktionen = 5
+                const baseColCount = 5;
+                const colspan = baseColCount + selectedTemplates.length + (showComment ? 1 : 0);
                 tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
                 return;
             }

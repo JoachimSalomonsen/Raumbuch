@@ -1211,8 +1211,10 @@ namespace RaumbuchService.Controllers
                         ws.Cell(1, 5).Value = "Bruttofläche SOLL (m²)";
                         ws.Cell(1, 6).Value = "Bruttofläche IST (m²)";
 
-                        // Add inventory template columns
-                        int col = 7;
+                        // Add inventory template columns starting after fixed columns
+                        // Fixed columns: 1=Raumtyp, 2=Raum Name, 3-4=Nettofläche SOLL/IST, 5-6=Bruttofläche SOLL/IST
+                        const int firstInventoryColumn = 7;
+                        int col = firstInventoryColumn;
                         var templateColumns = new Dictionary<int, int>(); // TemplateID -> Column
                         foreach (var template in inventoryTemplates)
                         {
