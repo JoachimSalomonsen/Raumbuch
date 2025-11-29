@@ -1,53 +1,79 @@
-﻿/* ============================================================
-   TRIMBLE CONNECT INSPIRED DESIGN
-   ============================================================ */
+﻿/*
+* ESSENSIELLT: Sørg for at rot-elementene tar opp hele plassen for å unngå scrollbars og layout-problemer i iframes.
+*/
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Fjerner scrollbars på selve vinduet */
+    box-sizing: border-box;
+}
+
+/*
+* Hovedcontaineren må også ta opp 100% av plassen til body/html og sette opp flex for å stable elementer.
+*/
+.app-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* ============================================================
+    TRIMBLE CONNECT INSPIRED DESIGN
+    ============================================================ */
 
 /* ------------------------------------------------------------
-   CSS VARIABLES - Trimble Connect Color Palette
-   ------------------------------------------------------------ */
+    CSS VARIABLES - Trimble Connect Color Palette
+    ------------------------------------------------------------ */
 :root {
     /* Trimble Connect Primary Colors */
-    --tc-primary-blue: #0078D4;
-    --tc-dark-blue: #003168;
-    --tc-light-blue: #00A7E1;
-    
+    --tc-primary-blue: #005f9e;
+    --tc-dark-blue: #00437b;
+    --tc-light-blue: #0c77be;
+    --tc-white: #ffffff; /* Explicit variable for white */
     /* Status Colors */
     --tc-success-green: #2E8540;
     --tc-error-red: #D64545;
     --tc-warning-yellow: #FFBF47;
-    
     /* Neutral Colors */
     --tc-bg-neutral: #f3f5f7;
     --tc-bg-card: #ffffff;
     --tc-border: #e1e4e8;
-    --tc-text-primary: #003168;
-    --tc-text-secondary: #5a5e62;
+    --tc-secondary-grey: #6b706f;
     --tc-text-muted: #86909c;
-    
     /* Success Message Colors */
     --tc-success-bg: #dff3e6;
-    --tc-success-border: #2E8540;
-    --tc-success-text: #2E8540;
-    
+    --tc-success-border: var(--tc-success-green);
+    --tc-success-text: var(--tc-success-green);
+    --tc-success-bg-hover: #c8e6c9;
     /* Error Message Colors */
     --tc-error-bg: #f8d7da;
-    --tc-error-border: #D64545;
+    --tc-error-border: var(--tc-error-red);
     --tc-error-text: #8b0000;
-    
-    /* Loading Message Colors */
+    --tc-error-bg-hover: #ffe0e0;
+    /* Loading/Warning Message Colors */
     --tc-loading-bg: #fff3cd;
     --tc-loading-border: #ffe08a;
     --tc-loading-text: #856404;
-    
+    --tc-loading-bg-hover: #ffecb3;
+    /* Tab & Button Specific Shades */
+    --tc-tab-hover: #1f5d8f;
+    --tc-primary-blue-active: #004578;
     /* Shadows */
     --tc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --tc-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.12);
     --tc-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* Layout Variables */
+    --tab-height: 70px;
+    --page-margin: 20px; /* Variabel for den ønskede 20px paddingen */
 }
 
 /* ------------------------------------------------------------
-   GLOBAL RESET & BASE STYLES
-   ------------------------------------------------------------ */
+    GLOBAL RESET & BASE STYLES
+    ------------------------------------------------------------ */
 * {
     margin: 0;
     padding: 0;
@@ -57,39 +83,119 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--tc-bg-neutral);
-    color: var(--tc-text-primary);
+    color: var(--tc-dark-blue);
     line-height: 1.6;
     min-height: 100vh;
-    padding: 0px;
+    padding: 0;
 }
 
-/* ------------------------------------------------------------
-   CONTAINER
-   ------------------------------------------------------------ */
+/* ============================================================
+    TOP NAVIGATION TABS (FULL WIDTH)
+    ============================================================ */
+
+/* TAB CONTAINER (The entire blue bar - full width breakout) */
+.tc-tabs {
+    display: flex;
+    justify-content: center; /* Center the tabs horizontally */
+    align-items: center;
+    /* Endret for å bruke 100% siden .app-container er 100% */
+    width: 100%;
+    /* Fjernet margin-left calc - dette er ikke nødvendig når .app-container er 100% bred og body er 0 padding/margin */
+    margin: 0;
+    margin-top: 0; /* Fjerner margin på toppen */
+    background-color: var(--tc-dark-blue);
+    padding: 0;
+    border-bottom: none;
+    height: var(--tab-height);
+    position: relative;
+    box-sizing: border-box;
+    /* Sikrer at tab-baren vises over eventuell container-margin */
+    z-index: 10;
+}
+
+/* INDIVIDUAL TAB */
+.tc-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    height: var(--tab-height);
+    padding: 0 24px;
+    box-sizing: border-box;
+    gap: 4px;
+    color: var(--tc-white);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+    border: none;
+    background: none;
+    border-bottom: 3px solid transparent;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+    /* Dimming of non-active tab */
+    .tc-tab:not(.active) {
+        opacity: 0.8;
+    }
+
+    /* Hover state */
+    .tc-tab:hover {
+        background-color: var(--tc-tab-hover);
+        opacity: 1.0;
+    }
+
+    /* Active tab */
+    .tc-tab.active {
+        background-color: transparent;
+        border-bottom: 3px solid var(--tc-white);
+        opacity: 1.0;
+    }
+
+/* ICON STYLES */
+.tc-tab-icon {
+    width: auto;
+    height: 20px;
+    object-fit: contain;
+    opacity: 1.0;
+}
+
+/* TEXT LABEL STYLES */
+.tc-tab span {
+    font-size: 13px;
+}
+
+/* ============================================================
+    GENERAL CONTENT
+    ============================================================ */
+
+/* CONTAINER - Keeps content centered and provides margin for the app content */
 .container {
-    max-width: calc(100vw - 40px);
-    margin: 0 20px;
+    /* Set Top Margin to 0 */
+    margin: 0 auto var(--page-margin) auto;
+    /* No dobbel padding */
+    max-width: 100%;
     background: var(--tc-bg-card);
-    border-radius: 6px;
+    border-radius: 0px;
     box-shadow: var(--tc-shadow-lg);
     overflow: hidden;
 }
 
 /* ------------------------------------------------------------
-   HEADER
-   ------------------------------------------------------------ */
+    HEADER (Below Tabs)
+    ------------------------------------------------------------ */
 header {
     background-color: var(--tc-primary-blue);
-    color: white;
+    color: var(--tc-white);
     padding: 30px;
     text-align: center;
 }
 
-header h1 {
-    font-size: 2em;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
+    header h1 {
+        font-size: 2em;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
 
 .subtitle {
     font-size: 1em;
@@ -98,15 +204,19 @@ header h1 {
 }
 
 /* ------------------------------------------------------------
-   MAIN CONTENT AREA
-   ------------------------------------------------------------ */
+    MAIN CONTENT AREA
+    ------------------------------------------------------------ */
 main {
-    padding: 30px;
+    /* NYTT: Bruker variabelen for 20px padding (var(--page-margin)) */
+    padding: var(--page-margin); /* Setter 20px padding rundt innholdet */
+    flex-grow: 1; /* Lar main fylle all ledig plass i .app-container */
+    overflow-y: auto; /* Lar innholdet i main scrolle hvis det er for langt */
+    box-sizing: border-box;
 }
 
 /* ------------------------------------------------------------
-   CARDS / SECTIONS
-   ------------------------------------------------------------ */
+    CARDS / SECTIONS
+    ------------------------------------------------------------ */
 .card {
     background: var(--tc-bg-card);
     border: 1px solid var(--tc-border);
@@ -117,26 +227,26 @@ main {
     transition: box-shadow 0.2s ease;
 }
 
-.card:hover {
-    box-shadow: var(--tc-shadow-md);
-}
+    .card:hover {
+        box-shadow: var(--tc-shadow-md);
+    }
 
-.card h2 {
-    color: var(--tc-dark-blue);
-    font-size: 1.3em;
-    font-weight: 600;
-    margin-bottom: 12px;
-}
+    .card h2 {
+        color: var(--tc-dark-blue);
+        font-size: 1.3em;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
 
-.card p {
-    color: var(--tc-text-secondary);
-    margin-bottom: 16px;
-    font-size: 0.95em;
-}
+    .card p {
+        color: var(--tc-secondary-grey);
+        margin-bottom: 16px;
+        font-size: 0.95em;
+    }
 
 /* ------------------------------------------------------------
-   FORM ELEMENTS
-   ------------------------------------------------------------ */
+    FORM ELEMENTS
+    ------------------------------------------------------------ */
 .form-group {
     margin-bottom: 20px;
 }
@@ -145,7 +255,7 @@ label {
     display: block;
     font-weight: 600;
     margin-bottom: 6px;
-    color: var(--tc-text-primary);
+    color: var(--tc-dark-blue);
     font-size: 0.9em;
 }
 
@@ -156,20 +266,20 @@ label {
     border-radius: 4px;
     font-size: 14px;
     font-family: 'Segoe UI', sans-serif;
-    color: var(--tc-text-primary);
+    color: var(--tc-dark-blue);
     background-color: var(--tc-bg-card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form-control:focus {
-    outline: none;
-    border-color: var(--tc-primary-blue);
-    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
-}
+    .form-control:focus {
+        outline: none;
+        border-color: var(--tc-primary-blue);
+        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+    }
 
-.form-control::placeholder {
-    color: var(--tc-text-muted);
-}
+    .form-control::placeholder {
+        color: var(--tc-text-muted);
+    }
 
 textarea.form-control {
     resize: vertical;
@@ -184,8 +294,8 @@ small {
 }
 
 /* ------------------------------------------------------------
-   BUTTONS
-   ------------------------------------------------------------ */
+    BUTTONS
+    ------------------------------------------------------------ */
 .btn {
     padding: 11px 20px;
     border: none;
@@ -203,35 +313,35 @@ small {
 
 .btn-primary {
     background-color: var(--tc-primary-blue);
-    color: white;
+    color: var(--tc-white);
 }
 
-.btn-primary:hover {
-    background-color: #005a9e;
-    box-shadow: var(--tc-shadow-sm);
-}
+    .btn-primary:hover {
+        background-color: var(--tc-dark-blue);
+        box-shadow: var(--tc-shadow-sm);
+    }
 
-.btn-primary:active {
-    background-color: #004578;
-}
+    .btn-primary:active {
+        background-color: var(--tc-primary-blue-active);
+    }
 
 .btn-secondary {
-    background-color: var(--tc-text-secondary);
-    color: white;
+    background-color: var(--tc-secondary-grey);
+    color: var(--tc-white);
 }
 
-.btn-secondary:hover {
-    background-color: #4a4e52;
-    box-shadow: var(--tc-shadow-sm);
-}
+    .btn-secondary:hover {
+        background-color: color-mix(in srgb, var(--tc-secondary-grey) 80%, black);
+        box-shadow: var(--tc-shadow-sm);
+    }
 
-.btn-secondary:active {
-    background-color: #3a3e42;
-}
+    .btn-secondary:active {
+        background-color: color-mix(in srgb, var(--tc-secondary-grey) 60%, black);
+    }
 
 /* ------------------------------------------------------------
-   RESULT MESSAGES
-   ------------------------------------------------------------ */
+    RESULT MESSAGES
+    ------------------------------------------------------------ */
 .result {
     margin-top: 16px;
     padding: 14px 16px;
@@ -241,30 +351,30 @@ small {
     border-left: 4px solid transparent;
 }
 
-.result.success {
-    display: block;
-    background-color: var(--tc-success-bg);
-    border-left-color: var(--tc-success-border);
-    color: var(--tc-success-text);
-}
+    .result.success {
+        display: block;
+        background-color: var(--tc-success-bg);
+        border-left-color: var(--tc-success-border);
+        color: var(--tc-success-text);
+    }
 
-.result.error {
-    display: block;
-    background-color: var(--tc-error-bg);
-    border-left-color: var(--tc-error-border);
-    color: var(--tc-error-text);
-}
+    .result.error {
+        display: block;
+        background-color: var(--tc-error-bg);
+        border-left-color: var(--tc-error-border);
+        color: var(--tc-error-text);
+    }
 
-.result.loading {
-    display: block;
-    background-color: var(--tc-loading-bg);
-    border-left-color: var(--tc-loading-border);
-    color: var(--tc-loading-text);
-}
+    .result.loading {
+        display: block;
+        background-color: var(--tc-loading-bg);
+        border-left-color: var(--tc-loading-border);
+        color: var(--tc-loading-text);
+    }
 
 /* ------------------------------------------------------------
-   STATUS BADGES
-   ------------------------------------------------------------ */
+    STATUS BADGES
+    ------------------------------------------------------------ */
 .status-badge {
     display: inline-block;
     padding: 4px 10px;
@@ -285,8 +395,8 @@ small {
 }
 
 /* ------------------------------------------------------------
-   TOKEN SECTION (INFO BOX)
-   ------------------------------------------------------------ */
+    TOKEN SECTION (INFO BOX)
+    ------------------------------------------------------------ */
 .token-section {
     background-color: var(--tc-loading-bg);
     border: 1px solid var(--tc-loading-border);
@@ -296,30 +406,30 @@ small {
     margin-bottom: 24px;
 }
 
-.token-section strong {
-    color: var(--tc-text-primary);
-    font-weight: 600;
-}
+    .token-section strong {
+        color: var(--tc-dark-blue);
+        font-weight: 600;
+    }
 
-.token-section p {
-    margin: 8px 0;
-    color: var(--tc-text-secondary);
-}
+    .token-section p {
+        margin: 8px 0;
+        color: var(--tc-secondary-grey);
+    }
 
-.token-section a {
-    color: var(--tc-primary-blue);
-    text-decoration: none;
-    font-weight: 600;
-}
+    .token-section a {
+        color: var(--tc-primary-blue);
+        text-decoration: none;
+        font-weight: 600;
+    }
 
-.token-section a:hover {
-    text-decoration: underline;
-    color: var(--tc-dark-blue);
-}
+        .token-section a:hover {
+            color: var(--tc-dark-blue);
+            text-decoration: underline;
+        }
 
 /* ------------------------------------------------------------
-   FOOTER
-   ------------------------------------------------------------ */
+    FOOTER
+    ------------------------------------------------------------ */
 footer {
     background-color: var(--tc-bg-neutral);
     padding: 20px;
@@ -329,101 +439,13 @@ footer {
     border-top: 1px solid var(--tc-border);
 }
 
-footer p {
-    margin: 4px 0;
-}
+    footer p {
+        margin: 4px 0;
+    }
 
 /* ------------------------------------------------------------
-   USER LIST (CHECKBOX LIST)
-   ------------------------------------------------------------ */
-#userList input[type="checkbox"] {
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-    accent-color: var(--tc-primary-blue);
-}
-
-#userList label {
-    user-select: none;
-    display: inline-block;
-    margin-left: 10px;
-    cursor: pointer;
-    font-weight: 400;
-}
-
-#userList > div {
-    padding: 10px;
-    border-bottom: 1px solid var(--tc-border);
-    transition: background-color 0.15s ease;
-}
-
-#userList > div:hover {
-    background-color: var(--tc-bg-neutral);
-}
-
-#userList > div:last-child {
-    border-bottom: none;
-}
-
-/* ------------------------------------------------------------
-   CHECKBOX LABEL (INLINE)
-   ------------------------------------------------------------ */
-label[style*="display: flex"] {
-    display: flex !important;
-    align-items: center;
-    cursor: pointer;
-    font-weight: 400;
-}
-
-label[style*="display: flex"] input[type="checkbox"] {
-    margin-right: 10px;
-    cursor: pointer;
-    accent-color: var(--tc-primary-blue);
-}
-
-/* ------------------------------------------------------------
-   RESPONSIVE DESIGN
-   ------------------------------------------------------------ */
-@media (max-width: 768px) {
-    body {
-        padding: 10px;
-    }
-    
-    .container {
-        border-radius: 4px;
-    }
-    
-    header {
-        padding: 20px;
-    }
-    
-    header h1 {
-        font-size: 1.5em;
-    }
-    
-    main {
-        padding: 20px;
-    }
-    
-    .card {
-        padding: 16px;
-        margin-bottom: 16px;
-    }
-}
-
-/* ------------------------------------------------------------
-   ACCESSIBILITY
-   ------------------------------------------------------------ */
-.btn:focus-visible,
-.form-control:focus-visible,
-input[type="checkbox"]:focus-visible {
-    outline: 2px solid var(--tc-primary-blue);
-    outline-offset: 2px;
-}
-
-/* ------------------------------------------------------------
-   UTILITY CLASSES
-   ------------------------------------------------------------ */
+    UTILITY CLASSES
+    ------------------------------------------------------------ */
 .text-muted {
     color: var(--tc-text-muted);
 }
@@ -440,14 +462,14 @@ input[type="checkbox"]:focus-visible {
     color: var(--tc-error-red);
 }
 
-/* Set padding to keep content from hitting the edges */
+/* FJERNET: Denne er nå erstattet av 'main { padding: var(--page-margin); }' */
 .body-content {
     margin-top: 15px;
     padding-left: 15px;
     padding-right: 15px;
 }
 
-/* Set width on the form input elements since they're 100% wide by default */
+/* Sett bredde på skjemainndataelementene siden de er 100% brede som standard */
 input,
 select,
 textarea {
@@ -455,171 +477,19 @@ textarea {
 }
 
 /* ------------------------------------------------------------
-   SUBSECTIONS (Step 5)
-   ------------------------------------------------------------ */
-.subsection {
-    margin-bottom: 24px;
-}
-
-.subsection h3 {
-    color: var(--tc-dark-blue);
-    font-size: 1.1em;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.subsection p {
-    color: var(--tc-text-secondary);
-    margin-bottom: 12px;
-    font-size: 0.9em;
-}
-
-/* ------------------------------------------------------------
-   FILE SELECTION LIST (Checkboxes for IFC files)
-   ------------------------------------------------------------ */
-.file-selection-list {
-    border: 1px solid var(--tc-border);
-    border-radius: 4px;
-    padding: 12px;
-    background-color: var(--tc-bg-card);
-    max-height: 300px;
-    overflow-y: auto;
-    margin-top: 8px;
-}
-
-.file-selection-list p {
-    margin: 0;
-    color: var(--tc-text-muted);
-}
-
-.file-checkbox-label {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    border-bottom: 1px solid var(--tc-border);
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-    font-weight: 400;
-}
-
-.file-checkbox-label:hover {
-    background-color: var(--tc-bg-neutral);
-}
-
-.file-checkbox-label:last-child {
-    border-bottom: none;
-}
-
-.file-checkbox {
-    margin: 0;
-    margin-right: 10px;
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
-    accent-color: var(--tc-primary-blue);
-}
-
-.file-checkbox-label span {
-    flex: 1;
-    color: var(--tc-text-primary);
-    font-size: 0.9em;
-}
-
-
-
-/* ============================================================
-   TRIMBLE CONNECT STYLE - TOP TABS
-   ============================================================ */
-
-.tc-tabs {
-    display: flex;
-    justify-content: center; /* center the tabs horizontally */
-    align-items: center;
-    width: 100vw; /* full viewport width */
-    margin-left: calc(-50vw + 50%); /* break out of container */
-    margin-top: 0px; /* thin top margin per requirement */
-    --tc-dark-blue: #004987;
-    background-color: var(--tc-dark-blue);
-    padding: 0;
-    border-bottom: none;
-    height: 70px; /* matches Trimble Connect */
-    position: relative;
-    box-sizing: border-box;
-}
-
-/* TABS */
-.tc-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    height: 70px;
-    padding: 0 20px; 
-    box-sizing: border-box;
-    gap: 0px;
-    color: #ffffff;
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-    text-align: center;
-    border-bottom: 3px solid transparent;
-}
-
-/* Wrapper for placement */
-.tc-tab-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center; /* IKON + TEKST → centered */
-    height: 100%;
-}
-
-
-
-    /* Hover state = soft lighter blue (same appearance as Trimble Connect) */
-    .tc-tab:hover {
-        background-color: #1f5d8f; /* close to Trimble Connect hover color */
-    }
-
-    /* Active tab = white underline only, no background color change */
-    .tc-tab.active {
-        background-color: transparent;
-        border-bottom: 3px solid white;
-    }
-
-/* ICONS */
-.tc-tab-icon {
-    width: auto; /* Trimble uses slightly smaller icons */
-    height: 20px;
-    object-fit: contain;
-    opacity: 0.9; /* matches the subtle style used in TC */
-}
-
-/* CONTENT */
-.tab-content {
-    display: none;
-}
-
-    .tab-content.active {
-        display: block;
-    }
-
-
-
-/* ============================================================
-   ANALYSE TAB STYLES
-   ============================================================ */
+    ANALYSE TAB STYLES
+    ------------------------------------------------------------ */
 
 /* KPI Widget */
 .kpi-widget {
     background: linear-gradient(135deg, var(--tc-dark-blue) 0%, var(--tc-primary-blue) 100%);
-    color: white;
+    color: var(--tc-white);
 }
 
-.kpi-widget h2 {
-    color: white;
-    margin-bottom: 16px;
-}
+    .kpi-widget h2 {
+        color: var(--tc-white);
+        margin-bottom: 16px;
+    }
 
 .kpi-container {
     display: flex;
@@ -651,15 +521,15 @@ textarea {
 }
 
 .kpi-status-ok {
-    border-left: 3px solid #2E8540;
+    border-left: 3px solid var(--tc-success-green);
 }
 
 .kpi-status-under {
-    border-left: 3px solid #D64545;
+    border-left: 3px solid var(--tc-error-red);
 }
 
 .kpi-status-over {
-    border-left: 3px solid #FFBF47;
+    border-left: 3px solid var(--tc-warning-yellow);
 }
 
 /* Tolerance Controls */
@@ -690,9 +560,9 @@ textarea {
     width: auto !important;
 }
 
-.filter-btn.active {
-    background-color: var(--tc-primary-blue) !important;
-}
+    .filter-btn.active {
+        background-color: var(--tc-primary-blue) !important;
+    }
 
 .search-box {
     flex: 1;
@@ -700,10 +570,10 @@ textarea {
     max-width: 300px;
 }
 
-.search-box input {
-    width: 100%;
-    max-width: 100%;
-}
+    .search-box input {
+        width: 100%;
+        max-width: 100%;
+    }
 
 /* Analyse Table */
 .analyse-table-container {
@@ -720,59 +590,59 @@ textarea {
     font-size: 0.9em;
 }
 
-.analyse-table thead {
-    position: sticky;
-    top: 0;
-    background: var(--tc-bg-card);
-    z-index: 1;
-}
+    .analyse-table thead {
+        position: sticky;
+        top: 0;
+        background: var(--tc-bg-card);
+        z-index: 1;
+    }
 
-.analyse-table th {
-    padding: 12px 8px;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 2px solid var(--tc-border);
-    background-color: #f5f5f5;
-    cursor: pointer;
-    user-select: none;
-}
+    .analyse-table th {
+        padding: 12px 8px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid var(--tc-border);
+        background-color: var(--tc-bg-neutral);
+        cursor: pointer;
+        user-select: none;
+    }
 
-.analyse-table th:hover {
-    background-color: #eee;
-}
+        .analyse-table th:hover {
+            background-color: color-mix(in srgb, var(--tc-bg-neutral) 80%, white);
+        }
 
-.analyse-table td {
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--tc-border);
-}
+    .analyse-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--tc-border);
+    }
 
-.analyse-table tbody tr:hover {
-    background-color: #f9f9f9;
-}
+    .analyse-table tbody tr:hover {
+        background-color: var(--tc-bg-neutral);
+    }
 
 .analyse-row-under {
-    background-color: #fff0f0 !important;
+    background-color: var(--tc-error-bg) !important;
 }
 
-.analyse-row-under:hover {
-    background-color: #ffe0e0 !important;
-}
+    .analyse-row-under:hover {
+        background-color: var(--tc-error-bg-hover) !important;
+    }
 
 .analyse-row-ok {
-    background-color: #e8f5e9 !important;
+    background-color: var(--tc-success-bg) !important;
 }
 
-.analyse-row-ok:hover {
-    background-color: #c8e6c9 !important;
-}
+    .analyse-row-ok:hover {
+        background-color: var(--tc-success-bg-hover) !important;
+    }
 
 .analyse-row-over {
-    background-color: #fff8e1 !important;
+    background-color: var(--tc-loading-bg) !important;
 }
 
-.analyse-row-over:hover {
-    background-color: #ffecb3 !important;
-}
+    .analyse-row-over:hover {
+        background-color: var(--tc-loading-bg-hover) !important;
+    }
 
 /* Status Badges */
 .status-badge {
@@ -784,18 +654,18 @@ textarea {
 }
 
 .status-ok {
-    background-color: #dff3e6;
-    color: #2E8540;
+    background-color: var(--tc-success-bg);
+    color: var(--tc-success-green);
 }
 
 .status-under {
-    background-color: #f8d7da;
-    color: #D64545;
+    background-color: var(--tc-error-bg);
+    color: var(--tc-error-red);
 }
 
 .status-over {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: var(--tc-loading-bg);
+    color: var(--tc-loading-text);
 }
 
 /* Progress Bar */
@@ -808,7 +678,7 @@ textarea {
 .progress-bar-bg {
     flex: 1;
     height: 16px;
-    background-color: #e9ecef;
+    background-color: var(--tc-border);
     border-radius: 4px;
     position: relative;
     overflow: hidden;
@@ -826,7 +696,7 @@ textarea {
     top: 0;
     bottom: 0;
     width: 2px;
-    background-color: #333;
+    background-color: var(--tc-dark-blue);
 }
 
 .progress-bar-label {
@@ -840,46 +710,76 @@ textarea {
     width: 100%;
     max-width: 150px;
     padding: 4px 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--tc-border);
     border-radius: 4px;
     font-size: 0.85em;
 }
 
-.comment-input:focus {
-    outline: none;
-    border-color: var(--tc-primary-blue);
-}
+    .comment-input:focus {
+        outline: none;
+        border-color: var(--tc-primary-blue);
+    }
 
-/* Responsive adjustments for Analyse tab */
+/* ------------------------------------------------------------
+    RESPONSIVE DESIGN
+    ------------------------------------------------------------ */
 @media (max-width: 768px) {
-    .kpi-container {
-        flex-direction: column;
+    body {
+        padding: 0;
     }
-    
-    .kpi-item {
-        min-width: auto;
+
+    .container {
+        max-width: 100%;
+        margin: 10px auto;
+        border-radius: 4px;
     }
-    
+
+    header {
+        padding: 20px;
+    }
+
+        header h1 {
+            font-size: 1.5em;
+        }
+
+    main {
+        padding: 20px;
+    }
+
+    .card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
     .filter-controls {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .search-box {
         max-width: none;
     }
-    
+
     .analyse-table-container {
         max-height: 300px;
     }
-    
+
     .analyse-table {
         font-size: 0.8em;
     }
-    
-    .analyse-table th,
-    .analyse-table td {
-        padding: 6px 4px;
-    }
+
+        .analyse-table th,
+        .analyse-table td {
+            padding: 6px 4px;
+        }
 }
 
+/* ------------------------------------------------------------
+    ACCESSIBILITY
+    ------------------------------------------------------------ */
+.btn:focus-visible,
+.form-control:focus-visible,
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--tc-primary-blue);
+    outline-offset: 2px;
+}
