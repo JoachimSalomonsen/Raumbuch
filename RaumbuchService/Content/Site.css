@@ -1,5 +1,6 @@
 ﻿/*
 * ESSENTIAL: Ensure root elements take up full space to prevent scrollbars and layout issues in iframes.
+* INJECTED FROM STASHED CHANGES TO FIX LAYOUT:
 */
 html, body {
     width: 100%;
@@ -7,22 +8,11 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden; /* Removes scrollbars on the window itself */
-    box-sizing: border-box;
 }
 
-/*
-* The main container must also take up 100% of body/html space and set up flex to stack elements.
-*/
-.app-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-}
 
 /* ============================================================
-    TRIMBLE CONNECT INSPIRED DESIGN
+    TRIMBLE CONNECT INSPIRED DESIGN (Updated upstream base)
     ============================================================ */
 
 /* ------------------------------------------------------------
@@ -34,6 +24,7 @@ html, body {
     --tc-dark-blue: #00437b;
     --tc-light-blue: #0c77be;
     --tc-white: #ffffff; /* Explicit variable for white */
+    --tc-black: #000000;
     /* Status Colors */
     --tc-success-green: #2E8540;
     --tc-error-red: #D64545;
@@ -42,28 +33,40 @@ html, body {
     --tc-bg-neutral: #f3f5f7;
     --tc-bg-card: #ffffff;
     --tc-border: #e1e4e8;
-    --tc-secondary-grey: #6b706f;
     --tc-text-muted: #86909c;
+    --tc-text-primary: var(--tc-dark-blue); /* Added for general text color (based on context) */
+    --tc-text-secondary: #333; /* Added for card/paragraph text (guessed common color) */
     /* Success Message Colors */
     --tc-success-bg: #dff3e6;
     --tc-success-border: var(--tc-success-green);
     --tc-success-text: var(--tc-success-green);
     --tc-success-bg-hover: #c8e6c9;
+    --tc-success-bg-light: #e8f5e9; /* Added for table row color */
     /* Error Message Colors */
     --tc-error-bg: #f8d7da;
     --tc-error-border: var(--tc-error-red);
     --tc-error-text: #8b0000;
     --tc-error-bg-hover: #ffe0e0;
+    --tc-error-bg-light: #fff0f0; /* Added for table row color */
+    --tc-error-text-dark: #8b0000; /* Used specifically for the dark error text */
     /* Loading/Warning Message Colors */
     --tc-loading-bg: #fff3cd;
     --tc-loading-border: #ffe08a;
     --tc-loading-text: #856404;
     --tc-loading-bg-hover: #ffecb3;
+    --tc-warning-bg-light: #fff8e1; /* Added for table row color */
     /* Tab & Button Specific Shades */
     --tc-tab-hover: #1f5d8f;
     --tc-primary-blue-active: #004578;
+    --tc-secondary-grey: #6b706f;
     --tc-btn-danger: #ed9f9f;
     --tc-btn-danger-hover: var(--tc-error-red);
+    --tc-btn-secondary-hover: #4a4e52; /* Added for secondary button hover state */
+    --tc-btn-secondary-active: #3a3e42; /* Added for secondary button active state */
+    --tc-focus-shadow: rgba(0, 120, 212, 0.15); /* Added for form focus shadow */
+    --tc-table-header-bg: #f5f5f5; /* Added for table header background */
+    --tc-table-header-hover-bg: #eee; /* Added for table header hover background */
+    --tc-table-row-hover-bg: #f9f9f9; /* Added for general table row hover background */
     /* Shadows */
     --tc-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --tc-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.12);
@@ -85,106 +88,47 @@ html, body {
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--tc-bg-neutral);
-    color: var(--tc-dark-blue);
+    color: var(--tc-text-primary); /* Changed to use primary text color */
     line-height: 1.6;
     min-height: 100vh;
-    padding: 0;
-}
-
-/* ============================================================
-    TOP NAVIGATION TABS (FULL WIDTH)
-    ============================================================ */
-
-/* TAB CONTAINER (The entire blue bar - full width breakout) */
-.tc-tabs {
+    padding: 0px;
+    /* INJECTED FROM STASHED CHANGES TO FIX LAYOUT: */
     display: flex;
-    justify-content: center; /* Center the tabs horizontally */
-    align-items: center;
-    /* Modified to use 100% since .app-container is 100% */
-    width: 100%;
-    /* Removed margin-left calc - this is not necessary when .app-container is 100% wide and body is 0 padding/margin */
-    margin: 0;
-    margin-top: 0; /* Removes margin on top */
-    background-color: var(--tc-dark-blue);
-    padding: 0;
-    border-bottom: none;
-    height: var(--tab-height);
-    position: relative;
-    box-sizing: border-box;
-    /* Ensures the tab bar is displayed above any container margin */
-    z-index: 10;
-}
-
-/* INDIVIDUAL TAB */
-.tc-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     flex-direction: column;
-    height: var(--tab-height);
-    padding: 0 24px;
-    box-sizing: border-box;
-    gap: 4px;
-    color: var(--tc-white);
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-    text-align: center;
-    border: none;
-    background: none;
-    border-bottom: 3px solid transparent;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-}
-
-    /* Dimming of non-active tab */
-    .tc-tab:not(.active) {
-        opacity: 0.8;
-    }
-
-    /* Hover state */
-    .tc-tab:hover {
-        background-color: var(--tc-tab-hover);
-        opacity: 1.0;
-    }
-
-    /* Active tab */
-    .tc-tab.active {
-        background-color: transparent;
-        border-bottom: 3px solid var(--tc-white);
-        opacity: 1.0;
-    }
-
-/* ICON STYLES */
-.tc-tab-icon {
-    width: auto;
-    height: 20px;
-    object-fit: contain;
-    opacity: 1.0;
-}
-
-/* TEXT LABEL STYLES */
-.tc-tab span {
-    font-size: 13px;
-}
-
-/* ============================================================
-    GENERAL CONTENT
-    ============================================================ */
-
-/* CONTAINER - Keeps content centered and provides margin for the app content */
-.container {
-    /* Set Top Margin to 0 */
-    margin: 0 auto var(--page-margin) auto;
-    /* No double padding */
-    max-width: 100%;
-    background: var(--tc-bg-card);
-    border-radius: 0px;
-    box-shadow: var(--tc-shadow-lg);
-    overflow: hidden;
 }
 
 /* ------------------------------------------------------------
-    HEADER (Below Tabs)
+    CONTAINER AND PAGE WRAPPER (NEW FOR MARGINS)
+    ------------------------------------------------------------ */
+
+/* Wrapper to add margins to all CONTENT under headers/tabs */
+.page-wrapper {
+    /* Sets the left/right margin for the content */
+    margin: 0 var(--page-margin);
+    /* Gives it a little space at the top (can be adjusted in HTML if it is a top header) */
+    margin-top: var(--page-margin);
+    width: auto; /* Takes available width within the margins */
+    flex-grow: 1; /* Ensures that it fills the space vertically */
+    overflow-y: auto;
+}
+
+/* Container: Used only for styling (shadow and background), not for margin/width restrictions*/
+.container {
+    background: var(--tc-bg-card);
+    border-radius: 6px;
+    box-shadow: var(--tc-shadow-lg);
+    width: 100%; /* Should fill the entire page wrapper */
+    margin: 0; /* Removes the margin from here */
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    height: 100%;
+    min-height: 0;
+}
+
+
+/* ------------------------------------------------------------
+    HEADER
     ------------------------------------------------------------ */
 header {
     background-color: var(--tc-primary-blue);
@@ -209,11 +153,13 @@ header {
     MAIN CONTENT AREA
     ------------------------------------------------------------ */
 main {
-    /* NEW: Uses the variable for 20px padding (var(--page-margin)) */
-    padding: var(--page-margin); /* Sets 20px padding around the content */
-    flex-grow: 1; /* Allows main to fill all available space in .app-container */
-    overflow-y: auto; /* Allows content in main to scroll if it is too long */
+    /* Sets padding INSIDE the container */
+    padding: 30px;
+    /* INJECTED FROM STASHED CHANGES TO FIX LAYOUT: */
+    flex-grow: 1;
+    overflow-y: auto;
     box-sizing: border-box;
+    min-height: 0;
 }
 
 /* ------------------------------------------------------------
@@ -241,7 +187,7 @@ main {
     }
 
     .card p {
-        color: var(--tc-secondary-grey);
+        color: var(--tc-text-secondary); /* Updated upstream text color */
         margin-bottom: 16px;
         font-size: 0.95em;
     }
@@ -257,7 +203,7 @@ label {
     display: block;
     font-weight: 600;
     margin-bottom: 6px;
-    color: var(--tc-dark-blue);
+    color: var(--tc-text-primary); /* Updated upstream text color */
     font-size: 0.9em;
 }
 
@@ -268,7 +214,7 @@ label {
     border-radius: 4px;
     font-size: 14px;
     font-family: 'Segoe UI', sans-serif;
-    color: var(--tc-dark-blue);
+    color: var(--tc-text-primary); /* Updated upstream text color */
     background-color: var(--tc-bg-card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -276,7 +222,7 @@ label {
     .form-control:focus {
         outline: none;
         border-color: var(--tc-primary-blue);
-        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+        box-shadow: 0 0 0 3px var(--tc-focus-shadow);
     }
 
     .form-control::placeholder {
@@ -333,32 +279,26 @@ small {
 }
 
     .btn-secondary:hover {
-        background-color: color-mix(in srgb, var(--tc-secondary-grey) 80%, black);
+        background-color: var(--tc-btn-secondary-hover);
         box-shadow: var(--tc-shadow-sm);
     }
 
     .btn-secondary:active {
-        background-color: color-mix(in srgb, var(--tc-secondary-grey) 60%, black);
-    }
-
-.btn-success {
-    background: var(--success-color);
-    color: var(--tc-bg-card);
-}
-
-    .btn-success:hover:not(:disabled) {
-        /* Replaced hardcoded hover color with variable */
-        background: var(--tc-success-hover);
+        background-color: var(--tc-btn-secondary-active);
     }
 
 .btn-danger {
-    background: var(--tc-btn-danger);
-    color: var(--tc-bg-card);
+    background-color: var(--tc-btn-danger);
+    color: var(--tc-black);
 }
 
-    .btn-danger:hover:not(:disabled) {
-        /* Replaced hardcoded hover color with variable */
-        background: var(--tc-btn-danger-hover);
+    .btn-danger:hover {
+        background-color: var(--tc-btn-danger-hover);
+        box-shadow: var(--tc-shadow-sm);
+    }
+
+    .btn-danger:active {
+        background-color: var(--tc-error-red);
     }
 
 /* ------------------------------------------------------------
@@ -429,13 +369,13 @@ small {
 }
 
     .token-section strong {
-        color: var(--tc-dark-blue);
+        color: var(--tc-text-primary); /* Updated upstream text color */
         font-weight: 600;
     }
 
     .token-section p {
         margin: 8px 0;
-        color: var(--tc-secondary-grey);
+        color: var(--tc-text-secondary); /* Updated upstream text color */
     }
 
     .token-section a {
@@ -445,8 +385,8 @@ small {
     }
 
         .token-section a:hover {
-            color: var(--tc-dark-blue);
             text-decoration: underline;
+            color: var(--tc-dark-blue);
         }
 
 /* ------------------------------------------------------------
@@ -464,6 +404,100 @@ footer {
     footer p {
         margin: 4px 0;
     }
+
+/* ------------------------------------------------------------
+    USER LIST (CHECKBOX LIST)
+    ------------------------------------------------------------ */
+#userList input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--tc-primary-blue);
+}
+
+#userList label {
+    user-select: none;
+    display: inline-block;
+    margin-left: 10px;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+#userList > div {
+    padding: 10px;
+    border-bottom: 1px solid var(--tc-border);
+    transition: background-color 0.15s ease;
+}
+
+    #userList > div:hover {
+        background-color: var(--tc-bg-neutral);
+    }
+
+    #userList > div:last-child {
+        border-bottom: none;
+    }
+
+/* ------------------------------------------------------------
+    CHECKBOX LABEL (INLINE)
+    ------------------------------------------------------------ */
+label[style*="display: flex"] {
+    display: flex !important;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+    label[style*="display: flex"] input[type="checkbox"] {
+        margin-right: 10px;
+        cursor: pointer;
+        accent-color: var(--tc-primary-blue);
+    }
+
+/* ------------------------------------------------------------
+    RESPONSIVE DESIGN
+    ------------------------------------------------------------ */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    /* Adjusts page-wrapper for mobile */
+    .page-wrapper {
+        margin: 0 10px !important;
+        margin-top: 10px !important;
+    }
+
+    .container {
+        border-radius: 4px;
+    }
+
+    header {
+        padding: 20px;
+    }
+
+        header h1 {
+            font-size: 1.5em;
+        }
+
+    main {
+        padding: 20px;
+    }
+
+    .card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+}
+
+/* ------------------------------------------------------------
+    ACCESSIBILITY
+    ------------------------------------------------------------ */
+.btn:focus-visible,
+.form-control:focus-visible,
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--tc-primary-blue);
+    outline-offset: 2px;
+}
 
 /* ------------------------------------------------------------
     UTILITY CLASSES
@@ -484,14 +518,14 @@ footer {
     color: var(--tc-error-red);
 }
 
-/* REMOVED: This is now replaced by 'main { padding: var(--page-margin); }' */
+/* Set padding to keep content from hitting the edges */
 .body-content {
     margin-top: 15px;
     padding-left: 15px;
     padding-right: 15px;
 }
 
-/* Set width for form input elements since they are 100% wide by default */
+/* Set width on the form input elements since they're 100% wide by default */
 input,
 select,
 textarea {
@@ -499,8 +533,168 @@ textarea {
 }
 
 /* ------------------------------------------------------------
-    ANALYSE TAB STYLES
+    SUBSECTIONS (Step 5)
     ------------------------------------------------------------ */
+.subsection {
+    margin-bottom: 24px;
+}
+
+    .subsection h3 {
+        color: var(--tc-dark-blue);
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .subsection p {
+        color: var(--tc-text-secondary);
+        margin-bottom: 12px;
+        font-size: 0.9em;
+    }
+
+/* ------------------------------------------------------------
+    FILE SELECTION LIST (Checkboxes for IFC files)
+    ------------------------------------------------------------ */
+.file-selection-list {
+    border: 1px solid var(--tc-border);
+    border-radius: 4px;
+    padding: 12px;
+    background-color: var(--tc-bg-card);
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+    .file-selection-list p {
+        margin: 0;
+        color: var(--tc-text-muted);
+    }
+
+.file-checkbox-label {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--tc-border);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    font-weight: 400;
+}
+
+    .file-checkbox-label:hover {
+        background-color: var(--tc-bg-neutral);
+    }
+
+    .file-checkbox-label:last-child {
+        border-bottom: none;
+    }
+
+.file-checkbox {
+    margin: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--tc-primary-blue);
+}
+
+.file-checkbox-label span {
+    flex: 1;
+    color: var(--tc-text-primary);
+    font-size: 0.9em;
+}
+
+
+
+/* ============================================================
+    TRIMBLE CONNECT STYLE - TOP TABS
+    ============================================================ */
+
+/* TAB CONTAINER (The entire blue bar - full width breakout) */
+.tc-tabs {
+    display: flex;
+    justify-content: center; /* Center the tabs horizontally */
+    align-items: center;
+    /* Modified to use 100% since .app-container is 100% */
+    width: 100%;
+    /* Removed margin-left calc - this is not necessary when .app-container is 100% wide and body is 0 padding/margin */
+    margin: 0;
+    margin-top: 0; /* Removes margin on top */
+    background-color: var(--tc-dark-blue);
+    padding: 0;
+    border-bottom: none;
+    height: var(--tab-height);
+    position: relative;
+    box-sizing: border-box;
+    /* Ensures the tab bar is displayed above any container margin */
+    z-index: 10;
+}
+
+/* TABS */
+.tc-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    height: var(--tab-height);
+    padding: 0 24px;
+    box-sizing: border-box;
+    gap: 4px;
+    color: var(--tc-white);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+    border: none;
+    background: none;
+    border-bottom: 3px solid transparent;
+    opacity: 0.8;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Wrapper for placement */
+.tc-tab-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* Hover state = soft lighter blue (same appearance as Trimble Connect) */
+.tc-tab:hover {
+    background-color: var(--tc-tab-hover);
+    opacity: 1.0;
+}
+
+
+/* Active tab = white underline only, no background color change */
+.tc-tab.active {
+    background-color: transparent;
+    border-bottom: 3px solid var(--tc-white);
+    opacity: 1.0;
+}
+
+/* ICONS */
+.tc-tab-icon {
+    width: auto;
+    height: 20px;
+    object-fit: contain;
+}
+
+/* CONTENT */
+.tab-content {
+    display: none;
+}
+
+    .tab-content.active {
+        display: block;
+    }
+
+
+/* ============================================================
+    ANALYSE TAB STYLES
+    ============================================================ */
 
 /* KPI Widget */
 .kpi-widget {
@@ -624,13 +818,13 @@ textarea {
         text-align: left;
         font-weight: 600;
         border-bottom: 2px solid var(--tc-border);
-        background-color: var(--tc-bg-neutral);
+        background-color: var(--tc-table-header-bg);
         cursor: pointer;
         user-select: none;
     }
 
         .analyse-table th:hover {
-            background-color: color-mix(in srgb, var(--tc-bg-neutral) 80%, white);
+            background-color: var(--tc-table-header-hover-bg);
         }
 
     .analyse-table td {
@@ -639,11 +833,11 @@ textarea {
     }
 
     .analyse-table tbody tr:hover {
-        background-color: var(--tc-bg-neutral);
+        background-color: var(--tc-table-row-hover-bg);
     }
 
 .analyse-row-under {
-    background-color: var(--tc-error-bg) !important;
+    background-color: var(--tc-error-bg-light) !important;
 }
 
     .analyse-row-under:hover {
@@ -651,7 +845,7 @@ textarea {
     }
 
 .analyse-row-ok {
-    background-color: var(--tc-success-bg) !important;
+    background-color: var(--tc-success-bg-light) !important;
 }
 
     .analyse-row-ok:hover {
@@ -659,149 +853,9 @@ textarea {
     }
 
 .analyse-row-over {
-    background-color: var(--tc-loading-bg) !important;
+    background-color: var(--tc-warning-bg-light) !important;
 }
 
     .analyse-row-over:hover {
         background-color: var(--tc-loading-bg-hover) !important;
     }
-
-/* Status Badges */
-.status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.85em;
-    font-weight: 600;
-}
-
-.status-ok {
-    background-color: var(--tc-success-bg);
-    color: var(--tc-success-green);
-}
-
-.status-under {
-    background-color: var(--tc-error-bg);
-    color: var(--tc-error-red);
-}
-
-.status-over {
-    background-color: var(--tc-loading-bg);
-    color: var(--tc-loading-text);
-}
-
-/* Progress Bar */
-.progress-bar-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.progress-bar-bg {
-    flex: 1;
-    height: 16px;
-    background-color: var(--tc-border);
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-    min-width: 80px;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease;
-}
-
-.progress-bar-marker {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background-color: var(--tc-dark-blue);
-}
-
-.progress-bar-label {
-    font-size: 0.85em;
-    font-weight: 600;
-    min-width: 40px;
-}
-
-/* Comment Input */
-.comment-input {
-    width: 100%;
-    max-width: 150px;
-    padding: 4px 8px;
-    border: 1px solid var(--tc-border);
-    border-radius: 4px;
-    font-size: 0.85em;
-}
-
-    .comment-input:focus {
-        outline: none;
-        border-color: var(--tc-primary-blue);
-    }
-
-/* ------------------------------------------------------------
-    RESPONSIVE DESIGN
-    ------------------------------------------------------------ */
-@media (max-width: 768px) {
-    body {
-        padding: 0;
-    }
-
-    .container {
-        max-width: 100%;
-        margin: 10px auto;
-        border-radius: 4px;
-    }
-
-    header {
-        padding: 20px;
-    }
-
-        header h1 {
-            font-size: 1.5em;
-        }
-
-    main {
-        padding: 20px;
-    }
-
-    .card {
-        padding: 16px;
-        margin-bottom: 16px;
-    }
-
-    .filter-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .search-box {
-        max-width: none;
-    }
-
-    .analyse-table-container {
-        max-height: 300px;
-    }
-
-    .analyse-table {
-        font-size: 0.8em;
-    }
-
-        .analyse-table th,
-        .analyse-table td {
-            padding: 6px 4px;
-        }
-}
-
-/* ------------------------------------------------------------
-    ACCESSIBILITY
-    ------------------------------------------------------------ */
-.btn:focus-visible,
-.form-control:focus-visible,
-input[type="checkbox"]:focus-visible {
-    outline: 2px solid var(--tc-primary-blue);
-    outline-offset: 2px;
-}
