@@ -4506,7 +4506,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Save a single cell value
+         * Save a single cell value using partial update (PATCH)
          */
         async function saveSingleCell(input) {
             const row = input.closest('tr');
@@ -4536,28 +4536,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     
                     await updateRoomInventory(roomId, templateId, null, input.value);
                 } else {
-                    // Save room field
+                    // Save room field using PATCH (partial update)
                     const field = input.dataset.field;
                     if (field) {
-                        const originalRoom = window.currentRooms?.find(r => r.roomID === roomId);
-                        if (originalRoom) {
-                            const roomData = {
-                                roomID: roomId,
-                                name: originalRoom.name,
-                                roomTypeID: originalRoom.roomTypeID,
-                                userId: getCurrentUserId()
-                            };
-                            
-                            if (input.type === 'number') {
-                                roomData[field] = input.value ? parseFloat(input.value) : null;
-                            } else if (input.type === 'checkbox') {
-                                roomData[field] = input.checked;
-                            } else {
-                                roomData[field] = input.value || null;
-                            }
-                            
-                            await updateSollRoom(roomId, roomData);
+                        let value;
+                        if (input.type === 'number') {
+                            value = input.value || '';
+                        } else if (input.type === 'checkbox') {
+                            value = input.checked ? 'TRUE' : 'FALSE';
+                        } else {
+                            value = input.value || '';
                         }
+                        
+                        await patchRoomField(roomId, field, value);
                     }
                 }
                 
@@ -4575,6 +4566,29 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     input.style.backgroundColor = '';
                 }, 2000);
             }
+        }
+        
+        /**
+         * Patch a single room field (partial update)
+         * This only updates the specified field without affecting other fields
+         */
+        async function patchRoomField(roomId, field, value) {
+            const response = await fetch(`${API_RAUMPROGRAM}/room/${roomId}/field`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    field: field,
+                    value: value,
+                    userId: getCurrentUserId()
+                })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
         }
         
         /**
@@ -5797,7 +5811,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Save a single IST cell value
+         * Save a single IST cell value using partial update (PATCH)
          */
         async function saveIstSingleCell(input) {
             const row = input.closest('tr');
@@ -5821,19 +5835,18 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     
                     await updateIstRoomInventory(roomId, templateId, value);
                 } else if (input.classList.contains('ist-area-input')) {
-                    // Save room area field
+                    // Save room area field using PATCH (partial update)
                     const field = input.dataset.field;
-                    const originalRoom = window.currentIstRooms?.find(r => r.roomID === roomId);
-                    if (originalRoom && field) {
-                        const roomData = {
-                            roomID: roomId,
-                            name: originalRoom.name,
-                            roomTypeID: originalRoom.roomTypeID,
-                            userId: getCurrentUserId()
-                        };
-                        roomData[field] = input.value ? parseFloat(input.value) : null;
-                        await updateIstRoom(roomId, roomData);
+                    if (field) {
+                        const value = input.value || '';
+                        await patchRoomField(roomId, field, value);
                     }
+                } else if (input.classList.contains('ist-comment-input')) {
+                    // Save IST comment
+                    const templateId = parseInt(input.dataset.templateId);
+                    if (isNaN(templateId) || templateId <= 0) return;
+                    
+                    await updateIstRoomInventoryComment(roomId, templateId, input.value);
                 }
                 
                 // Show success
@@ -5858,6 +5871,31 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     input.style.backgroundColor = '';
                 }, 2000);
             }
+        }
+        
+        /**
+         * Update IST room inventory comment only
+         */
+        async function updateIstRoomInventoryComment(roomId, templateId, comment) {
+            const requestBody = {
+                roomID: roomId,
+                inventoryTemplateID: templateId,
+                comment: comment,
+                userId: getCurrentUserId()
+            };
+            
+            const response = await fetch(`${API_RAUMPROGRAM}/roominventory`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
         }
         
         /**

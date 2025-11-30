@@ -838,6 +838,132 @@ namespace RaumbuchService.Controllers
         }
 
         /// <summary>
+        /// Partially updates a Room field. Only updates the specified field, leaving others unchanged.
+        /// This is the preferred method for autosave to prevent overwriting other fields.
+        /// PATCH /api/room/{id}/field
+        /// </summary>
+        [HttpPatch]
+        [Route("room/{id:int}/field")]
+        public async Task<IHttpActionResult> PatchRoomField(int id, [FromBody] RoomFieldPatchRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.Field))
+                {
+                    return BadRequest("Field ist erforderlich.");
+                }
+
+                using (var db = new RaumbuchContext())
+                {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
+                    var room = await db.Rooms
+                        .Include(r => r.RoomType)
+                        .FirstOrDefaultAsync(r => r.RoomID == id);
+
+                    if (room == null)
+                    {
+                        return NotFound();
+                    }
+
+                    // Update only the specified field
+                    var fieldUpdated = true;
+                    switch (request.Field.ToLower())
+                    {
+                        case "netareaplanned":
+                            room.NetAreaPlanned = ParseDecimal(request.Value);
+                            break;
+                        case "netareaactual":
+                            room.NetAreaActual = ParseDecimal(request.Value);
+                            break;
+                        case "grossareaplanned":
+                            room.GrossAreaPlanned = ParseDecimal(request.Value);
+                            break;
+                        case "grossareaactual":
+                            room.GrossAreaActual = ParseDecimal(request.Value);
+                            break;
+                        case "description":
+                            room.Description = request.Value;
+                            break;
+                        case "objecttype":
+                            room.ObjectType = request.Value;
+                            break;
+                        case "predefinedtype":
+                            room.PredefinedType = request.Value;
+                            break;
+                        case "publiclyaccessible":
+                            room.PubliclyAccessible = ParseBool(request.Value);
+                            break;
+                        case "handicapaccessible":
+                            room.HandicapAccessible = ParseBool(request.Value);
+                            break;
+                        case "isexternal":
+                            room.IsExternal = ParseBool(request.Value);
+                            break;
+                        case "elevationwithflooring":
+                            room.ElevationWithFlooring = ParseDecimal(request.Value);
+                            break;
+                        default:
+                            fieldUpdated = false;
+                            return BadRequest($"Unbekanntes Feld: {request.Field}");
+                    }
+
+                    if (fieldUpdated)
+                    {
+                        await db.SaveChangesWithAuditAsync(request.UserId);
+                    }
+
+                    return Ok(new RoomFieldPatchResponse
+                    {
+                        Success = true,
+                        Message = $"Feld '{request.Field}' erfolgreich aktualisiert.",
+                        RoomID = room.RoomID,
+                        Field = request.Field,
+                        Value = request.Value
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in PatchRoomField: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Aktualisieren des Feldes: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Helper to parse decimal values from string
+        /// </summary>
+        private decimal? ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            if (decimal.TryParse(value, System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, out var result))
+            {
+                return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Helper to parse boolean values from string
+        /// </summary>
+        private bool? ParseBool(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            var upper = value.ToUpper().Trim();
+            if (upper == "TRUE" || upper == "1" || upper == "YES" || upper == "JA")
+                return true;
+            if (upper == "FALSE" || upper == "0" || upper == "NO" || upper == "NEIN")
+                return false;
+            return null;
+        }
+
+        /// <summary>
         /// Deletes a Room.
         /// DELETE /api/room/{id}
         /// </summary>
@@ -1723,5 +1849,20 @@ namespace RaumbuchService.Controllers
     public class RoomInventoryUpdateResponse : BaseResponse
     {
         public int RoomInventoryID { get; set; }
+    }
+
+    // Room Field Patch DTOs for partial updates
+    public class RoomFieldPatchRequest
+    {
+        public string Field { get; set; }
+        public string Value { get; set; }
+        public string UserId { get; set; }
+    }
+
+    public class RoomFieldPatchResponse : BaseResponse
+    {
+        public int RoomID { get; set; }
+        public string Field { get; set; }
+        public string Value { get; set; }
     }
 }
