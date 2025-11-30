@@ -72,7 +72,7 @@
                         </div>
                     </div>
 
-                    <!-- Building Selection -->
+                    <!-- Building Selection with Projektdaten laden button -->
                     <div class="form-group">
                         <label for="buildingSelect">Gebäude auswählen:</label>
                         <div style="display:flex; gap:10px; align-items:flex-start;">
@@ -80,15 +80,19 @@
                                 <option value="">-- Gebäude auswählen --</option>
                             </select>
                             <button class="btn btn-secondary" onclick="loadBuildingList()">🔄 Aktualisieren</button>
+                            <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
                         </div>
+                        <small style="color:#666; margin-top:5px; display:block;">
+                            "Projektdaten laden" lädt alle JSON-Dateien aus Azure und aktualisiert Trimble Connect Daten.
+                        </small>
                     </div>
 
                     <div id="buildingResult" class="result"></div>
                 </section>
 
-                <!-- Building Details (only visible when a building is selected) -->
-                <section class="card" id="buildingDetailsSection" style="display:none;">
-                    <h2>📋 Gebäudedetails</h2>
+                <!-- Building Properties Card (visible when a building is selected) -->
+                <section class="card" id="buildingPropertiesSection" style="display:none;">
+                    <h2>📋 Gebäudeeigenschaften</h2>
 
                     <!-- Basic Information -->
                     <div class="form-group">
@@ -102,16 +106,7 @@
                                 <small>Code:</small>
                                 <input type="text" id="editBuildingCode" class="form-control" placeholder="Code">
                             </div>
-                            <div>
-                                <small>Eigentümer:</small>
-                                <input type="text" id="editBuildingOwner" class="form-control" placeholder="Eigentümer">
-                            </div>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <small>Beschreibung:</small>
-                        <textarea id="editBuildingDescription" class="form-control" rows="2" placeholder="Beschreibung"></textarea>
                     </div>
 
                     <!-- Address Information -->
@@ -119,22 +114,62 @@
                         <label>Adresse:</label>
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
                             <div>
-                                <small>Strasse:</small>
+                                <small>Adresse – Strasse:</small>
                                 <input type="text" id="editAddressStreet" class="form-control" placeholder="Strasse">
                             </div>
                             <div>
-                                <small>PLZ:</small>
-                                <input type="text" id="editAddressPostalCode" class="form-control" placeholder="PLZ">
+                                <small>Adresse – Ort:</small>
+                                <input type="text" id="editAddressCity" class="form-control" placeholder="Ort">
                             </div>
                             <div>
-                                <small>Stadt:</small>
-                                <input type="text" id="editAddressCity" class="form-control" placeholder="Stadt">
+                                <small>Adresse – Postleitzahl:</small>
+                                <input type="text" id="editAddressPostalCode" class="form-control" placeholder="Postleitzahl">
                             </div>
                             <div>
-                                <small>Land:</small>
-                                <input type="text" id="editAddressCountry" class="form-control" placeholder="Land">
+                                <small>Adresse – Land:</small>
+                                <input type="text" id="editAddressCountry" class="form-control" placeholder="Land" value="Switzerland">
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Owner and Creator -->
+                    <div class="form-group">
+                        <label>Verantwortlichkeiten:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div>
+                                <small>Eigentümer / Bauherr:</small>
+                                <input type="text" id="editBuildingOwner" class="form-control" placeholder="Eigentümer / Bauherr">
+                            </div>
+                            <div>
+                                <small>Ersteller / Verantwortliche Person:</small>
+                                <input type="text" id="editBuildingCreator" class="form-control" placeholder="Ersteller / Verantwortliche Person">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coordinate Settings -->
+                    <div class="form-group">
+                        <label>Koordinaten:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div>
+                                <small>Koordinatensystem:</small>
+                                <input type="text" id="editCoordinateSystem" class="form-control" placeholder="Koordinatensystem" value="Switzerland/CH1903+ (LV95) – EPSG:2056">
+                            </div>
+                            <div>
+                                <small>Lokaler Nullpunkt (X, Y, Z):</small>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" step="0.0001" id="editLocalOriginX" class="form-control" placeholder="X" value="0" style="flex:1;">
+                                    <input type="number" step="0.0001" id="editLocalOriginY" class="form-control" placeholder="Y" value="0" style="flex:1;">
+                                    <input type="number" step="0.0001" id="editLocalOriginZ" class="form-control" placeholder="Z" value="0" style="flex:1;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <small>Beschreibung:</small>
+                        <textarea id="editBuildingDescription" class="form-control" rows="2" placeholder="Beschreibung des Gebäudes"></textarea>
                     </div>
 
                     <!-- IFC Settings -->
@@ -161,29 +196,6 @@
                         </div>
                     </div>
 
-                    <!-- Coordinate Settings -->
-                    <div class="form-group">
-                        <label>Koordinateneinstellungen:</label>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
-                            <div>
-                                <small>Koordinatensystem:</small>
-                                <input type="text" id="editCoordinateSystem" class="form-control" placeholder="LV95">
-                            </div>
-                            <div>
-                                <small>Ursprung X:</small>
-                                <input type="number" step="0.0001" id="editLocalOriginX" class="form-control" placeholder="0.0">
-                            </div>
-                            <div>
-                                <small>Ursprung Y:</small>
-                                <input type="number" step="0.0001" id="editLocalOriginY" class="form-control" placeholder="0.0">
-                            </div>
-                            <div>
-                                <small>Ursprung Z:</small>
-                                <input type="number" step="0.0001" id="editLocalOriginZ" class="form-control" placeholder="0.0">
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Logo -->
                     <div class="form-group">
                         <label>Logo:</label>
@@ -197,14 +209,13 @@
                     <div class="form-group">
                         <label>Trimble Connect Informationen:</label>
                         <div id="trimbleConnectInfo" style="background:#f5f5f5; padding:10px; border-radius:4px;">
-                            <small style="color:#666;">Drücken Sie "Projekte laden" um Trimble Connect Daten zu aktualisieren.</small>
+                            <small style="color:#666;">Drücken Sie "Projektdaten laden" um Trimble Connect Daten zu aktualisieren.</small>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="form-group">
                         <button class="btn btn-primary" onclick="saveBuilding()">💾 Gebäude speichern</button>
-                        <button class="btn btn-secondary" onclick="refreshTrimbleConnectData()">🔄 Projekte laden</button>
                         <button class="btn btn-danger" onclick="deleteBuilding()">🗑️ Gebäude löschen</button>
                     </div>
 
@@ -213,48 +224,9 @@
 
                 <hr style="margin:20px 0; border-top:2px solid var(--tc-border);">
 
-                <!-- STEP 0 – CONFIGURATION -->
+                <!-- KONFIGURATION – Simplified -->
                 <section class="card">
                     <h2>Konfiguration</h2>
-
-                    <!-- Authentication is managed by Trimble Connect Extension API -->
-                    <!-- Manual token input field (commented out - authentication handled by extension API) -->
-                    <!--
-                    <div class="form-group">
-                        <label for="accessToken">Access Token:</label>
-                        <input type="text" id="accessToken" class="form-control" placeholder="Token hier einfügen...">
-                    </div>
-                    -->
-                    <!-- Project ID retrieved from Trimble Connect context -->
-                    <!-- Manual project ID input field (commented out - project ID retrieved from extension context) -->
-                    <!--
-                    <div class="form-group">
-                        <label for="projectId">Project ID:</label>
-                        <input type="text" id="projectId" class="form-control" value="y7-N0uBcXNI">
-                    </div>
-                    -->
-
-                    <div class="form-group">
-                        <label for="configName">Konfigurationsname:</label>
-                        <div style="display:flex; gap:10px; align-items:flex-start;">
-                            <input type="text" id="configName" class="form-control" placeholder="z.B. 'MeinProjekt_Config'">
-                            </select>                            <button class="btn btn-secondary" onclick="saveConfig()">💾 Konfiguration speichern</button>
-                            <button class="btn btn-primary" onclick="loadProjectData()">📁 Projektdaten laden</button>
-                        </div>
-                        <small>Geben Sie einen Namen für die Konfigurationsdatei an.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Gespeicherte Konfigurationen:</label>
-                        <div style="display:flex; gap:10px; align-items:flex-start;">
-                            <select id="savedConfigs" class="form-control" style="flex:1;">
-                                <option value="">-- Laden Sie Projektdaten um Konfigurationen zu sehen --</option>
-                            </select>
-                            <button class="btn btn-secondary" onclick="loadConfigFromAzure()">📥 Laden</button>
-                            <button class="btn btn-danger" onclick="deleteConfigFromAzure()">🗑️ Löschen</button>
-                        </div>
-                    </div>
-                    <hr>
 
                     <!-- Target Folder -->
                     <div class="form-group">
@@ -1134,7 +1106,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         async function loadBuildingDetails() {
             const buildingId = document.getElementById('buildingSelect').value;
-            const detailsSection = document.getElementById('buildingDetailsSection');
+            const detailsSection = document.getElementById('buildingPropertiesSection');
             
             if (!buildingId) {
                 detailsSection.style.display = 'none';
@@ -1156,16 +1128,17 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     document.getElementById('editBuildingName').value = b.buildingName || '';
                     document.getElementById('editBuildingCode').value = b.buildingCode || '';
                     document.getElementById('editBuildingOwner').value = b.owner || '';
+                    document.getElementById('editBuildingCreator').value = b.creator || '';
                     document.getElementById('editBuildingDescription').value = b.description || '';
                     document.getElementById('editAddressStreet').value = b.addressStreet || '';
                     document.getElementById('editAddressPostalCode').value = b.addressPostalCode || '';
                     document.getElementById('editAddressCity').value = b.addressCity || '';
-                    document.getElementById('editAddressCountry').value = b.addressCountry || '';
+                    document.getElementById('editAddressCountry').value = b.addressCountry || 'Switzerland';
                     document.getElementById('editIFCEnabled').checked = b.ifcEnabled || false;
                     document.getElementById('editIFCProjectGUID').value = b.ifcProjectGUID || '';
                     document.getElementById('editIFCBuildingGUID').value = b.ifcBuildingGUID || '';
                     document.getElementById('editIFCFileUrl').value = b.ifcFileUrl || '';
-                    document.getElementById('editCoordinateSystem').value = b.coordinateSystem || 'LV95';
+                    document.getElementById('editCoordinateSystem').value = b.coordinateSystem || 'Switzerland/CH1903+ (LV95) – EPSG:2056';
                     document.getElementById('editLocalOriginX').value = b.localOriginX || 0;
                     document.getElementById('editLocalOriginY').value = b.localOriginY || 0;
                     document.getElementById('editLocalOriginZ').value = b.localOriginZ || 0;
@@ -1215,6 +1188,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     buildingName: document.getElementById('editBuildingName').value,
                     buildingCode: document.getElementById('editBuildingCode').value,
                     owner: document.getElementById('editBuildingOwner').value,
+                    creator: document.getElementById('editBuildingCreator').value,
                     description: document.getElementById('editBuildingDescription').value,
                     addressStreet: document.getElementById('editAddressStreet').value,
                     addressPostalCode: document.getElementById('editAddressPostalCode').value,
@@ -1279,7 +1253,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 
                 if (response.ok && data.success) {
                     showResult('buildingResult', 'success', `✅ Gebäude "${buildingName}" gelöscht`);
-                    document.getElementById('buildingDetailsSection').style.display = 'none';
+                    document.getElementById('buildingPropertiesSection').style.display = 'none';
                     currentBuildingId = null;
                     localStorage.removeItem('selectedBuildingId');
                     await loadBuildingList();
