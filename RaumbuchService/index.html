@@ -1926,59 +1926,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             showResult('connectionResult', 'loading', '⏳ Dateien werden geladen...');
 
             try {
-                // Fetch Excel files for all dropdowns (template, raumprogramm, raumbuch)
-                console.log('Fetching Excel files from folder:', folderId);
-                const excelResponse = await fetch(`${API_PROJECT}/files`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        accessToken: token,
-                        folderId: folderId,
-                        fileExtensions: ['xlsx']
-                    })
-                });
-
-                console.log('Excel response status:', excelResponse.status);
-                const excelData = await excelResponse.json();
-                console.log('Excel response data:', excelData);
-
-                if (excelResponse.ok && excelData.success) {
-                    // Populate template dropdown
-                    const templateSelect = document.getElementById('templateFile');
-                    templateSelect.innerHTML = '<option value="">-- Vorlage auswählen --</option>';
-
-                    // Populate raumbuch dropdown
-                    const raumbuchSelect = document.getElementById('raumbuchFile');
-                    raumbuchSelect.innerHTML = '<option value="">-- Raumbuch auswählen --</option>';
-
-                    console.log('Excel files found:', excelData.files?.length || 0);
-
-                    if (excelData.files && excelData.files.length > 0) {
-                        excelData.files.forEach(file => {
-                            console.log('Adding Excel file:', file.name);
-
-                            // Add to template dropdown
-                            const templateOption = document.createElement('option');
-                            templateOption.value = file.id;
-                            templateOption.textContent = file.name;
-                            templateOption.dataset.name = file.name;
-                            templateOption.dataset.versionId = file.versionId;
-                            templateSelect.appendChild(templateOption);
-
-                            // Add to raumbuch dropdown (used by both Step 3 update and Step 4 pset operations)
-                            const raumbuchOption = document.createElement('option');
-                            raumbuchOption.value = file.id;
-                            raumbuchOption.textContent = file.name;
-                            raumbuchOption.dataset.name = file.name;
-                            raumbuchOption.dataset.versionId = file.versionId;
-                            raumbuchSelect.appendChild(raumbuchOption);
-                        });
-                    }
-                } else {
-                    console.error('Excel fetch failed:', excelData);
-                }
-
-                // Fetch IFC files for IFC dropdown
+                // Fetch IFC files for IFC dropdown (primary use case now)
                 console.log('Fetching IFC files from folder:', folderId);
                 const ifcResponse = await fetch(`${API_PROJECT}/files`, {
                     method: 'POST',
@@ -1994,32 +1942,33 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const ifcData = await ifcResponse.json();
                 console.log('IFC response data:', ifcData);
 
+                let ifcCount = 0;
+
                 if (ifcResponse.ok && ifcData.success) {
                     const ifcSelect = document.getElementById('ifcFile');
+                    if (ifcSelect) {
+                        ifcSelect.innerHTML = '<option value="">-- IFC auswählen --</option>';
 
-                    ifcSelect.innerHTML = '<option value="">-- IFC auswählen --</option>';
+                        console.log('IFC files found:', ifcData.files?.length || 0);
 
-                    console.log('IFC files found:', ifcData.files?.length || 0);
-
-                    if (ifcData.files && ifcData.files.length > 0) {
-                        ifcData.files.forEach(file => {
-                            console.log('Adding IFC file:', file.name);
-                            const option = document.createElement('option');
-                            option.value = file.id;
-                            option.textContent = file.name;
-                            option.dataset.name = file.name;
-                            ifcSelect.appendChild(option);
-                        });
+                        if (ifcData.files && ifcData.files.length > 0) {
+                            ifcData.files.forEach(file => {
+                                console.log('Adding IFC file:', file.name);
+                                const option = document.createElement('option');
+                                option.value = file.id;
+                                option.textContent = file.name;
+                                option.dataset.name = file.name;
+                                ifcSelect.appendChild(option);
+                            });
+                            ifcCount = ifcData.files.length;
+                        }
                     }
                 } else {
                     console.error('IFC fetch failed:', ifcData);
                 }
 
-                const excelCount = excelData.files?.length || 0;
-                const ifcCount = ifcData.files?.length || 0;
-
-                console.log('Total files:', excelCount, 'Excel,', ifcCount, 'IFC');
-                showResult('connectionResult', 'success', `✅ Dateien geladen! ${excelCount} Excel, ${ifcCount} IFC`);
+                console.log('Total IFC files:', ifcCount);
+                showResult('connectionResult', 'success', `✅ Dateien geladen! ${ifcCount} IFC-Datei(en) gefunden.`);
             } catch (error) {
                 console.error('Error in fetchFiles:', error);
                 console.error('Error stack:', error.stack);
