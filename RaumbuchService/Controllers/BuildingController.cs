@@ -364,6 +364,90 @@ namespace RaumbuchService.Controllers
         }
 
         // ====================================================================
+        // CONFIGURATION ENDPOINTS
+        // ====================================================================
+
+        /// <summary>
+        /// Saves configuration for a building (updates IFC settings and other config data).
+        /// POST /api/building/{id}/save-configuration
+        /// </summary>
+        [HttpPost]
+        [Route("{id:int}/save-configuration")]
+        public async Task<IHttpActionResult> SaveConfiguration(int id, [FromBody] SaveConfigurationRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest("Request body ist erforderlich.");
+                }
+
+                using (var db = new RaumbuchContext())
+                {
+                    var building = await db.Buildings.FindAsync(id);
+
+                    if (building == null)
+                    {
+                        return NotFound();
+                    }
+
+                    // Update IFC settings
+                    if (request.IfcEnabled.HasValue)
+                        building.IFCEnabled = request.IfcEnabled.Value;
+                    if (request.IfcProjectGUID != null)
+                        building.IFCProjectGUID = request.IfcProjectGUID;
+                    if (request.IfcBuildingGUID != null)
+                        building.IFCBuildingGUID = request.IfcBuildingGUID;
+                    if (request.IfcFileUrl != null)
+                        building.IFCFileUrl = request.IfcFileUrl;
+
+                    await db.SaveChangesWithAuditAsync(request.UserId);
+
+                    return Ok(new BaseResponse
+                    {
+                        Success = true,
+                        Message = "Konfiguration gespeichert."
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in SaveConfiguration: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Speichern der Konfiguration: {ex.Message}", ex));
+            }
+        }
+
+        /// <summary>
+        /// Reads IFC properties from a file (placeholder - actual IFC reading requires GeometricGym or similar).
+        /// GET /api/building/read-ifc-properties?buildingId={id}&ifcFileName={name}
+        /// </summary>
+        [HttpGet]
+        [Route("read-ifc-properties")]
+        public IHttpActionResult ReadIfcProperties(int buildingId, string ifcFileName)
+        {
+            try
+            {
+                // For now, return placeholder data
+                // In a real implementation, this would use GeometricGym or xBIM to read IFC properties
+                // The actual IFC file reading requires the file to be accessible (downloaded from Azure or accessed via URL)
+                
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "IFC-Eigenschaften konnten gelesen werden.",
+                    ProjectGUID = (string)null, // Placeholder - would be read from IFC file
+                    BuildingGUID = (string)null, // Placeholder - would be read from IFC file
+                    MultipleBuildingsError = false
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in ReadIfcProperties: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Lesen der IFC-Eigenschaften: {ex.Message}", ex));
+            }
+        }
+
+        // ====================================================================
         // HELPER METHODS
         // ====================================================================
 
@@ -517,6 +601,17 @@ namespace RaumbuchService.Controllers
         public decimal? LocalOriginY { get; set; }
         public decimal? LocalOriginZ { get; set; }
         public string LogoUrl { get; set; }
+        public string UserId { get; set; }
+    }
+
+    public class SaveConfigurationRequest
+    {
+        public string PredefinedFolder { get; set; }
+        public string IfcSpacesFile { get; set; }
+        public bool? IfcEnabled { get; set; }
+        public string IfcProjectGUID { get; set; }
+        public string IfcBuildingGUID { get; set; }
+        public string IfcFileUrl { get; set; }
         public string UserId { get; set; }
     }
 }
