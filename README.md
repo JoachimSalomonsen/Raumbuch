@@ -314,6 +314,229 @@ The analysis can be configured with custom tolerance values (e.g., ±5%).
 
 ---
 
+## 🗄️ Database Schema Changes (Room Table)
+
+### Current Room Table Structure
+
+The Room table has been updated to use separate SOLL (planned) and IST (actual) columns for both net and gross areas:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `RoomID` | INT | Primary key, auto-incremented |
+| `RoomTypeID` | INT | Foreign key to RoomType |
+| `Name` | NVARCHAR(100) | Room name |
+| `NetAreaPlanned` | DECIMAL(18,2) | Planned net area (SOLL) in m² |
+| `NetAreaActual` | DECIMAL(18,2) | Actual net area (IST) in m² |
+| `GrossAreaPlanned` | DECIMAL(18,2) | Planned gross area (SOLL) in m² |
+| `GrossAreaActual` | DECIMAL(18,2) | Actual gross area (IST) in m² |
+| `PubliclyAccessible` | BIT | IFC Pset_SpaceCommon.PubliclyAccessible |
+| `HandicapAccessible` | BIT | IFC Pset_SpaceCommon.HandicapAccessible |
+| `IsExternal` | BIT | IFC Pset_SpaceCommon.IsExternal |
+| `Description` | NVARCHAR(500) | IFC IfcSpace.Description |
+| `ObjectType` | NVARCHAR(100) | IFC IfcSpace.ObjectType |
+| `PredefinedType` | NVARCHAR(50) | IFC IfcSpace.PredefinedType |
+| `ElevationWithFlooring` | DECIMAL(18,4) | IFC IfcSpace.ElevationWithFlooring |
+| `ModifiedByUserID` | NVARCHAR(255) | User who last modified |
+| `ModifiedDate` | DATETIME2 | Last modification date |
+
+### Migration Notes
+
+**⚠️ Important:** If you are upgrading from a previous version, the following columns have been **removed**:
+
+| Removed Column | Replaced By |
+|----------------|-------------|
+| `AreaPlanned` | `NetAreaPlanned` |
+| `AreaActual` | `NetAreaActual` |
+| `NetArea` | `NetAreaPlanned` / `NetAreaActual` |
+| `GrossArea` | `GrossAreaPlanned` / `GrossAreaActual` |
+
+### SOLL/IST Separation
+
+The new column structure separates planned (SOLL) and actual (IST) values:
+
+**SOLL Pages (Raumprogramm Übersicht):**
+- Use `NetAreaPlanned` for planned net area
+- Use `GrossAreaPlanned` for planned gross area
+
+**IST Pages (Ausgeführt):**
+- Use `NetAreaActual` for actual net area
+- Use `GrossAreaActual` for actual gross area
+
+### Example Queries
+
+**Get SOLL values for room program overview:**
+```sql
+SELECT r.Name, r.NetAreaPlanned, r.GrossAreaPlanned, rt.Name AS RoomType
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+ORDER BY rt.Name, r.Name;
+```
+
+**Get IST values for actual data view:**
+```sql
+SELECT r.Name, r.NetAreaActual, r.GrossAreaActual, rt.Name AS RoomType
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+ORDER BY rt.Name, r.Name;
+```
+
+**Compare SOLL vs IST (Analysis):**
+```sql
+SELECT 
+    rt.Name AS RoomType,
+    SUM(r.NetAreaPlanned) AS TotalNetAreaPlanned,
+    SUM(r.NetAreaActual) AS TotalNetAreaActual,
+    CASE 
+        WHEN SUM(r.NetAreaPlanned) > 0 
+        THEN (SUM(r.NetAreaActual) / SUM(r.NetAreaPlanned)) * 100 
+        ELSE 0 
+    END AS PercentageFulfilled
+FROM Room r
+INNER JOIN RoomType rt ON r.RoomTypeID = rt.RoomTypeID
+GROUP BY rt.Name
+ORDER BY rt.Name;
+```
+
+### RoomInventory SOLL/IST Handling
+
+The `RoomInventory` table continues to use `ValuePlanned` (SOLL) and `ValueActual` (IST) for dynamic property values:
+
+- **SOLL pages** must use `ValuePlanned`
+- **IST pages** must use `ValueActual`
+- The `DataType` from `InventoryTemplate` should be respected when displaying/editing values
+
+---
+
+## 📊 SOLL Page Indicator Cards
+
+The "Raumprogramm Übersicht (SOLL)" page features three indicator cards at the top, styled identically to the Analyse page indicators.
+
+### Indicators
+
+| Indicator | Title | Calculation |
+|-----------|-------|-------------|
+| **Raumtypen** | Count of distinct room types | Number of unique `RoomTypeID` values in filtered results |
+| **Räume** | Count of rooms | Total number of rooms (`RoomID`) in filtered results |
+| **Inventarobjekte** | Sum of inventory values | Calculated based on `DataType` interpretation (see below) |
+
+### Inventory Value Interpretation
+
+Inventory values (`RoomInventory.ValuePlanned`) are interpreted based on `InventoryTemplate.DataType`:
+
+| DataType | Interpretation |
+|----------|---------------|
+| `Number`, `Integer`, `Decimal` | Parse as numeric value and add to sum |
+| `Boolean` | `JA`, `YES`, `TRUE`, `1` = count as 1; `NEIN`, `NO`, `FALSE`, `0` = count as 0 |
+| `Text` | Non-empty text = count as 1; Empty = count as 0 |
+| Empty/Null | Ignored (count as 0) |
+
+### Filtering Behavior
+
+The indicators update dynamically based on:
+
+| Filter | Effect on Indicators |
+|--------|---------------------|
+| **Raumtyp** | ✅ Recalculates for selected room type only |
+| **Inventar** | ✅ Recalculates inventory sum for selected templates only |
+| **Room Name Search** | ✅ Indicators update to match filtered results |
+
+When multiple filters are active, indicators reflect the intersection (logical AND).
+
+### Visual Design
+
+The indicator cards match the Analyse page design:
+- Blue gradient background
+- White text
+- Same card layout, typography, and spacing
+- Responsive flex container
+
+---
+
+## ✏️ Editable SOLL Table (Raumprogramm Übersicht)
+
+The "Raumprogramm Übersicht (SOLL)" page features an **editable table** that allows direct in-cell editing of room data.
+
+### Editable Fields
+
+The following fields can be edited directly in the table:
+
+| Field | Column Name | Type | Description |
+|-------|-------------|------|-------------|
+| `NetAreaPlanned` | Nettofläche (m²) | Number | Planned net area in square meters |
+| `GrossAreaPlanned` | Bruttofläche (m²) | Number | Planned gross area in square meters |
+| `Description` | Beschreibung | Text | Room description |
+| `ObjectType` | Objekttyp | Text | IFC ObjectType |
+| `PredefinedType` | Vordefinierter Typ | Dropdown | IFC PredefinedType (see below) |
+
+### PredefinedType Dropdown
+
+The `PredefinedType` field uses a dropdown that is populated from the `PredefinedRoomType` table.
+
+**📌 Important:** The SQL for PredefinedType is fully implemented:
+- Table: `dbo.PredefinedRoomType`
+- Unique constraint on `Name`
+- CHECK constraint enforcing allowed values
+
+**Allowed Values:**
+- `NOTDEFINED`
+- `SPACE`
+- `PARKING`
+- `INTERNAL`
+- `EXTERNAL`
+- `BERTH`
+- `USERDEFINED`
+
+Frontend and backend use the existing schema without modifications.
+
+### Dynamic Inventory Columns
+
+When inventory templates are selected in the filter, additional editable columns appear:
+- Each column corresponds to an `InventoryTemplate.PropertyName`
+- Values are saved to `RoomInventory.ValuePlanned`
+- Input type respects `InventoryTemplate.DataType` (Text, Number, Boolean, Integer, Decimal)
+
+### Data Loading
+
+The **"Daten laden"** button refreshes:
+1. Room types (`RoomType`)
+2. Rooms with SOLL fields (`NetAreaPlanned`, `GrossAreaPlanned`, `Description`, `ObjectType`, `PredefinedType`)
+3. Inventory templates (`InventoryTemplate`)
+4. Predefined types for dropdown (`PredefinedRoomType`)
+5. Room inventory values (`RoomInventory.ValuePlanned`)
+6. **Indicator cards** (Raumtypen, Räume, Inventarobjekte)
+
+**Progress Bar:** While loading, a progress bar is displayed showing the loading status for each step (room types → inventory templates → predefined types → rooms).
+
+### Autosave Feature
+
+Changes made in the SOLL table are automatically saved with a debounce delay of ~800ms after the last change:
+
+- **Enabled by default**: Autosave is enabled by default
+- **Toggle**: Use the "Änderungen automatisch speichern" checkbox in the settings section to enable/disable
+- **Visual feedback**: 
+  - Yellow background during save
+  - Green background on success
+  - Red background on error
+- **Works for**: Room fields (NetAreaPlanned, GrossAreaPlanned, Description, ObjectType, PredefinedType) and Inventory values
+
+When autosave is disabled, use the "Änderungen speichern" button to manually save all changes.
+
+### Boolean Inventory Values
+
+Boolean inventory values are handled as checkboxes:
+- **Display**: Checkbox input for Boolean DataType
+- **Storage**: `TRUE` or `FALSE` string values in `RoomInventory.ValuePlanned`
+- **Interpretation**: The following values are interpreted as `true`: `JA`, `YES`, `TRUE`, `1`
+
+### Delete Functionality
+
+Each row includes a delete button (🗑️) that:
+- Shows a confirmation dialog
+- Deletes the room and associated inventory items
+- Refreshes the table after deletion
+
+---
+
 ## 👤 Support
 
 - **Developer**: Joachim Salomonsen

@@ -114,28 +114,28 @@ namespace RaumbuchService.Data
         public string Name { get; set; }
 
         /// <summary>
-        /// Planned area (SOLL) in square meters.
+        /// Planned net area (SOLL) in square meters.
         /// </summary>
         [Column(TypeName = "decimal")]
-        public decimal? AreaPlanned { get; set; }
+        public decimal? NetAreaPlanned { get; set; }
 
         /// <summary>
-        /// Actual area (IST) in square meters.
+        /// Actual net area (IST) in square meters.
         /// </summary>
         [Column(TypeName = "decimal")]
-        public decimal? AreaActual { get; set; }
+        public decimal? NetAreaActual { get; set; }
 
         /// <summary>
-        /// Net area in square meters.
+        /// Planned gross area (SOLL) in square meters.
         /// </summary>
         [Column(TypeName = "decimal")]
-        public decimal? NetArea { get; set; }
+        public decimal? GrossAreaPlanned { get; set; }
 
         /// <summary>
-        /// Gross area in square meters.
+        /// Actual gross area (IST) in square meters.
         /// </summary>
         [Column(TypeName = "decimal")]
-        public decimal? GrossArea { get; set; }
+        public decimal? GrossAreaActual { get; set; }
 
         // ====================================================================
         // IFC Standard Properties (Pset_SpaceCommon and IfcSpace)

@@ -59,10 +59,10 @@ BEGIN
         [RoomID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         [RoomTypeID] INT NOT NULL,
         [Name] NVARCHAR(100) NOT NULL,
-        [AreaPlanned] DECIMAL(18,2) NULL,
-        [AreaActual] DECIMAL(18,2) NULL,
-        [NetArea] DECIMAL(18,2) NULL,                   -- Net area in square meters
-        [GrossArea] DECIMAL(18,2) NULL,                 -- Gross area in square meters
+        [NetAreaPlanned] DECIMAL(18,2) NULL,           -- Planned net area (SOLL) in square meters
+        [NetAreaActual] DECIMAL(18,2) NULL,            -- Actual net area (IST) in square meters
+        [GrossAreaPlanned] DECIMAL(18,2) NULL,         -- Planned gross area (SOLL) in square meters
+        [GrossAreaActual] DECIMAL(18,2) NULL,          -- Actual gross area (IST) in square meters
         -- IFC Standard Properties (Pset_SpaceCommon and IfcSpace)
         [PubliclyAccessible] BIT NULL,              -- Pset_SpaceCommon.PubliclyAccessible
         [HandicapAccessible] BIT NULL,              -- Pset_SpaceCommon.HandicapAccessible
@@ -82,7 +82,28 @@ BEGIN
 END
 ELSE
 BEGIN
-    -- Add new columns if table exists but columns don't
+    -- Add new SOLL/IST columns if table exists but columns don't
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaPlanned')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [NetAreaPlanned] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.NetAreaPlanned';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaActual')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [NetAreaActual] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.NetAreaActual';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaPlanned')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [GrossAreaPlanned] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.GrossAreaPlanned';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaActual')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [GrossAreaActual] DECIMAL(18,2) NULL;
+        PRINT 'Added column: Room.GrossAreaActual';
+    END
+    -- Standard columns
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'ModifiedByUserID')
     BEGIN
         ALTER TABLE [dbo].[Room] ADD [ModifiedByUserID] NVARCHAR(255) NULL;
@@ -92,16 +113,6 @@ BEGIN
     BEGIN
         ALTER TABLE [dbo].[Room] ADD [ModifiedDate] DATETIME2 NULL;
         PRINT 'Added column: Room.ModifiedDate';
-    END
-    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetArea')
-    BEGIN
-        ALTER TABLE [dbo].[Room] ADD [NetArea] DECIMAL(18,2) NULL;
-        PRINT 'Added column: Room.NetArea';
-    END
-    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossArea')
-    BEGIN
-        ALTER TABLE [dbo].[Room] ADD [GrossArea] DECIMAL(18,2) NULL;
-        PRINT 'Added column: Room.GrossArea';
     END
     -- IFC Standard Properties
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'PubliclyAccessible')

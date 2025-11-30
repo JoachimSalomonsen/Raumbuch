@@ -708,10 +708,10 @@ namespace RaumbuchService.Controllers
                     {
                         RoomTypeID = request.RoomTypeID,
                         Name = request.Name,
-                        AreaPlanned = request.AreaPlanned,
-                        AreaActual = request.AreaActual,
-                        NetArea = request.NetArea,
-                        GrossArea = request.GrossArea
+                        NetAreaPlanned = request.NetAreaPlanned,
+                        NetAreaActual = request.NetAreaActual,
+                        GrossAreaPlanned = request.GrossAreaPlanned,
+                        GrossAreaActual = request.GrossAreaActual
                     };
 
                     db.Rooms.Add(room);
@@ -728,10 +728,10 @@ namespace RaumbuchService.Controllers
                             RoomTypeName = roomType.Name,
                             RoomCategory = roomType.RoomCategory,
                             Name = room.Name,
-                            AreaPlanned = room.AreaPlanned,
-                            AreaActual = room.AreaActual,
-                            NetArea = room.NetArea,
-                            GrossArea = room.GrossArea,
+                            NetAreaPlanned = room.NetAreaPlanned,
+                            NetAreaActual = room.NetAreaActual,
+                            GrossAreaPlanned = room.GrossAreaPlanned,
+                            GrossAreaActual = room.GrossAreaActual,
                             ModifiedByUserID = room.ModifiedByUserID,
                             ModifiedDate = room.ModifiedDate
                         }
@@ -787,10 +787,18 @@ namespace RaumbuchService.Controllers
 
                     room.RoomTypeID = request.RoomTypeID;
                     room.Name = request.Name;
-                    room.AreaPlanned = request.AreaPlanned;
-                    room.AreaActual = request.AreaActual;
-                    room.NetArea = request.NetArea;
-                    room.GrossArea = request.GrossArea;
+                    room.NetAreaPlanned = request.NetAreaPlanned;
+                    room.NetAreaActual = request.NetAreaActual;
+                    room.GrossAreaPlanned = request.GrossAreaPlanned;
+                    room.GrossAreaActual = request.GrossAreaActual;
+                    // Update IFC Standard Properties
+                    room.Description = request.Description;
+                    room.ObjectType = request.ObjectType;
+                    room.PredefinedType = request.PredefinedType;
+                    room.PubliclyAccessible = request.PubliclyAccessible;
+                    room.HandicapAccessible = request.HandicapAccessible;
+                    room.IsExternal = request.IsExternal;
+                    room.ElevationWithFlooring = request.ElevationWithFlooring;
 
                     await db.SaveChangesWithAuditAsync(request.UserId);
 
@@ -805,10 +813,17 @@ namespace RaumbuchService.Controllers
                             RoomTypeName = roomType.Name,
                             RoomCategory = roomType.RoomCategory,
                             Name = room.Name,
-                            AreaPlanned = room.AreaPlanned,
-                            AreaActual = room.AreaActual,
-                            NetArea = room.NetArea,
-                            GrossArea = room.GrossArea,
+                            NetAreaPlanned = room.NetAreaPlanned,
+                            NetAreaActual = room.NetAreaActual,
+                            GrossAreaPlanned = room.GrossAreaPlanned,
+                            GrossAreaActual = room.GrossAreaActual,
+                            Description = room.Description,
+                            ObjectType = room.ObjectType,
+                            PredefinedType = room.PredefinedType,
+                            PubliclyAccessible = room.PubliclyAccessible,
+                            HandicapAccessible = room.HandicapAccessible,
+                            IsExternal = room.IsExternal,
+                            ElevationWithFlooring = room.ElevationWithFlooring,
                             ModifiedByUserID = room.ModifiedByUserID,
                             ModifiedDate = room.ModifiedDate
                         }
@@ -870,6 +885,137 @@ namespace RaumbuchService.Controllers
             {
                 System.Diagnostics.Debug.WriteLine($"Error in DeleteRoom: {ex.Message}");
                 return InternalServerError(new Exception($"Fehler beim Löschen des Raums: {ex.Message}", ex));
+            }
+        }
+
+        // ====================================================================
+        // PREDEFINED ROOM TYPE ENDPOINTS
+        // ====================================================================
+
+        /// <summary>
+        /// Gets all PredefinedRoomType values for dropdown.
+        /// These are the IFC standard values for IfcSpace.PredefinedType.
+        /// Note: These values match the CHECK constraint in the database (dbo.PredefinedRoomType)
+        /// and are IFC standard values that rarely change.
+        /// GET /api/predefinedtypes
+        /// </summary>
+        [HttpGet]
+        [Route("predefinedtypes")]
+        public IHttpActionResult GetPredefinedTypes()
+        {
+            try
+            {
+                // IFC standard values for IfcSpace.PredefinedType
+                // These match the CHECK constraint in the database and are IFC standard values
+                // Note: If you need to load from database, query PredefinedRoomType table instead
+                var predefinedTypes = new List<PredefinedTypeDto>
+                {
+                    new PredefinedTypeDto { Name = "NOTDEFINED", Description = "Not defined" },
+                    new PredefinedTypeDto { Name = "SPACE", Description = "General space" },
+                    new PredefinedTypeDto { Name = "PARKING", Description = "Parking space" },
+                    new PredefinedTypeDto { Name = "INTERNAL", Description = "Internal space" },
+                    new PredefinedTypeDto { Name = "EXTERNAL", Description = "External space" },
+                    new PredefinedTypeDto { Name = "BERTH", Description = "Berth/dock space" },
+                    new PredefinedTypeDto { Name = "USERDEFINED", Description = "User defined" }
+                };
+
+                return Ok(new PredefinedTypesResponse
+                {
+                    Success = true,
+                    Message = $"{predefinedTypes.Count} Vordefinierte Typen gefunden.",
+                    PredefinedTypes = predefinedTypes
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetPredefinedTypes: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Laden der vordefinierten Typen: {ex.Message}", ex));
+            }
+        }
+
+        // ====================================================================
+        // ROOM INVENTORY UPDATE ENDPOINT
+        // ====================================================================
+
+        /// <summary>
+        /// Updates or creates a RoomInventory value.
+        /// PUT /api/roominventory
+        /// </summary>
+        [HttpPut]
+        [Route("roominventory")]
+        public async Task<IHttpActionResult> UpdateRoomInventory([FromBody] RoomInventoryUpdateRequest request)
+        {
+            try
+            {
+                if (request == null || request.RoomID <= 0 || request.InventoryTemplateID <= 0)
+                {
+                    return BadRequest("RoomID und InventoryTemplateID sind erforderlich.");
+                }
+
+                using (var db = new RaumbuchContext())
+                {
+                    // Authorization check
+                    var role = await GetUserRoleAsync(db, request.UserId);
+                    if (!CanWrite(role))
+                    {
+                        return Unauthorized();
+                    }
+
+                    // Find existing inventory item or create new one
+                    var inventory = await db.RoomInventories
+                        .FirstOrDefaultAsync(ri => ri.RoomID == request.RoomID && 
+                                                   ri.InventoryTemplateID == request.InventoryTemplateID);
+
+                    if (inventory == null)
+                    {
+                        // Verify room and template exist
+                        var room = await db.Rooms.FindAsync(request.RoomID);
+                        if (room == null)
+                        {
+                            return BadRequest($"Raum mit ID {request.RoomID} existiert nicht.");
+                        }
+
+                        var template = await db.InventoryTemplates.FindAsync(request.InventoryTemplateID);
+                        if (template == null)
+                        {
+                            return BadRequest($"Inventarvorlage mit ID {request.InventoryTemplateID} existiert nicht.");
+                        }
+
+                        inventory = new RoomInventory
+                        {
+                            RoomID = request.RoomID,
+                            InventoryTemplateID = request.InventoryTemplateID,
+                            ValuePlanned = request.ValuePlanned,
+                            ValueActual = request.ValueActual,
+                            Comment = request.Comment
+                        };
+                        db.RoomInventories.Add(inventory);
+                    }
+                    else
+                    {
+                        // Update existing
+                        if (request.ValuePlanned != null)
+                            inventory.ValuePlanned = request.ValuePlanned;
+                        if (request.ValueActual != null)
+                            inventory.ValueActual = request.ValueActual;
+                        if (request.Comment != null)
+                            inventory.Comment = request.Comment;
+                    }
+
+                    await db.SaveChangesWithAuditAsync(request.UserId);
+
+                    return Ok(new RoomInventoryUpdateResponse
+                    {
+                        Success = true,
+                        Message = "Inventarwert erfolgreich gespeichert.",
+                        RoomInventoryID = inventory.RoomInventoryID
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in UpdateRoomInventory: {ex.Message}");
+                return InternalServerError(new Exception($"Fehler beim Aktualisieren des Inventarwerts: {ex.Message}", ex));
             }
         }
 
@@ -937,10 +1083,10 @@ namespace RaumbuchService.Controllers
                         RoomTypeName = r.RoomType?.Name,
                         RoomCategory = r.RoomType?.RoomCategory,
                         Name = r.Name,
-                        AreaPlanned = r.AreaPlanned,
-                        AreaActual = r.AreaActual,
-                        NetArea = r.NetArea,
-                        GrossArea = r.GrossArea,
+                        NetAreaPlanned = r.NetAreaPlanned,
+                        NetAreaActual = r.NetAreaActual,
+                        GrossAreaPlanned = r.GrossAreaPlanned,
+                        GrossAreaActual = r.GrossAreaActual,
                         // IFC Properties
                         PubliclyAccessible = r.PubliclyAccessible,
                         HandicapAccessible = r.HandicapAccessible,
@@ -1064,9 +1210,9 @@ namespace RaumbuchService.Controllers
                                     continue;
                                 }
 
-                                // Parse area values
-                                decimal? areaPlanned = null;
-                                decimal? areaActual = null;
+                                // Parse area values - mapping to NetAreaPlanned/NetAreaActual
+                                decimal? netAreaPlanned = null;
+                                decimal? netAreaActual = null;
 
                                 if (decimal.TryParse(ws.Cell(row, areaPlannedCol).GetString().Trim()
                                     .Replace(",", "."), 
@@ -1074,7 +1220,7 @@ namespace RaumbuchService.Controllers
                                     System.Globalization.CultureInfo.InvariantCulture, 
                                     out decimal parsedAreaPlanned))
                                 {
-                                    areaPlanned = parsedAreaPlanned;
+                                    netAreaPlanned = parsedAreaPlanned;
                                 }
 
                                 if (areaActualCol > 0 && decimal.TryParse(ws.Cell(row, areaActualCol).GetString().Trim()
@@ -1083,7 +1229,7 @@ namespace RaumbuchService.Controllers
                                     System.Globalization.CultureInfo.InvariantCulture, 
                                     out decimal parsedAreaActual))
                                 {
-                                    areaActual = parsedAreaActual;
+                                    netAreaActual = parsedAreaActual;
                                 }
 
                                 // Get or create room type
@@ -1106,8 +1252,8 @@ namespace RaumbuchService.Controllers
                                     {
                                         RoomType = roomType, // Use navigation property instead of ID
                                         Name = roomName,
-                                        AreaPlanned = areaPlanned,
-                                        AreaActual = areaActual
+                                        NetAreaPlanned = netAreaPlanned,
+                                        NetAreaActual = netAreaActual
                                     };
                                     db.Rooms.Add(room);
                                     roomsCreated++;
@@ -1116,14 +1262,14 @@ namespace RaumbuchService.Controllers
                                 {
                                     // Update existing room
                                     bool updated = false;
-                                    if (areaPlanned.HasValue && room.AreaPlanned != areaPlanned)
+                                    if (netAreaPlanned.HasValue && room.NetAreaPlanned != netAreaPlanned)
                                     {
-                                        room.AreaPlanned = areaPlanned;
+                                        room.NetAreaPlanned = netAreaPlanned;
                                         updated = true;
                                     }
-                                    if (areaActual.HasValue && room.AreaActual != areaActual)
+                                    if (netAreaActual.HasValue && room.NetAreaActual != netAreaActual)
                                     {
-                                        room.AreaActual = areaActual;
+                                        room.NetAreaActual = netAreaActual;
                                         updated = true;
                                     }
                                     if (updated) roomsUpdated++;
@@ -1206,11 +1352,15 @@ namespace RaumbuchService.Controllers
                         // Headers
                         ws.Cell(1, 1).Value = "Raumtyp";
                         ws.Cell(1, 2).Value = "Raum Name";
-                        ws.Cell(1, 3).Value = "Fläche SOLL (m²)";
-                        ws.Cell(1, 4).Value = "Fläche IST (m²)";
+                        ws.Cell(1, 3).Value = "Nettofläche SOLL (m²)";
+                        ws.Cell(1, 4).Value = "Nettofläche IST (m²)";
+                        ws.Cell(1, 5).Value = "Bruttofläche SOLL (m²)";
+                        ws.Cell(1, 6).Value = "Bruttofläche IST (m²)";
 
-                        // Add inventory template columns
-                        int col = 5;
+                        // Add inventory template columns starting after fixed columns
+                        // Fixed columns: 1=Raumtyp, 2=Raum Name, 3-4=Nettofläche SOLL/IST, 5-6=Bruttofläche SOLL/IST
+                        const int firstInventoryColumn = 7;
+                        int col = firstInventoryColumn;
                         var templateColumns = new Dictionary<int, int>(); // TemplateID -> Column
                         foreach (var template in inventoryTemplates)
                         {
@@ -1231,8 +1381,10 @@ namespace RaumbuchService.Controllers
                         {
                             ws.Cell(row, 1).Value = room.RoomType?.Name ?? "";
                             ws.Cell(row, 2).Value = room.Name;
-                            ws.Cell(row, 3).Value = room.AreaPlanned ?? 0;
-                            ws.Cell(row, 4).Value = room.AreaActual ?? 0;
+                            ws.Cell(row, 3).Value = room.NetAreaPlanned ?? 0;
+                            ws.Cell(row, 4).Value = room.NetAreaActual ?? 0;
+                            ws.Cell(row, 5).Value = room.GrossAreaPlanned ?? 0;
+                            ws.Cell(row, 6).Value = room.GrossAreaActual ?? 0;
 
                             // Add inventory values
                             foreach (var inventory in room.RoomInventories)
@@ -1256,8 +1408,8 @@ namespace RaumbuchService.Controllers
                         // Summary headers
                         summaryWs.Cell(1, 1).Value = "Raumtyp";
                         summaryWs.Cell(1, 2).Value = "Anzahl Räume";
-                        summaryWs.Cell(1, 3).Value = "Fläche SOLL (m²)";
-                        summaryWs.Cell(1, 4).Value = "Fläche IST (m²)";
+                        summaryWs.Cell(1, 3).Value = "Nettofläche SOLL (m²)";
+                        summaryWs.Cell(1, 4).Value = "Nettofläche IST (m²)";
                         summaryWs.Cell(1, 5).Value = "Abweichung (%)";
                         summaryWs.Cell(1, 6).Value = "Status";
 
@@ -1265,15 +1417,15 @@ namespace RaumbuchService.Controllers
                         summaryHeaderRange.Style.Font.Bold = true;
                         summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-                        // Group by room type
+                        // Group by room type - use NetArea for summary
                         var roomTypeSummary = rooms
                             .GroupBy(r => r.RoomType?.Name ?? "Unbekannt")
                             .Select(g => new
                             {
                                 RoomTypeName = g.Key,
                                 RoomCount = g.Count(),
-                                TotalSoll = g.Sum(r => r.AreaPlanned ?? 0),
-                                TotalIst = g.Sum(r => r.AreaActual ?? 0)
+                                TotalSoll = g.Sum(r => r.NetAreaPlanned ?? 0),
+                                TotalIst = g.Sum(r => r.NetAreaActual ?? 0)
                             })
                             .OrderBy(x => x.RoomTypeName)
                             .ToList();
@@ -1435,10 +1587,10 @@ namespace RaumbuchService.Controllers
     {
         public int RoomTypeID { get; set; }
         public string Name { get; set; }
-        public decimal? AreaPlanned { get; set; }
-        public decimal? AreaActual { get; set; }
-        public decimal? NetArea { get; set; }
-        public decimal? GrossArea { get; set; }
+        public decimal? NetAreaPlanned { get; set; }
+        public decimal? NetAreaActual { get; set; }
+        public decimal? GrossAreaPlanned { get; set; }
+        public decimal? GrossAreaActual { get; set; }
         // IFC Standard Properties
         public bool? PubliclyAccessible { get; set; }
         public bool? HandicapAccessible { get; set; }
@@ -1457,10 +1609,10 @@ namespace RaumbuchService.Controllers
         public string RoomTypeName { get; set; }
         public string RoomCategory { get; set; }
         public string Name { get; set; }
-        public decimal? AreaPlanned { get; set; }
-        public decimal? AreaActual { get; set; }
-        public decimal? NetArea { get; set; }
-        public decimal? GrossArea { get; set; }
+        public decimal? NetAreaPlanned { get; set; }
+        public decimal? NetAreaActual { get; set; }
+        public decimal? GrossAreaPlanned { get; set; }
+        public decimal? GrossAreaActual { get; set; }
         // IFC Standard Properties
         public bool? PubliclyAccessible { get; set; }
         public bool? HandicapAccessible { get; set; }
@@ -1543,5 +1695,33 @@ namespace RaumbuchService.Controllers
     {
         public string FileId { get; set; }
         public string FileName { get; set; }
+    }
+
+    // PredefinedType DTOs
+    public class PredefinedTypeDto
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class PredefinedTypesResponse : BaseResponse
+    {
+        public List<PredefinedTypeDto> PredefinedTypes { get; set; }
+    }
+
+    // RoomInventory Update DTOs
+    public class RoomInventoryUpdateRequest
+    {
+        public int RoomID { get; set; }
+        public int InventoryTemplateID { get; set; }
+        public string ValuePlanned { get; set; }
+        public string ValueActual { get; set; }
+        public string Comment { get; set; }
+        public string UserId { get; set; }
+    }
+
+    public class RoomInventoryUpdateResponse : BaseResponse
+    {
+        public int RoomInventoryID { get; set; }
     }
 }
