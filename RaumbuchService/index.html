@@ -478,7 +478,7 @@
                     </div>
                     <div id="istLoadingProgress" style="display:none; margin-bottom:15px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #0066cc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <div class="spinner"></div>
                             <span>Lade Daten...</span>
                         </div>
                         <div style="margin-top: 10px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
@@ -542,7 +542,7 @@
                             </thead>
                             <tbody id="istTableBody">
                                 <tr>
-                                    <td colspan="8" style="text-align:center; color:#666;">
+                                    <td colspan="20" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Klicken Sie auf "Daten laden".
                                     </td>
                                 </tr>
@@ -4526,13 +4526,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     if (isNaN(templateId) || templateId <= 0) return;
                     
                     const dataType = input.dataset.datatype || 'text';
-                    let value;
-                    
-                    if (dataType === 'boolean') {
-                        value = input.checked ? 'TRUE' : 'FALSE';
-                    } else {
-                        value = input.value;
-                    }
+                    const value = getBooleanValueForInput(input, dataType);
                     
                     await updateRoomInventory(roomId, templateId, value, null);
                 } else if (input.classList.contains('inventory-comment')) {
@@ -4790,7 +4784,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             resultDiv.innerHTML = `
                 <div style="padding: 10px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #0066cc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <div class="spinner"></div>
                         <span>Lade Daten...</span>
                     </div>
                     <div style="margin-top: 10px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
@@ -4800,14 +4794,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 </div>
             `;
             resultDiv.className = 'result info';
-            
-            // Add CSS for spinner animation if not present
-            if (!document.getElementById('spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-style';
-                style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
-                document.head.appendChild(style);
-            }
             
             const progressBar = document.getElementById('loadingProgress');
             const statusText = document.getElementById('loadingStatus');
@@ -4900,13 +4886,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         const dataType = invInput.dataset.datatype || 'text';
                         
                         if (templateId && invRoomId) {
-                            let value;
-                            if (dataType === 'boolean') {
-                                // Convert checkbox checked state to string value
-                                value = invInput.checked ? 'TRUE' : 'FALSE';
-                            } else {
-                                value = invInput.value;
-                            }
+                            const value = getBooleanValueForInput(invInput, dataType);
                             await updateRoomInventory(invRoomId, templateId, value, null);
                         }
                     }
@@ -5349,17 +5329,31 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
+         * Convert boolean input value to standardized string format
+         * Used for consistent boolean storage and comparison
+         * @param {HTMLInputElement} input - Checkbox or other input element
+         * @param {string} dataType - The data type of the field
+         * @returns {string} 'TRUE', 'FALSE', or the original value for non-boolean types
+         */
+        function getBooleanValueForInput(input, dataType) {
+            if (dataType === 'boolean') {
+                return input.checked ? 'TRUE' : 'FALSE';
+            }
+            return input.value;
+        }
+        
+        /**
          * Normalize inventory value based on data type
          */
         function normalizeInventoryValue(value, dataType) {
-            if (!value || value === '') return 0;
+            if (value === null || value === undefined || value === '') return 0;
             
             switch(dataType) {
                 case 'number':
                 case 'integer':
                 case 'decimal':
                     const numValue = Number(value);
-                    return (!isNaN(numValue) && isFinite(numValue)) ? numValue : 0;
+                    return !isNaN(numValue) ? numValue : 0;
                 case 'boolean':
                     const boolVal = value.toString().toUpperCase().trim();
                     return ['JA', 'YES', 'TRUE', '1'].includes(boolVal) ? 1 : 0;
@@ -5379,8 +5373,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             // Reset classes
             container.classList.remove('kpi-status-ok', 'kpi-status-under', 'kpi-status-over');
             
-            if (sollValue === 0) {
-                // No SOLL value, neutral
+            // If both values are 0, show as equal (green)
+            // Only remain neutral if no meaningful data exists
+            if (sollValue === 0 && istValue === 0) {
+                container.classList.add('kpi-status-ok'); // Both zero is considered matching
                 return;
             }
             
@@ -5554,12 +5550,16 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Green: IST = SOLL, Red: IST < SOLL, Yellow: IST > SOLL
          */
         function getSollCellClass(istValue, sollValue) {
+            // Check if IST value is actually set (not null/undefined/empty string)
+            const istIsSet = istValue !== null && istValue !== undefined && istValue !== '';
+            
             const ist = Number(istValue) || 0;
             const soll = Number(sollValue) || 0;
             
-            if (ist === 0 && soll === 0) return ''; // Both zero, neutral
-            if (ist === 0) return ''; // IST not started, grey (default)
+            // If IST is not set at all (empty input), keep grey
+            if (!istIsSet) return '';
             
+            // Now compare actual values - 0 is a valid value
             if (ist === soll) return 'soll-match-equal'; // Green
             if (ist < soll) return 'soll-match-under'; // Red (too little)
             return 'soll-match-over'; // Yellow (too much)
@@ -5569,8 +5569,21 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Get CSS class for inventory SOLL cell based on IST/SOLL comparison
          */
         function getSollCellClassForInventory(istValue, sollValue, dataType) {
-            if (!istValue || istValue === '') return ''; // IST not set, neutral grey
-            if (!sollValue || sollValue === '') return ''; // SOLL not set, neutral
+            // Check if IST value is actually set
+            const istIsSet = istValue !== null && istValue !== undefined && istValue !== '';
+            if (!istIsSet && dataType !== 'boolean') return ''; // IST not set, neutral grey
+            
+            // For boolean, check if checkbox has been interacted with
+            // But since we always have a value for checkboxes, we compare
+            if (dataType === 'boolean') {
+                // For boolean, always compare - FALSE is a valid value
+                const istNorm = normalizeInventoryValue(istValue, dataType);
+                const sollNorm = normalizeInventoryValue(sollValue, dataType);
+                
+                if (istNorm === sollNorm) return 'soll-match-equal';
+                if (istNorm < sollNorm) return 'soll-match-under';
+                return 'soll-match-over';
+            }
             
             const istNorm = normalizeInventoryValue(istValue, dataType);
             const sollNorm = normalizeInventoryValue(sollValue, dataType);
@@ -5589,12 +5602,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             if (!sollCell || !sollCell.classList.contains('soll-cell')) return;
             
             const sollValue = parseFloat(sollCell.dataset.sollValue) || 0;
-            const istValue = parseFloat(istInput.value) || 0;
+            const istInputValue = istInput.value;
+            const istValue = parseFloat(istInputValue) || 0;
             
             sollCell.classList.remove('soll-match-equal', 'soll-match-under', 'soll-match-over');
             
-            if (istValue === 0) return; // IST not started, keep grey
+            // Only apply color if IST has been edited (not empty string)
+            if (istInputValue === '') return;
             
+            // 0 is a valid value that should be compared
             if (istValue === sollValue) {
                 sollCell.classList.add('soll-match-equal');
             } else if (istValue < sollValue) {
@@ -5623,7 +5639,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             
             sollCell.classList.remove('soll-match-equal', 'soll-match-under', 'soll-match-over');
             
-            if (!istValue || istValue === '' || istValue === 'FALSE') return; // IST not set
+            // For non-boolean types, empty string means not set
+            if (dataType !== 'boolean' && (!istValue || istValue === '')) return;
             
             const sollNorm = normalizeInventoryValue(sollValue, dataType);
             const istNorm = normalizeInventoryValue(istValue, dataType);
@@ -5800,13 +5817,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     if (isNaN(templateId) || templateId <= 0) return;
                     
                     const dataType = input.dataset.datatype || 'text';
-                    let value;
-                    
-                    if (dataType === 'boolean') {
-                        value = input.checked ? 'TRUE' : 'FALSE';
-                    } else {
-                        value = input.value;
-                    }
+                    const value = getBooleanValueForInput(input, dataType);
                     
                     await updateIstRoomInventory(roomId, templateId, value);
                 } else if (input.classList.contains('ist-area-input')) {
@@ -5918,12 +5929,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         const dataType = invInput.dataset.datatype || 'text';
                         
                         if (templateId) {
-                            let value;
-                            if (dataType === 'boolean') {
-                                value = invInput.checked ? 'TRUE' : 'FALSE';
-                            } else {
-                                value = invInput.value;
-                            }
+                            const value = getBooleanValueForInput(invInput, dataType);
                             await updateIstRoomInventory(roomId, templateId, value);
                         }
                     }
