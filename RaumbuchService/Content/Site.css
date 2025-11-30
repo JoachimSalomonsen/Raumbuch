@@ -954,3 +954,107 @@ textarea {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
+/* ============================================================
+    TABLE BUTTON STYLES
+    Compact buttons for use inside data tables. These classes
+    do NOT override global button styles and only apply when
+    explicitly used with table context.
+    ============================================================ */
+
+/* Base table button styles - compact sizing for table rows */
+.table-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-width: auto;
+    height: 28px;
+    padding: 4px 8px;
+    margin: 0 2px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+/* Icon-only table button - square compact style */
+.table-btn.icon-only {
+    width: 28px;
+    padding: 4px;
+}
+
+/* Primary table button - inherits global primary colors */
+.table-btn-primary {
+    background-color: var(--tc-primary-blue);
+    color: var(--tc-white);
+}
+
+.table-btn-primary:hover {
+    background-color: var(--tc-dark-blue);
+    box-shadow: var(--tc-shadow-sm);
+}
+
+.table-btn-primary:active {
+    background-color: var(--tc-primary-blue-active);
+}
+
+/* Secondary table button - inherits global secondary colors */
+.table-btn-secondary {
+    background-color: var(--tc-secondary-grey);
+    color: var(--tc-white);
+}
+
+.table-btn-secondary:hover {
+    background-color: var(--tc-btn-secondary-hover);
+    box-shadow: var(--tc-shadow-sm);
+}
+
+.table-btn-secondary:active {
+    background-color: var(--tc-btn-secondary-active);
+}
+
+/* Danger table button - inherits global danger colors */
+.table-btn-danger {
+    background-color: var(--tc-btn-danger);
+    color: var(--tc-black);
+}
+
+.table-btn-danger:hover {
+    background-color: var(--tc-btn-danger-hover);
+    box-shadow: var(--tc-shadow-sm);
+}
+
+.table-btn-danger:active {
+    background-color: var(--tc-error-red);
+}
+
+/* Accessibility - focus states for table buttons */
+.table-btn:focus-visible,
+.table-btn-primary:focus-visible,
+.table-btn-secondary:focus-visible,
+.table-btn-danger:focus-visible {
+    outline: 2px solid var(--tc-primary-blue);
+    outline-offset: 2px;
+}
+
+/* Scoped context: buttons inside analyse-table or table-actions container */
+.analyse-table .table-btn,
+.data-table .table-btn,
+.table-actions .table-btn {
+    margin: 0 2px;
+}
+
+/* Table actions cell styling */
+.table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
