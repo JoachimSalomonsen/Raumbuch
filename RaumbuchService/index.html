@@ -588,21 +588,37 @@
             <!-- ========================================================= -->
             <div id="tab-analyse" class="tab-content">
 
+                <!-- Element Selection -->
+                <section class="card">
+                    <h2>Analyseelement auswählen</h2>
+                    <div class="form-group">
+                        <label for="analysisElementSelect">Element für Analyse auswählen *:</label>
+                        <select id="analysisElementSelect" class="form-control" style="width:300px;" onchange="onAnalysisElementChange()">
+                            <option value="">-- Element auswählen --</option>
+                            <optgroup label="Fläche">
+                                <option value="NetArea">Nettofläche</option>
+                                <option value="GrossArea">Bruttofläche</option>
+                            </optgroup>
+                        </select>
+                        <small>Wählen Sie ein Element für die Abweichungsanalyse</small>
+                    </div>
+                </section>
+
                 <!-- KPI Summary Widget -->
                 <section class="card kpi-widget">
                     <h2>Übersicht</h2>
                     <div class="kpi-container">
                         <div class="kpi-item">
                             <span class="kpi-label">SOLL Gesamt</span>
-                            <span class="kpi-value" id="kpiSollTotal">- m²</span>
+                            <span class="kpi-value" id="kpiSollTotal">-</span>
                         </div>
                         <div class="kpi-item">
                             <span class="kpi-label">IST Gesamt</span>
-                            <span class="kpi-value" id="kpiIstTotal">- m²</span>
+                            <span class="kpi-value" id="kpiIstTotal">-</span>
                         </div>
                         <div class="kpi-item">
                             <span class="kpi-label">Abweichung</span>
-                            <span class="kpi-value" id="kpiDeviation">- %</span>
+                            <span class="kpi-value" id="kpiDeviation">-</span>
                         </div>
                         <div class="kpi-item kpi-status-ok">
                             <span class="kpi-label">Erfüllt</span>
@@ -631,48 +647,58 @@
                             <label for="toleranceMax">Maximum Toleranz (%):</label>
                             <input type="number" id="toleranceMax" class="form-control" value="10" min="0" max="100" style="width:100px;">
                         </div>
-                        <button class="btn btn-secondary" onclick="applyToleranceSettings()">Toleranz anwenden</button>
+                        <button class="btn btn-primary" onclick="applyToleranceSettings()">Toleranz anwenden</button>
                     </div>
                 </section>
 
                 <!-- Filter and Search Controls -->
                 <section class="card">
                     <h2>Filter & Suche</h2>
-                    <div class="filter-controls">
+                    <div class="filter-controls" style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                         <div class="filter-buttons">
                             <button class="btn btn-secondary filter-btn active" data-filter="all" onclick="filterAnalyseTable('all')">Alle</button>
                             <button class="btn btn-secondary filter-btn" data-filter="ok" onclick="filterAnalyseTable('ok')">✅ Erfüllt</button>
                             <button class="btn btn-secondary filter-btn" data-filter="under" onclick="filterAnalyseTable('under')">⚠️ Unterschritten</button>
                             <button class="btn btn-secondary filter-btn" data-filter="over" onclick="filterAnalyseTable('over')">📊 Überschritten</button>
                         </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="analyseRoomCategoryFilter">Raumkategorie:</label>
+                            <select id="analyseRoomCategoryFilter" class="form-control" style="width:180px;" onchange="onAnalysisFilterChange()">
+                                <option value="">-- Alle --</option>
+                            </select>
+                        </div>
                         <div class="search-box">
-                            <input type="text" id="analyseSearch" class="form-control" placeholder="Suche nach Raumtyp..." onkeyup="searchAnalyseTable()">
+                            <label for="analyseSearch">Suche:</label>
+                            <input type="text" id="analyseSearch" class="form-control" placeholder="Raumtyp, Kategorie, Name..." style="width:200px;" onkeyup="onAnalysisFilterChange()">
                         </div>
                     </div>
                 </section>
 
-                <!-- Zusammenfassung Table -->
+                <!-- Analysis Table -->
                 <section class="card">
                     <h2>Analysetabelle</h2>
-                    <p>Übersicht der Flächenanalyse nach Raumkategorie</p>
+                    <p id="analyseTableDescription">Wählen Sie ein Analyseelement aus, um die Abweichungsanalyse anzuzeigen.</p>
 
-                    <div class="analyse-table-container">
+                    <div class="analyse-table-container" style="max-height:500px; overflow-y:auto; overflow-x:auto;">
                         <table class="analyse-table" id="analyseTable">
-                            <thead>
+                            <thead id="analyseTableHead">
                                 <tr>
                                     <th onclick="sortAnalyseTable(0)">Raumtyp ↕</th>
                                     <th onclick="sortAnalyseTable(1)">Raumkategorie ↕</th>
-                                    <th onclick="sortAnalyseTable(2)">SOLL (m²) ↕</th>
-                                    <th onclick="sortAnalyseTable(3)">IST (m²) ↕</th>
-                                    <th>Abweichung</th>
-                                    <th onclick="sortAnalyseTable(5)">Status ↕</th>
-                                    <th>Kommentar</th>
+                                    <th onclick="sortAnalyseTable(2)">Raumname ↕</th>
+                                    <th onclick="sortAnalyseTable(3)">SOLL ↕</th>
+                                    <th onclick="sortAnalyseTable(4)">IST ↕</th>
+                                    <th onclick="sortAnalyseTable(5)">Abweichung (%) ↕</th>
+                                    <th onclick="sortAnalyseTable(6)">Abweichung ↕</th>
+                                    <th onclick="sortAnalyseTable(7)">Status ↕</th>
+                                    <th>Kommentar IST</th>
+                                    <th onclick="sortAnalyseTable(9)">Letzte Aktualisierung ↕</th>
                                 </tr>
                             </thead>
                             <tbody id="analyseTableBody">
                                 <tr>
-                                    <td colspan="7" style="text-align:center; color:#666;">
-                                        Keine Daten vorhanden. Bitte laden Sie eine Konfiguration oder erstellen Sie ein Raumbuch.
+                                    <td colspan="10" style="text-align:center; color:#666;">
+                                        Wählen Sie ein Analyseelement aus.
                                     </td>
                                 </tr>
                             </tbody>
@@ -681,9 +707,7 @@
 
                     <div style="margin-top:15px;">
                         <button class="btn btn-primary" onclick="loadAnalyseData()">📥 Daten laden</button>
-                        <button class="btn btn-secondary" onclick="updateIstValues()">🔄 IST aktualisieren</button>
-                        <button class="btn btn-secondary" onclick="recalculateStatus()">📊 Status aktualisieren</button>
-                        <button class="btn btn-primary" onclick="saveAnalyseChanges()">💾 Änderungen speichern</button>
+                        <button class="btn btn-secondary" onclick="recalculateAndSaveDeviations()">📊 Abweichungen berechnen & speichern</button>
                     </div>
                     <div id="analyseResult" class="result"></div>
                 </section>
@@ -837,6 +861,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         // Use relative URLs to work in both local development and Azure deployment
         const API_BASE = '/api/raumbuch';
         const API_PROJECT = '/api/project';
+        const API_ANALYSIS = '/api/analysis';
 
         // Display the current API endpoint in footer (hidden element for debugging)
         const apiEndpointEl = document.getElementById('apiEndpoint');
@@ -1042,10 +1067,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             // Auto-load data when Analyse tab is opened
             if (tabId === 'tab-analyse') {
-                const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
-                if (raumbuchFileId && getToken()) {
-                    loadAnalyseData();
-                }
+                loadAnalysisElements();
             }
 
             // Auto-load data when Raumprogramm tab is opened
@@ -2865,7 +2887,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         // ====================================================================
-        //  ANALYSE TAB FUNCTIONS
+        //  ANALYSE TAB FUNCTIONS (Redesigned)
         // ====================================================================
 
         // Store current tolerance settings
@@ -2876,56 +2898,447 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         // Store current analyse data
         let analyseData = [];
+        
+        // Store current analysis state
+        let currentAnalysisElement = {
+            type: null,
+            inventoryTemplateId: null,
+            name: null
+        };
+        
+        // Current status filter for analysis
+        let currentStatusFilter = 'all';
+        
+        // Autosave timer for comment
+        const analysisCommentTimers = new Map();
+        const ANALYSIS_AUTOSAVE_DELAY = 600;
 
         /**
-         * Loads analyse data from Zusammenfassung (from loaded config or API)
+         * Loads available analysis elements (Area types and inventory templates)
+         */
+        async function loadAnalysisElements() {
+            try {
+                const response = await fetch(`${API_ANALYSIS}/elements`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const select = document.getElementById('analysisElementSelect');
+                    
+                    // Keep the default option and area optgroup
+                    let html = '<option value="">-- Element auswählen --</option>';
+                    html += '<optgroup label="Fläche">';
+                    html += '<option value="NetArea">Nettofläche</option>';
+                    html += '<option value="GrossArea">Bruttofläche</option>';
+                    html += '</optgroup>';
+                    
+                    // Add inventory templates
+                    const inventoryElements = data.elements.filter(e => e.category === 'Inventory');
+                    if (inventoryElements.length > 0) {
+                        html += '<optgroup label="Inventar">';
+                        inventoryElements.forEach(e => {
+                            const unit = e.unit ? ` (${escapeHtml(e.unit)})` : '';
+                            html += `<option value="Inventory:${e.inventoryTemplateID}">${escapeHtml(e.name)}${unit}</option>`;
+                        });
+                        html += '</optgroup>';
+                    }
+                    
+                    select.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading analysis elements:', error);
+            }
+        }
+
+        /**
+         * Handles analysis element selection change
+         */
+        function onAnalysisElementChange() {
+            const select = document.getElementById('analysisElementSelect');
+            const value = select.value;
+            
+            if (!value) {
+                currentAnalysisElement = { type: null, inventoryTemplateId: null, name: null };
+                document.getElementById('analyseTableDescription').textContent = 
+                    'Wählen Sie ein Analyseelement aus, um die Abweichungsanalyse anzuzeigen.';
+                document.getElementById('analyseTableBody').innerHTML = 
+                    '<tr><td colspan="10" style="text-align:center; color:#666;">Wählen Sie ein Analyseelement aus.</td></tr>';
+                return;
+            }
+            
+            if (value.startsWith('Inventory:')) {
+                const templateId = parseInt(value.split(':')[1]);
+                currentAnalysisElement = {
+                    type: 'Inventory',
+                    inventoryTemplateId: templateId,
+                    name: select.options[select.selectedIndex].text
+                };
+            } else {
+                currentAnalysisElement = {
+                    type: value,
+                    inventoryTemplateId: null,
+                    name: select.options[select.selectedIndex].text
+                };
+            }
+            
+            document.getElementById('analyseTableDescription').textContent = 
+                `Abweichungsanalyse für: ${currentAnalysisElement.name}`;
+            
+            // Load settings and data for this element
+            loadAnalysisSettingsForElement();
+            loadAnalyseData();
+        }
+
+        /**
+         * Loads tolerance settings for the current element
+         */
+        async function loadAnalysisSettingsForElement() {
+            if (!currentAnalysisElement.type) return;
+            
+            try {
+                let url = `${API_ANALYSIS}/settings?elementType=${encodeURIComponent(currentAnalysisElement.type)}`;
+                if (currentAnalysisElement.inventoryTemplateId) {
+                    url += `&inventoryTemplateId=${currentAnalysisElement.inventoryTemplateId}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.settings) {
+                    toleranceSettings.min = data.settings.toleranceMin;
+                    toleranceSettings.max = data.settings.toleranceMax;
+                    
+                    document.getElementById('toleranceMin').value = data.settings.toleranceMin;
+                    document.getElementById('toleranceMax').value = data.settings.toleranceMax;
+                }
+            } catch (error) {
+                console.error('Error loading analysis settings:', error);
+            }
+        }
+
+        /**
+         * Applies tolerance settings and saves to database
+         */
+        async function applyToleranceSettings() {
+            if (!currentAnalysisElement.type) {
+                showResult('analyseResult', 'error', '⚠️ Bitte zuerst ein Analyseelement auswählen');
+                return;
+            }
+            
+            const toleranceMin = parseFloat(document.getElementById('toleranceMin').value) || -10;
+            const toleranceMax = parseFloat(document.getElementById('toleranceMax').value) || 10;
+            
+            toleranceSettings.min = toleranceMin;
+            toleranceSettings.max = toleranceMax;
+            
+            showResult('analyseResult', 'loading', '⏳ Speichere Toleranzeinstellungen...');
+            
+            try {
+                const requestBody = {
+                    selectedElementType: currentAnalysisElement.type,
+                    selectedInventoryTemplateID: currentAnalysisElement.inventoryTemplateId,
+                    toleranceMin: toleranceMin,
+                    toleranceMax: toleranceMax,
+                    userId: getCurrentUserId()
+                };
+                
+                const response = await fetch(`${API_ANALYSIS}/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('analyseResult', 'success', '✅ Toleranzeinstellungen gespeichert');
+                    // Reload data with new tolerance
+                    await loadAnalyseData();
+                } else {
+                    showResult('analyseResult', 'error', `❌ ${data.message || 'Fehler beim Speichern'}`);
+                }
+            } catch (error) {
+                console.error('Error saving tolerance settings:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+
+        /**
+         * Handles filter change (room category or search)
+         */
+        function onAnalysisFilterChange() {
+            loadAnalyseData();
+        }
+
+        /**
+         * Loads analyse data from the new Analysis API
          */
         async function loadAnalyseData() {
+            if (!currentAnalysisElement.type) {
+                // If no element selected, show message
+                document.getElementById('analyseTableBody').innerHTML = 
+                    '<tr><td colspan="10" style="text-align:center; color:#666;">Wählen Sie ein Analyseelement aus.</td></tr>';
+                return;
+            }
+            
             showResult('analyseResult', 'loading', '⏳ Lade Analysedaten...');
 
             try {
-                const token = getToken();
-                const raumbuchFileId = document.getElementById('raumbuchFile')?.value;
-
-                if (!token || !raumbuchFileId) {
-                    showResult('analyseResult', 'error', '⚠️ Bitte zuerst ein Raumbuch auswählen');
-                    return;
+                // Build query parameters
+                let url = `${API_ANALYSIS}/data?elementType=${encodeURIComponent(currentAnalysisElement.type)}`;
+                
+                if (currentAnalysisElement.inventoryTemplateId) {
+                    url += `&inventoryTemplateId=${currentAnalysisElement.inventoryTemplateId}`;
                 }
-
-                // Load data from the Raumbuch Excel file (Zusammenfassung sheet)
-                const response = await fetch(`${API_BASE}/get-zusammenfassung`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        accessToken: token,
-                        raumbuchFileId: raumbuchFileId
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.zusammenfassung) {
-                        analyseData = data.zusammenfassung;
-                        currentConfig.zusammenfassung = data.zusammenfassung;
-                        renderAnalyseTable(data.zusammenfassung);
-                        updateKPIWidget(data.zusammenfassung);
-                        showResult('analyseResult', 'success', `✅ ${data.zusammenfassung.length} Kategorien geladen`);
-                    } else {
-                        showResult('analyseResult', 'warning', '⚠️ Keine Zusammenfassung gefunden');
-                    }
+                
+                const roomCategory = document.getElementById('analyseRoomCategoryFilter')?.value;
+                if (roomCategory) {
+                    url += `&roomCategory=${encodeURIComponent(roomCategory)}`;
+                }
+                
+                const search = document.getElementById('analyseSearch')?.value?.trim();
+                if (search) {
+                    url += `&search=${encodeURIComponent(search)}`;
+                }
+                
+                if (currentStatusFilter && currentStatusFilter !== 'all') {
+                    url += `&status=${currentStatusFilter}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    analyseData = data.rows || [];
+                    
+                    // Update room category filter
+                    updateRoomCategoryFilter(data.roomCategories || []);
+                    
+                    // Update tolerance settings display
+                    document.getElementById('toleranceMin').value = data.toleranceMin;
+                    document.getElementById('toleranceMax').value = data.toleranceMax;
+                    toleranceSettings.min = data.toleranceMin;
+                    toleranceSettings.max = data.toleranceMax;
+                    
+                    // Render table and KPIs
+                    renderAnalyseTableNew(analyseData);
+                    updateKPIWidgetNew(data);
+                    
+                    showResult('analyseResult', 'success', `✅ ${analyseData.length} Einträge geladen`);
                 } else {
-                    // Try to use cached data from config
-                    if (currentConfig.zusammenfassung && currentConfig.zusammenfassung.length > 0) {
-                        analyseData = currentConfig.zusammenfassung;
-                        renderAnalyseTable(currentConfig.zusammenfassung);
-                        updateKPIWidget(currentConfig.zusammenfassung);
-                        showResult('analyseResult', 'success', `✅ ${currentConfig.zusammenfassung.length} Kategorien aus Konfiguration geladen`);
-                    } else {
-                        showResult('analyseResult', 'error', '❌ Fehler beim Laden der Daten');
-                    }
+                    showResult('analyseResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
                 }
             } catch (error) {
                 console.error('Error loading analyse data:', error);
+                showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Updates the room category filter dropdown
+         */
+        function updateRoomCategoryFilter(categories) {
+            const select = document.getElementById('analyseRoomCategoryFilter');
+            const currentValue = select.value;
+            
+            let html = '<option value="">-- Alle --</option>';
+            categories.forEach(cat => {
+                const selected = cat === currentValue ? 'selected' : '';
+                html += `<option value="${escapeHtml(cat)}" ${selected}>${escapeHtml(cat)}</option>`;
+            });
+            
+            select.innerHTML = html;
+        }
+        
+        /**
+         * Renders the redesigned analysis table
+         */
+        function renderAnalyseTableNew(rows) {
+            const tbody = document.getElementById('analyseTableBody');
+            if (!tbody) return;
+            
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            rows.forEach((row, index) => {
+                const statusClass = getAnalysisStatusClass(row.status);
+                const rowClass = getAnalysisRowClass(row.status);
+                const deviationPercent = row.deviationPercent != null ? row.deviationPercent.toFixed(2) + '%' : '-';
+                const deviationValue = row.deviationValue != null ? row.deviationValue.toFixed(2) : '-';
+                const lastUpdated = row.lastUpdated ? new Date(row.lastUpdated).toLocaleString('de-DE') : '-';
+                
+                html += `
+                    <tr class="analyse-row ${rowClass}" data-status="${row.statusText?.toLowerCase() || 'erfüllt'}" 
+                        data-room-id="${row.roomID}" data-inventory-id="${row.roomInventoryID || ''}" 
+                        data-index="${index}">
+                        <td>${escapeHtml(row.roomTypeName || '-')}</td>
+                        <td>${escapeHtml(row.roomCategory || '-')}</td>
+                        <td>${escapeHtml(row.roomName || '-')}</td>
+                        <td>${row.sollValue.toFixed(2)}</td>
+                        <td>${row.istValue.toFixed(2)}</td>
+                        <td>${deviationPercent}</td>
+                        <td>${deviationValue}</td>
+                        <td><span class="status-badge ${statusClass}">${escapeHtml(row.statusText || 'Erfüllt')}</span></td>
+                        <td><input type="text" class="form-control analysis-comment-input" 
+                            value="${escapeHtml(row.commentIst || '')}" 
+                            data-room-id="${row.roomID}"
+                            data-inventory-id="${row.roomInventoryID || ''}"
+                            placeholder="Kommentar..." 
+                            style="width:150px;"
+                            oninput="onAnalysisCommentChange(this)"></td>
+                        <td>${lastUpdated}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+        
+        /**
+         * Gets row CSS class based on status code
+         */
+        function getAnalysisRowClass(status) {
+            switch(status) {
+                case -1: return 'analyse-row-under';
+                case 1: return 'analyse-row-over';
+                case 0: 
+                default: return 'analyse-row-ok';
+            }
+        }
+        
+        /**
+         * Gets status badge CSS class based on status code
+         */
+        function getAnalysisStatusClass(status) {
+            switch(status) {
+                case -1: return 'status-under';
+                case 1: return 'status-over';
+                case 0: 
+                default: return 'status-ok';
+            }
+        }
+        
+        /**
+         * Updates KPI widgets with new API data
+         */
+        function updateKPIWidgetNew(data) {
+            const sollTotal = document.getElementById('kpiSollTotal');
+            const istTotal = document.getElementById('kpiIstTotal');
+            const deviation = document.getElementById('kpiDeviation');
+            const okCount = document.getElementById('kpiOkCount');
+            const underCount = document.getElementById('kpiUnderCount');
+            const overCount = document.getElementById('kpiOverCount');
+            
+            sollTotal.textContent = data.totalSoll ? data.totalSoll.toFixed(2) : '0';
+            istTotal.textContent = data.totalIst ? data.totalIst.toFixed(2) : '0';
+            
+            // Calculate total deviation percentage
+            if (data.totalSoll && data.totalSoll > 0) {
+                const deviationPct = ((data.totalIst - data.totalSoll) / data.totalSoll) * 100;
+                deviation.textContent = deviationPct.toFixed(2) + '%';
+            } else {
+                deviation.textContent = '-';
+            }
+            
+            okCount.textContent = data.countErfuellt || 0;
+            underCount.textContent = data.countUnterschritten || 0;
+            overCount.textContent = data.countUeberschritten || 0;
+        }
+        
+        /**
+         * Handles IST comment changes (autosave)
+         */
+        function onAnalysisCommentChange(input) {
+            const roomId = parseInt(input.dataset.roomId);
+            const inventoryId = input.dataset.inventoryId ? parseInt(input.dataset.inventoryId) : null;
+            const key = `comment-${roomId}-${inventoryId || ''}`;
+            
+            // Clear existing timer
+            if (analysisCommentTimers.has(key)) {
+                clearTimeout(analysisCommentTimers.get(key));
+            }
+            
+            // Set new timer
+            analysisCommentTimers.set(key, setTimeout(async () => {
+                await saveAnalysisComment(input, roomId, inventoryId);
+                analysisCommentTimers.delete(key);
+            }, ANALYSIS_AUTOSAVE_DELAY));
+        }
+        
+        /**
+         * Saves an analysis comment
+         */
+        async function saveAnalysisComment(input, roomId, inventoryId) {
+            try {
+                input.style.backgroundColor = '#fff3cd'; // Yellow during save
+                
+                const requestBody = {
+                    elementType: currentAnalysisElement.type,
+                    roomID: roomId,
+                    roomInventoryID: inventoryId || null,
+                    commentIst: input.value,
+                    userId: getCurrentUserId()
+                };
+                
+                const response = await fetch(`${API_ANALYSIS}/comment`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (response.ok) {
+                    input.style.backgroundColor = '#d4edda'; // Green on success
+                    setTimeout(() => { input.style.backgroundColor = ''; }, 1000);
+                } else {
+                    input.style.backgroundColor = '#f8d7da'; // Red on error
+                    setTimeout(() => { input.style.backgroundColor = ''; }, 2000);
+                }
+            } catch (error) {
+                console.error('Error saving comment:', error);
+                input.style.backgroundColor = '#f8d7da';
+                setTimeout(() => { input.style.backgroundColor = ''; }, 2000);
+            }
+        }
+        
+        /**
+         * Recalculates and saves deviations to database
+         */
+        async function recalculateAndSaveDeviations() {
+            if (!currentAnalysisElement.type) {
+                showResult('analyseResult', 'error', '⚠️ Bitte zuerst ein Analyseelement auswählen');
+                return;
+            }
+            
+            showResult('analyseResult', 'loading', '⏳ Berechne und speichere Abweichungen...');
+            
+            try {
+                const requestBody = {
+                    elementType: currentAnalysisElement.type,
+                    inventoryTemplateID: currentAnalysisElement.inventoryTemplateId,
+                    toleranceMin: toleranceSettings.min,
+                    toleranceMax: toleranceSettings.max,
+                    userId: getCurrentUserId()
+                };
+                
+                const response = await fetch(`${API_ANALYSIS}/compute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('analyseResult', 'success', `✅ ${data.updatedCount} Einträge aktualisiert`);
+                    // Reload data
+                    await loadAnalyseData();
+                } else {
+                    showResult('analyseResult', 'error', `❌ ${data.message || 'Fehler beim Berechnen'}`);
+                }
+            } catch (error) {
+                console.error('Error computing deviations:', error);
                 showResult('analyseResult', 'error', `❌ Fehler: ${error.message}`);
             }
         }
@@ -3106,67 +3519,23 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
 
         /**
-         * Applies tolerance settings and re-renders the table
-         */
-        async function applyToleranceSettings() {
-            toleranceSettings.min = parseFloat(document.getElementById('toleranceMin').value) || -10;
-            toleranceSettings.max = parseFloat(document.getElementById('toleranceMax').value) || 10;
-
-            // Save tolerance settings to config
-            currentConfig.toleranceMin = toleranceSettings.min;
-            currentConfig.toleranceMax = toleranceSettings.max;
-
-            if (analyseData.length > 0) {
-                renderAnalyseTable(analyseData);
-                updateKPIWidget(analyseData);
-                showResult('analyseResult', 'success', '✅ Toleranz-Einstellungen angewendet');
-            }
-
-            // Auto-save config if configName is set
-            await autoSaveConfig();
-        }
-
-        /**
-         * Filters the analyse table by status
+         * Filters the analyse table by status (using API)
          */
         function filterAnalyseTable(filter) {
             // Update active button
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`.filter-btn[data-filter="${filter}"]`)?.classList.add('active');
-
-            // Filter rows
-            const rows = document.querySelectorAll('.analyse-row');
-            rows.forEach(row => {
-                const status = row.dataset.status;
-                if (filter === 'all') {
-                    row.style.display = '';
-                } else if (filter === 'ok' && status === 'erfüllt') {
-                    row.style.display = '';
-                } else if (filter === 'under' && status === 'unterschritten') {
-                    row.style.display = '';
-                } else if (filter === 'over' && status === 'überschritten') {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            
+            // Set current filter and reload data
+            currentStatusFilter = filter;
+            loadAnalyseData();
         }
 
         /**
-         * Searches the analyse table
+         * Searches the analyse table (legacy - now handled by API)
          */
         function searchAnalyseTable() {
-            const searchTerm = document.getElementById('analyseSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('.analyse-row');
-
-            rows.forEach(row => {
-                const category = (row.cells && row.cells[0] && row.cells[0].textContent) ? row.cells[0].textContent.toLowerCase() : '';
-                if (category.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            onAnalysisFilterChange();
         }
 
         /**

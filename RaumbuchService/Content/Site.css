@@ -351,9 +351,34 @@ small {
     color: var(--tc-success-text);
 }
 
+.status-under {
+    background-color: var(--tc-error-bg);
+    color: var(--tc-error-text);
+}
+
+.status-over {
+    background-color: var(--tc-loading-bg);
+    color: var(--tc-loading-text);
+}
+
 .status-error {
     background-color: var(--tc-error-bg);
     color: var(--tc-error-text);
+}
+
+/* Analysis Comment Input */
+.analysis-comment-input {
+    border: 1px solid var(--tc-border);
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    transition: background-color 0.3s ease;
+}
+
+.analysis-comment-input:focus {
+    border-color: var(--tc-primary-blue);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--tc-focus-shadow);
 }
 
 /* ------------------------------------------------------------

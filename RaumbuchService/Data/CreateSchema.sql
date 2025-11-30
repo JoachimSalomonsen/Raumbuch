@@ -280,5 +280,138 @@ INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUE
 INSERT INTO [dbo].[InventoryTemplate] ([PropertyName], [DataType], [Unit]) VALUES ('Anzahl Arbeitsplätze', 'Integer', 'Stück');
 */
 
+-- ================================================================
+-- AnalysisSettings Table - Stores tolerance settings per element
+-- ================================================================
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AnalysisSettings]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[AnalysisSettings] (
+        [AnalysisSettingsID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [SelectedElementType] NVARCHAR(50) NOT NULL,  -- 'NetArea', 'GrossArea', 'Inventory'
+        [SelectedInventoryTemplateID] INT NULL,       -- FK to InventoryTemplate when element is inventory
+        [ToleranceMin] DECIMAL(10,2) NOT NULL DEFAULT -10.00,
+        [ToleranceMax] DECIMAL(10,2) NOT NULL DEFAULT 10.00,
+        [ModifiedByUserID] NVARCHAR(255) NULL,
+        [ModifiedDate] DATETIME2 NULL,
+        CONSTRAINT [FK_AnalysisSettings_InventoryTemplate] FOREIGN KEY ([SelectedInventoryTemplateID]) 
+            REFERENCES [dbo].[InventoryTemplate] ([InventoryTemplateID]),
+        CONSTRAINT [FK_AnalysisSettings_UserAccess] FOREIGN KEY ([ModifiedByUserID]) 
+            REFERENCES [dbo].[UserAccess] ([UserID])
+    );
+    PRINT 'Created table: AnalysisSettings';
+END
+GO
+
+-- ================================================================
+-- Add deviation columns to Room table (for NetArea and GrossArea analysis)
+-- ================================================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaDeviationPercent')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [NetAreaDeviationPercent] DECIMAL(10,2) NULL;
+    PRINT 'Added column: Room.NetAreaDeviationPercent';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaDeviationValue')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [NetAreaDeviationValue] DECIMAL(10,2) NULL;
+    PRINT 'Added column: Room.NetAreaDeviationValue';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaStatus')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [NetAreaStatus] INT NULL;  -- 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+    PRINT 'Added column: Room.NetAreaStatus';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaLastUpdated')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [NetAreaLastUpdated] DATETIME2 NULL;
+    PRINT 'Added column: Room.NetAreaLastUpdated';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaDeviationPercent')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [GrossAreaDeviationPercent] DECIMAL(10,2) NULL;
+    PRINT 'Added column: Room.GrossAreaDeviationPercent';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaDeviationValue')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [GrossAreaDeviationValue] DECIMAL(10,2) NULL;
+    PRINT 'Added column: Room.GrossAreaDeviationValue';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaStatus')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [GrossAreaStatus] INT NULL;  -- 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+    PRINT 'Added column: Room.GrossAreaStatus';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaLastUpdated')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [GrossAreaLastUpdated] DATETIME2 NULL;
+    PRINT 'Added column: Room.GrossAreaLastUpdated';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaCommentIst')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [NetAreaCommentIst] NVARCHAR(MAX) NULL;
+    PRINT 'Added column: Room.NetAreaCommentIst';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'GrossAreaCommentIst')
+BEGIN
+    ALTER TABLE [dbo].[Room] ADD [GrossAreaCommentIst] NVARCHAR(MAX) NULL;
+    PRINT 'Added column: Room.GrossAreaCommentIst';
+END
+GO
+
+-- ================================================================
+-- Add deviation columns to RoomInventory table
+-- ================================================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomInventory]') AND name = 'InventoryDeviationPercent')
+BEGIN
+    ALTER TABLE [dbo].[RoomInventory] ADD [InventoryDeviationPercent] DECIMAL(10,2) NULL;
+    PRINT 'Added column: RoomInventory.InventoryDeviationPercent';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomInventory]') AND name = 'InventoryDeviationValue')
+BEGIN
+    ALTER TABLE [dbo].[RoomInventory] ADD [InventoryDeviationValue] DECIMAL(10,2) NULL;
+    PRINT 'Added column: RoomInventory.InventoryDeviationValue';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomInventory]') AND name = 'InventoryStatus')
+BEGIN
+    ALTER TABLE [dbo].[RoomInventory] ADD [InventoryStatus] INT NULL;  -- 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+    PRINT 'Added column: RoomInventory.InventoryStatus';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomInventory]') AND name = 'InventoryLastUpdated')
+BEGIN
+    ALTER TABLE [dbo].[RoomInventory] ADD [InventoryLastUpdated] DATETIME2 NULL;
+    PRINT 'Added column: RoomInventory.InventoryLastUpdated';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomInventory]') AND name = 'CommentIst')
+BEGIN
+    ALTER TABLE [dbo].[RoomInventory] ADD [CommentIst] NVARCHAR(MAX) NULL;
+    PRINT 'Added column: RoomInventory.CommentIst';
+END
+GO
+
 PRINT 'Database schema setup complete.';
 GO
