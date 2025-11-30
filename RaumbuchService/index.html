@@ -141,7 +141,168 @@
                     <div id="connectionResult" class="result"></div>
                 </section>
 
-                <hr style="margin:20px 0; border-top:2px solid var(--tc-border);">
+
+                <section class="card">
+                    <h2>👥 Benutzer- & Rechteverwaltung</h2>
+                    <p>Verwalten Sie Benutzer, Gruppen und rollenbasierte Zugriffsrechte für das Raumbuch.</p>
+
+                    <h3>🔐 Rollen pro Gruppe & Benutzer</h3>
+                    <p>Gruppen von Trimble Connect können erweitert werden, um einzelne Nutzer zu zeigen. Rollen können pro Gruppe gesetzt und bei Bedarf auf Benutzerebene übersteuert werden.</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered" style="min-width:600px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:220px;">Gruppe / Benutzer</th>
+                                    <th style="text-align:center;">Admin</th>
+                                    <th style="text-align:center;">Editor</th>
+                                    <th style="text-align:center;">Leser</th>
+                                    <th style="text-align:center;">NoAccess</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="table-secondary expandable-group" data-group-id="group1" onclick="toggleGroup('group1')">
+                                    <td><strong id="icon-group1" style="margin-right: 5px;">▶</strong> <strong>Gruppe 1</strong></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp1role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp1role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp1role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp1role" /></td>
+                                </tr>
+
+                                <tr class="user-row group1-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 1</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr1role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr1role" checked /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr1role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr1role" /></td>
+                                </tr>
+
+                                <tr class="user-row group1-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 2</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr2role" checked /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr2role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr2role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr2role" /></td>
+                                </tr>
+
+                                <tr class="user-row group1-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 3</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr3role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr3role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr3role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr3role" checked /></td>
+                                </tr>
+
+                                <tr class="table-secondary expandable-group" data-group-id="group2" onclick="toggleGroup('group2')">
+                                    <td><strong id="icon-group2" style="margin-right: 5px;">▶</strong> <strong>Gruppe 2</strong></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp2role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp2role" checked /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp2role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="grp2role" /></td>
+                                </tr>
+
+                                <tr class="user-row group2-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 4</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr4role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr4role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr4role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr4role" /></td>
+                                </tr>
+
+                                <tr class="user-row group2-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 5</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr5role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr5role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr5role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr5role" /></td>
+                                </tr>
+
+                                <tr class="user-row group2-user" style="display: none;">
+                                    <td style="padding-left:30px;">Bruker 6</td>
+                                    <td style="text-align:center;"><input type="radio" name="usr6role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr6role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr6role" /></td>
+                                    <td style="text-align:center;"><input type="radio" name="usr6role" /></td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr>
+
+                    <h3>⚙️ Editor-Rechte (Globale Einstellungen)</h3>
+                    <p>Definieren Sie, welche Aktionen Editor-Benutzer durchführen dürfen.</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Funktion</th>
+                                    <th style="text-align:center; width: 100px;">Erlaubt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Raumtyp erstellen</td>
+                                    <td style="text-align:center;"><input type="checkbox" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Inventar erstellen</td>
+                                    <td style="text-align:center;"><input type="checkbox" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Inventar bearbeiten</td>
+                                    <td style="text-align:center;"><input type="checkbox" /></td>
+                                </tr>
+                                <tr>
+                                    <td>IST-Werte bearbeiten</td>
+                                    <td style="text-align:center;"><input type="checkbox" /></td>
+                                </tr>
+                                <tr>
+                                    <td>SOLL-Werte bearbeiten</td>
+                                    <td style="text-align:center;"><input type="checkbox" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Datenbankobjekte löschen</td>
+                                    <td style="text-align:center;"><input type="checkbox" disabled title="Nur Administratoren" /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <script>
+                    /**
+                     * Veksler visningen av brukerrader for en gitt gruppe-ID.
+                     * Endrer også utvidelsesikonet (▶/▼).
+                     */
+                    function toggleGroup(groupId) {
+                        // Hent alle brukerrader for den spesifikke gruppen
+                        const userRows = document.querySelectorAll('.' + groupId + '-user');
+
+                        // Hent ikonet (▶) for gruppen
+                        const iconElement = document.getElementById('icon-' + groupId);
+
+                        userRows.forEach(row => {
+                            // Veksler mellom 'block' (vis) og 'none' (skjul)
+                            if (row.style.display === 'none') {
+                                row.style.display = 'table-row'; // Vis raden
+                                if (iconElement) {
+                                    iconElement.innerHTML = '▼'; // Endre til utvidet ikon
+                                }
+                            } else {
+                                row.style.display = 'none'; // Skjul raden
+                                if (iconElement) {
+                                    iconElement.innerHTML = '▶'; // Endre til sammenslått ikon
+                                }
+                            }
+                        });
+                    }
+                </script>
+
+
 
                 <!-- Building Properties Card (always visible) -->
                 <section class="card" id="buildingPropertiesSection">
@@ -634,22 +795,6 @@
             <!-- ========================================================= -->
             <div id="tab-analyse" class="tab-content">
 
-                <!-- Element Selection -->
-                <section class="card">
-                    <h2>Analyseelement auswählen</h2>
-                    <div class="form-group">
-                        <label for="analysisElementSelect">Element für Analyse auswählen *:</label>
-                        <select id="analysisElementSelect" class="form-control" style="width:300px;" onchange="onAnalysisElementChange()">
-                            <option value="">-- Element auswählen --</option>
-                            <optgroup label="Fläche">
-                                <option value="NetArea">Nettofläche</option>
-                                <option value="GrossArea">Bruttofläche</option>
-                            </optgroup>
-                        </select>
-                        <small>Wählen Sie ein Element für die Abweichungsanalyse</small>
-                    </div>
-                </section>
-
                 <!-- KPI Summary Widget -->
                 <section class="card kpi-widget">
                     <h2>Übersicht</h2>
@@ -678,6 +823,22 @@
                             <span class="kpi-label">Überschritten</span>
                             <span class="kpi-value" id="kpiOverCount">0</span>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Element Selection -->
+                <section class="card">
+                    <h2>Analyseelement auswählen</h2>
+                    <div class="form-group">
+                        <label for="analysisElementSelect">Element für Analyse auswählen *:</label>
+                        <select id="analysisElementSelect" class="form-control" style="width:300px;" onchange="onAnalysisElementChange()">
+                            <option value="">-- Element auswählen --</option>
+                            <optgroup label="Fläche">
+                                <option value="NetArea">Nettofläche</option>
+                                <option value="GrossArea">Bruttofläche</option>
+                            </optgroup>
+                        </select>
+                        <small>Wählen Sie ein Element für die Abweichungsanalyse</small>
                     </div>
                 </section>
 
