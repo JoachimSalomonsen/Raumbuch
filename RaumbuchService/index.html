@@ -1333,6 +1333,18 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
+         * Check if a building exists in the system (for create operations)
+         * Shows error if no building exists - user must create one first
+         */
+        function requireBuilding(resultElementId = 'raumprogramResult') {
+            if (!currentBuildingId) {
+                showResult(resultElementId, 'error', '⚠️ Bitte erstellen Sie zuerst ein Gebäude in den Einstellungen, bevor Sie Daten hinzufügen.');
+                return false;
+            }
+            return true;
+        }
+        
+        /**
          * Get current building ID
          */
         function getCurrentBuildingId() {
@@ -4777,6 +4789,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Create a new room type
          */
         async function createRoomType() {
+            // Check if building exists first
+            if (!requireBuilding('masterDataResult')) {
+                return;
+            }
+            
             const name = document.getElementById('newRoomTypeName').value.trim();
             const roomCategory = document.getElementById('newRoomTypeCategory')?.value?.trim() || '';
 
@@ -4794,7 +4811,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     body: JSON.stringify({
                         name: name,
                         roomCategory: roomCategory,
-                        userId: getCurrentUserId()
+                        userId: getCurrentUserId(),
+                        buildingId: currentBuildingId
                     })
                 });
 
@@ -4858,6 +4876,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Create a new inventory template
          */
         async function createInventoryTemplate() {
+            // Check if building exists first
+            if (!requireBuilding('masterDataResult')) {
+                return;
+            }
+            
             const propertyName = document.getElementById('newInventoryPropertyName').value.trim();
             const dataType = document.getElementById('newInventoryDataType')?.value || 'Text';
             const unit = document.getElementById('newInventoryUnit')?.value?.trim() || '';
@@ -4941,6 +4964,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Create a new room - SOLL only (IST values managed in Ausgeführt tab)
          */
         async function createRoom() {
+            // Check if building exists first
+            if (!requireBuilding('roomManagementResult')) {
+                return;
+            }
+            
             const roomTypeId = document.getElementById('roomRoomType').value;
             const name = document.getElementById('roomName').value.trim();
             const areaPlanned = document.getElementById('roomAreaPlanned').value;
@@ -4963,7 +4991,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         netAreaActual: null, // IST values managed in Ausgeführt tab
                         grossAreaPlanned: null,
                         grossAreaActual: null,
-                        userId: getCurrentUserId()
+                        userId: getCurrentUserId(),
+                        buildingId: currentBuildingId
                     })
                 });
 
@@ -4986,6 +5015,11 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          * Load Raumprogramm data with pagination and filters
          */
         async function loadRaumprogramData(page = 1) {
+            // Check if building is selected
+            if (!checkBuildingSelected()) {
+                return;
+            }
+            
             if (page < 1) page = 1;
             currentRaumprogramPage = page;
 
@@ -5003,6 +5037,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
             try {
                 let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${raumprogramPageSize}`;
+                if (currentBuildingId) url += `&buildingId=${currentBuildingId}`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
 
                 if (selectedInventories.length === 1) {
