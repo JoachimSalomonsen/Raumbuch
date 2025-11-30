@@ -47,6 +47,11 @@ namespace RaumbuchService.Data
         public int RoomTypeID { get; set; }
 
         /// <summary>
+        /// Foreign key to Building.
+        /// </summary>
+        public int? BuildingID { get; set; }
+
+        /// <summary>
         /// Name of the room type (e.g., "Büro", "Besprechungsraum").
         /// </summary>
         [Required]
@@ -77,6 +82,12 @@ namespace RaumbuchService.Data
         public virtual UserAccess ModifiedByUser { get; set; }
 
         /// <summary>
+        /// Navigation property for the building.
+        /// </summary>
+        [ForeignKey("BuildingID")]
+        public virtual Building Building { get; set; }
+
+        /// <summary>
         /// Navigation property for rooms of this type.
         /// </summary>
         public virtual ICollection<Room> Rooms { get; set; }
@@ -100,6 +111,11 @@ namespace RaumbuchService.Data
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int RoomID { get; set; }
+
+        /// <summary>
+        /// Foreign key to Building.
+        /// </summary>
+        public int? BuildingID { get; set; }
 
         /// <summary>
         /// Foreign key to RoomType.
@@ -187,6 +203,68 @@ namespace RaumbuchService.Data
         [Column(TypeName = "decimal")]
         public decimal? ElevationWithFlooring { get; set; }
 
+        // ====================================================================
+        // Deviation Fields for Analysis (NetArea)
+        // ====================================================================
+
+        /// <summary>
+        /// Net area deviation percentage: ((IST - SOLL) / SOLL) * 100
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? NetAreaDeviationPercent { get; set; }
+
+        /// <summary>
+        /// Net area deviation value: IST - SOLL
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? NetAreaDeviationValue { get; set; }
+
+        /// <summary>
+        /// Net area status: 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+        /// </summary>
+        public int? NetAreaStatus { get; set; }
+
+        /// <summary>
+        /// Date when net area deviation was last calculated.
+        /// </summary>
+        public DateTime? NetAreaLastUpdated { get; set; }
+
+        /// <summary>
+        /// Comment for IST value of net area.
+        /// </summary>
+        public string NetAreaCommentIst { get; set; }
+
+        // ====================================================================
+        // Deviation Fields for Analysis (GrossArea)
+        // ====================================================================
+
+        /// <summary>
+        /// Gross area deviation percentage: ((IST - SOLL) / SOLL) * 100
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? GrossAreaDeviationPercent { get; set; }
+
+        /// <summary>
+        /// Gross area deviation value: IST - SOLL
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? GrossAreaDeviationValue { get; set; }
+
+        /// <summary>
+        /// Gross area status: 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+        /// </summary>
+        public int? GrossAreaStatus { get; set; }
+
+        /// <summary>
+        /// Date when gross area deviation was last calculated.
+        /// </summary>
+        public DateTime? GrossAreaLastUpdated { get; set; }
+
+        /// <summary>
+        /// Comment for IST value of gross area.
+        /// </summary>
+        public string GrossAreaCommentIst { get; set; }
+
         /// <summary>
         /// User ID who last modified this record.
         /// </summary>
@@ -203,6 +281,12 @@ namespace RaumbuchService.Data
         /// </summary>
         [ForeignKey("ModifiedByUserID")]
         public virtual UserAccess ModifiedByUser { get; set; }
+
+        /// <summary>
+        /// Navigation property for the building.
+        /// </summary>
+        [ForeignKey("BuildingID")]
+        public virtual Building Building { get; set; }
 
         /// <summary>
         /// Navigation property for room type.
@@ -329,6 +413,37 @@ namespace RaumbuchService.Data
         /// Free-text commentary for specific inventory items.
         /// </summary>
         public string Comment { get; set; }
+
+        // ====================================================================
+        // Deviation Fields for Analysis
+        // ====================================================================
+
+        /// <summary>
+        /// Inventory deviation percentage: ((IST - SOLL) / SOLL) * 100
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? InventoryDeviationPercent { get; set; }
+
+        /// <summary>
+        /// Inventory deviation value: IST - SOLL (normalized numeric value)
+        /// </summary>
+        [Column(TypeName = "decimal")]
+        public decimal? InventoryDeviationValue { get; set; }
+
+        /// <summary>
+        /// Inventory status: 0=Erfüllt, -1=Unterschritten, 1=Überschritten
+        /// </summary>
+        public int? InventoryStatus { get; set; }
+
+        /// <summary>
+        /// Date when inventory deviation was last calculated.
+        /// </summary>
+        public DateTime? InventoryLastUpdated { get; set; }
+
+        /// <summary>
+        /// Comment for IST value (separate from SOLL comment).
+        /// </summary>
+        public string CommentIst { get; set; }
 
         /// <summary>
         /// User ID who last modified this record.

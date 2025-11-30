@@ -38,6 +38,11 @@ namespace RaumbuchService.Data
         public DbSet<UserAccess> UserAccess { get; set; }
 
         /// <summary>
+        /// Buildings for multi-building management.
+        /// </summary>
+        public DbSet<Building> Buildings { get; set; }
+
+        /// <summary>
         /// Room types (Raumtyp) - the main categorization for rooms.
         /// </summary>
         public DbSet<RoomType> RoomTypes { get; set; }
@@ -56,6 +61,11 @@ namespace RaumbuchService.Data
         /// Room inventory items with planned and actual values.
         /// </summary>
         public DbSet<RoomInventory> RoomInventories { get; set; }
+
+        /// <summary>
+        /// Analysis settings for tolerance configuration per element.
+        /// </summary>
+        public DbSet<AnalysisSettings> AnalysisSettings { get; set; }
 
         /// <summary>
         /// Saves changes and automatically populates audit fields.
@@ -97,6 +107,7 @@ namespace RaumbuchService.Data
 
             // Explicitly map to table names (matches CreateSchema.sql exactly)
             modelBuilder.Entity<UserAccess>().ToTable("UserAccess");
+            modelBuilder.Entity<Building>().ToTable("Building");
             modelBuilder.Entity<RoomType>().ToTable("RoomType");
             modelBuilder.Entity<Room>().ToTable("Room");
             modelBuilder.Entity<InventoryTemplate>().ToTable("InventoryTemplate");
@@ -119,6 +130,36 @@ namespace RaumbuchService.Data
                 .Property(ua => ua.Role)
                 .HasMaxLength(50);
 
+            // Configure Building entity
+            modelBuilder.Entity<Building>()
+                .HasKey(b => b.BuildingID);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.BuildingName)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.BuildingCode)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginX)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginY)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginZ)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .HasOptional(b => b.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(b => b.ModifiedByUserID);
+
             // Configure RoomType entity
             modelBuilder.Entity<RoomType>()
                 .HasKey(rt => rt.RoomTypeID);
@@ -140,6 +181,11 @@ namespace RaumbuchService.Data
                 .HasOptional(rt => rt.ModifiedByUser)
                 .WithMany()
                 .HasForeignKey(rt => rt.ModifiedByUserID);
+
+            modelBuilder.Entity<RoomType>()
+                .HasOptional(rt => rt.Building)
+                .WithMany(b => b.RoomTypes)
+                .HasForeignKey(rt => rt.BuildingID);
 
             // Configure Room entity
             modelBuilder.Entity<Room>()
@@ -179,6 +225,11 @@ namespace RaumbuchService.Data
                 .HasOptional(r => r.ModifiedByUser)
                 .WithMany()
                 .HasForeignKey(r => r.ModifiedByUserID);
+
+            modelBuilder.Entity<Room>()
+                .HasOptional(r => r.Building)
+                .WithMany(b => b.Rooms)
+                .HasForeignKey(r => r.BuildingID);
 
             // Configure InventoryTemplate entity
             modelBuilder.Entity<InventoryTemplate>()
@@ -232,6 +283,77 @@ namespace RaumbuchService.Data
                 .HasOptional(ri => ri.ModifiedByUser)
                 .WithMany()
                 .HasForeignKey(ri => ri.ModifiedByUserID);
+
+            // Configure AnalysisSettings entity
+            modelBuilder.Entity<AnalysisSettings>().ToTable("AnalysisSettings");
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .HasKey(a => a.AnalysisSettingsID);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .Property(a => a.SelectedElementType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .Property(a => a.ToleranceMin)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .Property(a => a.ToleranceMax)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .Property(a => a.ModifiedByUserID)
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .HasOptional(a => a.InventoryTemplate)
+                .WithMany()
+                .HasForeignKey(a => a.SelectedInventoryTemplateID);
+
+            modelBuilder.Entity<AnalysisSettings>()
+                .HasOptional(a => a.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(a => a.ModifiedByUserID);
+
+            // Configure new Room deviation properties
+            modelBuilder.Entity<Room>()
+                .Property(r => r.NetAreaDeviationPercent)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.NetAreaDeviationValue)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.GrossAreaDeviationPercent)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.GrossAreaDeviationValue)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.NetAreaCommentIst)
+                .HasColumnType("nvarchar(max)");
+
+            modelBuilder.Entity<Room>()
+                .Property(r => r.GrossAreaCommentIst)
+                .HasColumnType("nvarchar(max)");
+
+            // Configure new RoomInventory deviation properties
+            modelBuilder.Entity<RoomInventory>()
+                .Property(ri => ri.InventoryDeviationPercent)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<RoomInventory>()
+                .Property(ri => ri.InventoryDeviationValue)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<RoomInventory>()
+                .Property(ri => ri.CommentIst)
+                .HasColumnType("nvarchar(max)");
         }
     }
 }
