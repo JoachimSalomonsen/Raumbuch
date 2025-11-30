@@ -3165,19 +3165,24 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             rows.forEach((row, index) => {
                 const statusClass = getAnalysisStatusClass(row.status);
                 const rowClass = getAnalysisRowClass(row.status);
-                const deviationPercent = row.deviationPercent != null ? row.deviationPercent.toFixed(2) + '%' : '-';
-                const deviationValue = row.deviationValue != null ? row.deviationValue.toFixed(2) : '-';
+                const deviationPercent = row.deviationPercent !== null && row.deviationPercent !== undefined && typeof row.deviationPercent === 'number' 
+                    ? row.deviationPercent.toFixed(2) + '%' : '-';
+                const deviationValue = row.deviationValue !== null && row.deviationValue !== undefined && typeof row.deviationValue === 'number'
+                    ? row.deviationValue.toFixed(2) : '-';
                 const lastUpdated = row.lastUpdated ? new Date(row.lastUpdated).toLocaleString('de-DE') : '-';
+                const statusText = (row.statusText || '').toLowerCase() || 'erfüllt';
+                const sollValueStr = typeof row.sollValue === 'number' ? row.sollValue.toFixed(2) : '0.00';
+                const istValueStr = typeof row.istValue === 'number' ? row.istValue.toFixed(2) : '0.00';
                 
                 html += `
-                    <tr class="analyse-row ${rowClass}" data-status="${row.statusText?.toLowerCase() || 'erfüllt'}" 
+                    <tr class="analyse-row ${rowClass}" data-status="${statusText}" 
                         data-room-id="${row.roomID}" data-inventory-id="${row.roomInventoryID || ''}" 
                         data-index="${index}">
                         <td>${escapeHtml(row.roomTypeName || '-')}</td>
                         <td>${escapeHtml(row.roomCategory || '-')}</td>
                         <td>${escapeHtml(row.roomName || '-')}</td>
-                        <td>${row.sollValue.toFixed(2)}</td>
-                        <td>${row.istValue.toFixed(2)}</td>
+                        <td>${sollValueStr}</td>
+                        <td>${istValueStr}</td>
                         <td>${deviationPercent}</td>
                         <td>${deviationValue}</td>
                         <td><span class="status-badge ${statusClass}">${escapeHtml(row.statusText || 'Erfüllt')}</span></td>

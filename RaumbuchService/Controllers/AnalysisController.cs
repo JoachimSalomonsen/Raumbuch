@@ -642,7 +642,7 @@ namespace RaumbuchService.Controllers
                 case "number":
                 case "integer":
                 case "decimal":
-                    if (decimal.TryParse(value, System.Globalization.NumberStyles.Any,
+                    if (decimal.TryParse(value, System.Globalization.NumberStyles.Number,
                         System.Globalization.CultureInfo.InvariantCulture, out decimal numValue))
                     {
                         return numValue;
