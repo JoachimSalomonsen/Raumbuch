@@ -241,6 +241,8 @@
                     <div style="margin-bottom:15px;">
                         <button class="btn btn-primary" onclick="loadAllSollData()">📥 Daten laden</button>
                         <button class="btn btn-success" onclick="saveAllSollChanges()">💾 Änderungen speichern</button>
+                        <button class="btn btn-secondary" onclick="sollUndo()" title="Rückgängig (Strg+Z)">↶ Rückgängig</button>
+                        <button class="btn btn-secondary" onclick="sollRedo()" title="Wiederholen (Strg+Y)">↷ Wiederholen</button>
                     </div>
                     <div id="raumprogramResult" class="result"></div>
 
@@ -444,9 +446,47 @@
             <!-- ========================================================= -->
             <div id="tab-ausgefuehrt" class="tab-content">
 
+                <!-- KPI Indicators Widget - IST/SOLL Comparison -->
+                <section class="card kpi-widget">
+                    <h2>Übersicht (IST/SOLL Vergleich)</h2>
+                    <div class="kpi-container">
+                        <div class="kpi-item" id="istKpiBruttoContainer">
+                            <span class="kpi-label">Bruttofläche</span>
+                            <span class="kpi-value" id="istKpiBrutto">0 / 0 m²</span>
+                        </div>
+                        <div class="kpi-item" id="istKpiNettoContainer">
+                            <span class="kpi-label">Nettofläche</span>
+                            <span class="kpi-value" id="istKpiNetto">0 / 0 m²</span>
+                        </div>
+                        <div class="kpi-item" id="istKpiInventoryContainer">
+                            <span class="kpi-label">Inventar Gesamt</span>
+                            <span class="kpi-value" id="istKpiInventory">0 / 0</span>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="card">
                     <h2>Ausgeführt (IST-Werte)</h2>
-                    <p>Hier werden die tatsächlichen (IST) Werte der Räume und Inventare erfasst und verwaltet.</p>
+                    <p>Hier werden die tatsächlichen (IST) Werte der Räume und Inventare erfasst und verwaltet. SOLL-Werte (grau) werden zum Vergleich angezeigt.</p>
+
+                    <!-- Main Action Button with Progress Bar -->
+                    <div style="margin-bottom:15px;">
+                        <button class="btn btn-primary" onclick="loadAllIstData()">📥 Daten laden</button>
+                        <button class="btn btn-success" onclick="saveAllIstChanges()">💾 Änderungen speichern</button>
+                        <button class="btn btn-secondary" onclick="istUndo()" title="Rückgängig (Strg+Z)">↶ Rückgängig</button>
+                        <button class="btn btn-secondary" onclick="istRedo()" title="Wiederholen (Strg+Y)">↷ Wiederholen</button>
+                    </div>
+                    <div id="istLoadingProgress" style="display:none; margin-bottom:15px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="spinner"></div>
+                            <span>Lade Daten...</span>
+                        </div>
+                        <div style="margin-top: 10px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                            <div id="istProgressBar" style="height: 6px; background: linear-gradient(90deg, #0066cc, #00aaff); width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <small id="istLoadingStatus" style="color: #666;">Initialisiere...</small>
+                    </div>
+                    <div id="istResult" class="result"></div>
 
                     <!-- Filters -->
                     <div class="filter-controls">
@@ -468,22 +508,41 @@
                         </div>
                     </div>
 
-                    <!-- Data Table - IST values with comparison to SOLL -->
-                    <div class="analyse-table-container" style="max-height:400px; overflow-y:auto; overflow-x:auto;">
+                    <!-- Column Visibility Controls and Autosave Toggle -->
+                    <div style="margin-bottom:10px; padding:10px; background:#f5f5f5; border-radius:5px;">
+                        <div style="margin-bottom:8px;">
+                            <label style="font-weight:bold; margin-right:15px;">Spalten anzeigen:</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="ist-col-raumtyp" checked onchange="loadIstData()"> Raumtyp</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="ist-col-raumkategorie" checked onchange="loadIstData()"> Raumkategorie</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="ist-col-raum" checked onchange="loadIstData()"> Raum</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="ist-col-netarea" checked onchange="loadIstData()"> Nettofläche SOLL/IST</label>
+                            <label style="margin-right:10px;"><input type="checkbox" id="ist-col-grossarea" checked onchange="loadIstData()"> Bruttofläche SOLL/IST</label>
+                            <label style="margin-right:10px; color:#0066cc;"><input type="checkbox" id="ist-col-showallsoll" onchange="loadIstData()"> Alle SOLL-Spalten anzeigen</label>
+                        </div>
+                        <div style="border-top:1px solid #ddd; padding-top:8px;">
+                            <label style="font-weight:bold; margin-right:15px;">Einstellungen:</label>
+                            <label style="margin-right:10px; color:#0066cc;"><input type="checkbox" id="ist-autosave" checked> Änderungen automatisch speichern</label>
+                        </div>
+                    </div>
+
+                    <!-- Data Table - IST values with SOLL comparison -->
+                    <div class="analyse-table-container" style="max-height:500px; overflow-y:auto; overflow-x:auto;">
                         <table class="analyse-table" id="istTable">
                             <thead id="istTableHead">
                                 <tr>
                                     <th>Raumtyp</th>
-                                    <th>Raum Name</th>
-                                    <th>Nettofläche (m²)</th>
-                                    <th>Bruttofläche (m²)</th>
-                                    <th>Kommentar</th>
+                                    <th>Raumkategorie</th>
+                                    <th>Raum</th>
+                                    <th>Nettofläche SOLL</th>
+                                    <th>Nettofläche IST</th>
+                                    <th>Bruttofläche SOLL</th>
+                                    <th>Bruttofläche IST</th>
                                     <th>Aktionen</th>
                                 </tr>
                             </thead>
                             <tbody id="istTableBody">
                                 <tr>
-                                    <td colspan="6" style="text-align:center; color:#666;">
+                                    <td colspan="20" style="text-align:center; color:#666;">
                                         Keine Daten vorhanden. Klicken Sie auf "Daten laden".
                                     </td>
                                 </tr>
@@ -502,13 +561,6 @@
                         </div>
                     </div>
 
-                    <div style="margin-top:15px;">
-                        <button class="btn btn-primary" onclick="loadIstData()">📥 Daten laden</button>
-                        <button class="btn btn-secondary" onclick="syncIstFromIfc()" title="Coming Soon">🔄 IST aus IFC aktualisieren</button>
-                        <button class="btn btn-primary" onclick="saveIstChanges()" title="Coming Soon">💾 Änderungen speichern</button>
-                        <small style="display:block; margin-top:5px; color:#666;">Hinweis: IFC-Synchronisation und Speichern werden in einer zukünftigen Version implementiert.</small>
-                    </div>
-                    <div id="istResult" class="result"></div>
                 </section>
 
                 <!-- IFC Data Source -->
@@ -525,6 +577,7 @@
 
                     <div style="margin-top:15px;">
                         <button class="btn btn-primary" onclick="extractIstFromIfc()" title="Coming Soon">📊 IST aus IFC extrahieren</button>
+                        <button class="btn btn-secondary" onclick="syncIstFromIfc()" title="Coming Soon">🔄 IST aus IFC aktualisieren</button>
                     </div>
                     <div id="ifcExtractionResult" class="result"></div>
                 </section>
@@ -4453,12 +4506,15 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
-         * Save a single cell value
+         * Save a single cell value using partial update (PATCH)
          */
         async function saveSingleCell(input) {
             const row = input.closest('tr');
             const roomId = parseInt(row?.dataset?.roomId);
             if (isNaN(roomId) || roomId <= 0) return;
+            
+            // Save state for undo before making changes
+            saveSollUndoState(roomId);
             
             try {
                 // Show saving indicator
@@ -4470,13 +4526,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     if (isNaN(templateId) || templateId <= 0) return;
                     
                     const dataType = input.dataset.datatype || 'text';
-                    let value;
-                    
-                    if (dataType === 'boolean') {
-                        value = input.checked ? 'TRUE' : 'FALSE';
-                    } else {
-                        value = input.value;
-                    }
+                    const value = getBooleanValueForInput(input, dataType);
                     
                     await updateRoomInventory(roomId, templateId, value, null);
                 } else if (input.classList.contains('inventory-comment')) {
@@ -4486,28 +4536,19 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     
                     await updateRoomInventory(roomId, templateId, null, input.value);
                 } else {
-                    // Save room field
+                    // Save room field using PATCH (partial update)
                     const field = input.dataset.field;
                     if (field) {
-                        const originalRoom = window.currentRooms?.find(r => r.roomID === roomId);
-                        if (originalRoom) {
-                            const roomData = {
-                                roomID: roomId,
-                                name: originalRoom.name,
-                                roomTypeID: originalRoom.roomTypeID,
-                                userId: getCurrentUserId()
-                            };
-                            
-                            if (input.type === 'number') {
-                                roomData[field] = input.value ? parseFloat(input.value) : null;
-                            } else if (input.type === 'checkbox') {
-                                roomData[field] = input.checked;
-                            } else {
-                                roomData[field] = input.value || null;
-                            }
-                            
-                            await updateSollRoom(roomId, roomData);
+                        let value;
+                        if (input.type === 'number') {
+                            value = input.value || '';
+                        } else if (input.type === 'checkbox') {
+                            value = input.checked ? 'TRUE' : 'FALSE';
+                        } else {
+                            value = input.value || '';
                         }
+                        
+                        await patchRoomField(roomId, field, value);
                     }
                 }
                 
@@ -4525,6 +4566,29 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     input.style.backgroundColor = '';
                 }, 2000);
             }
+        }
+        
+        /**
+         * Patch a single room field (partial update)
+         * This only updates the specified field without affecting other fields
+         */
+        async function patchRoomField(roomId, field, value) {
+            const response = await fetch(`${API_RAUMPROGRAM}/room/${roomId}/field`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    field: field,
+                    value: value,
+                    userId: getCurrentUserId()
+                })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
         }
         
         /**
@@ -4555,6 +4619,156 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             autosaveListenersAttached = true;
         }
 
+        // ====================================================================
+        // SOLL UNDO/REDO FUNCTIONALITY
+        // ====================================================================
+        
+        // SOLL Undo/Redo stacks (limit to 5 records)
+        const SOLL_UNDO_LIMIT = 5;
+        let sollUndoStack = [];
+        let sollRedoStack = [];
+        
+        /**
+         * Save SOLL state for undo
+         */
+        function saveSollUndoState(roomId) {
+            const room = window.currentRooms?.find(r => r.roomID === roomId);
+            if (!room) return;
+            
+            // Clone the room state
+            const state = JSON.parse(JSON.stringify(room));
+            state._timestamp = Date.now();
+            
+            sollUndoStack.push(state);
+            
+            // Limit stack size
+            while (sollUndoStack.length > SOLL_UNDO_LIMIT) {
+                sollUndoStack.shift();
+            }
+            
+            // Clear redo stack on new action
+            sollRedoStack = [];
+        }
+        
+        /**
+         * Undo last SOLL change
+         */
+        async function sollUndo() {
+            if (sollUndoStack.length === 0) {
+                showResult('raumprogramResult', 'info', 'ℹ️ Nichts zum Rückgängig machen');
+                return;
+            }
+            
+            const state = sollUndoStack.pop();
+            
+            // Save current state to redo stack
+            const currentRoom = window.currentRooms?.find(r => r.roomID === state.roomID);
+            if (currentRoom) {
+                sollRedoStack.push(JSON.parse(JSON.stringify(currentRoom)));
+                while (sollRedoStack.length > SOLL_UNDO_LIMIT) {
+                    sollRedoStack.shift();
+                }
+            }
+            
+            // Restore the state
+            try {
+                showResult('raumprogramResult', 'loading', '⏳ Rückgängig machen...');
+                
+                const roomData = {
+                    roomID: state.roomID,
+                    name: state.name,
+                    roomTypeID: state.roomTypeID,
+                    netAreaPlanned: state.netAreaPlanned,
+                    grossAreaPlanned: state.grossAreaPlanned,
+                    description: state.description,
+                    objectType: state.objectType,
+                    predefinedType: state.predefinedType,
+                    userId: getCurrentUserId()
+                };
+                
+                await updateSollRoom(state.roomID, roomData);
+                
+                // Restore inventory values
+                for (const inv of (state.inventory || [])) {
+                    if (inv.valuePlanned !== undefined) {
+                        await updateRoomInventory(state.roomID, inv.inventoryTemplateID, inv.valuePlanned, inv.comment);
+                    }
+                }
+                
+                await loadRaumprogramData(currentRaumprogramPage);
+                showResult('raumprogramResult', 'success', '✅ Änderung rückgängig gemacht');
+            } catch (error) {
+                console.error('Undo error:', error);
+                showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Redo last undone SOLL change
+         */
+        async function sollRedo() {
+            if (sollRedoStack.length === 0) {
+                showResult('raumprogramResult', 'info', 'ℹ️ Nichts zum Wiederholen');
+                return;
+            }
+            
+            const state = sollRedoStack.pop();
+            
+            // Save current state to undo stack
+            const currentRoom = window.currentRooms?.find(r => r.roomID === state.roomID);
+            if (currentRoom) {
+                sollUndoStack.push(JSON.parse(JSON.stringify(currentRoom)));
+            }
+            
+            // Apply the redo state
+            try {
+                showResult('raumprogramResult', 'loading', '⏳ Wiederholen...');
+                
+                const roomData = {
+                    roomID: state.roomID,
+                    name: state.name,
+                    roomTypeID: state.roomTypeID,
+                    netAreaPlanned: state.netAreaPlanned,
+                    grossAreaPlanned: state.grossAreaPlanned,
+                    description: state.description,
+                    objectType: state.objectType,
+                    predefinedType: state.predefinedType,
+                    userId: getCurrentUserId()
+                };
+                
+                await updateSollRoom(state.roomID, roomData);
+                
+                for (const inv of (state.inventory || [])) {
+                    if (inv.valuePlanned !== undefined) {
+                        await updateRoomInventory(state.roomID, inv.inventoryTemplateID, inv.valuePlanned, inv.comment);
+                    }
+                }
+                
+                await loadRaumprogramData(currentRaumprogramPage);
+                showResult('raumprogramResult', 'success', '✅ Änderung wiederhergestellt');
+            } catch (error) {
+                console.error('Redo error:', error);
+                showResult('raumprogramResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        // Add keyboard shortcuts for SOLL undo/redo
+        document.addEventListener('keydown', (e) => {
+            // Only handle if SOLL tab is active
+            const sollTab = document.getElementById('tab-raumprogramm');
+            if (!sollTab?.classList.contains('active')) return;
+            
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    e.preventDefault();
+                    sollUndo();
+                } else if (e.key === 'y') {
+                    e.preventDefault();
+                    sollRedo();
+                }
+            }
+        });
+
         /**
          * Load predefined types for dropdown
          */
@@ -4584,7 +4798,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             resultDiv.innerHTML = `
                 <div style="padding: 10px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #0066cc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <div class="spinner"></div>
                         <span>Lade Daten...</span>
                     </div>
                     <div style="margin-top: 10px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
@@ -4594,14 +4808,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 </div>
             `;
             resultDiv.className = 'result info';
-            
-            // Add CSS for spinner animation if not present
-            if (!document.getElementById('spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-style';
-                style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
-                document.head.appendChild(style);
-            }
             
             const progressBar = document.getElementById('loadingProgress');
             const statusText = document.getElementById('loadingStatus');
@@ -4694,13 +4900,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         const dataType = invInput.dataset.datatype || 'text';
                         
                         if (templateId && invRoomId) {
-                            let value;
-                            if (dataType === 'boolean') {
-                                // Convert checkbox checked state to string value
-                                value = invInput.checked ? 'TRUE' : 'FALSE';
-                            } else {
-                                value = invInput.value;
-                            }
+                            const value = getBooleanValueForInput(invInput, dataType);
                             await updateRoomInventory(invRoomId, templateId, value, null);
                         }
                     }
@@ -4950,6 +5150,61 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
 
         let currentIstPage = 1;
         const istPageSize = 50;
+        
+        // Store current IST rooms for reference
+        window.currentIstRooms = [];
+        
+        // IST Undo/Redo stacks (limit to 5 records)
+        const IST_UNDO_LIMIT = 5;
+        let istUndoStack = [];
+        let istRedoStack = [];
+        
+        // IST Autosave timers
+        const istAutosaveTimers = new Map();
+        const IST_AUTOSAVE_DELAY = 600; // ms
+
+        /**
+         * Load all IST data with progress bar
+         */
+        async function loadAllIstData() {
+            const progressContainer = document.getElementById('istLoadingProgress');
+            const progressBar = document.getElementById('istProgressBar');
+            const statusText = document.getElementById('istLoadingStatus');
+            
+            // Show progress bar
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            statusText.textContent = 'Initialisiere...';
+            
+            try {
+                // Step 1: Load room types (25%)
+                statusText.textContent = 'Lade Raumtypen...';
+                progressBar.style.width = '10%';
+                await loadRoomTypes();
+                progressBar.style.width = '25%';
+                
+                // Step 2: Load inventory templates (50%)
+                statusText.textContent = 'Lade Inventarvorlagen...';
+                await loadInventoryTemplates();
+                progressBar.style.width = '50%';
+                
+                // Step 3: Load IST data (100%)
+                statusText.textContent = 'Lade IST-Daten...';
+                progressBar.style.width = '75%';
+                await loadIstData();
+                progressBar.style.width = '100%';
+                
+                // Hide progress bar after short delay
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    showResult('istResult', 'success', '✅ Alle Daten erfolgreich geladen');
+                }, 300);
+            } catch (error) {
+                console.error('Error loading all IST data:', error);
+                progressContainer.style.display = 'none';
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
 
         /**
          * Load IST data with pagination and filters
@@ -4962,19 +5217,34 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             const search = document.getElementById('ist-search')?.value?.trim() || '';
 
             showResult('istResult', 'loading', '⏳ Lade IST-Daten...');
+            
+            // Handle multiple inventory selection
+            const inventorySelect = document.getElementById('ist-filter-inventory');
+            const selectedInventoryIds = Array.from(inventorySelect?.selectedOptions || [])
+                .map(opt => opt.value)
+                .filter(v => v);
 
             try {
                 let url = `${API_RAUMPROGRAM}/raumprogram?page=${page}&pageSize=${istPageSize}`;
                 if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
                 if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                // Only filter by single inventory if one is selected
+                if (selectedInventoryIds.length === 1) {
+                    url += `&inventoryTemplateId=${selectedInventoryIds[0]}`;
+                }
 
                 const response = await fetch(url);
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    renderIstTable(data.rooms || []);
+                    window.currentIstRooms = data.rooms || [];
+                    renderIstTable(data.rooms || [], selectedInventoryIds);
                     updateIstPagination(data);
                     showResult('istResult', 'success', `✅ ${data.totalCount} Räume gefunden`);
+                    
+                    // Update IST indicators
+                    await updateIstIndicatorsFromApi(roomTypeId, selectedInventoryIds);
                 } else {
                     showResult('istResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
                 }
@@ -4983,78 +5253,506 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
             }
         }
+        
+        /**
+         * Fetch data for IST indicators - compares IST vs SOLL values
+         */
+        async function updateIstIndicatorsFromApi(roomTypeId, selectedInventoryIds) {
+            try {
+                const search = document.getElementById('ist-search')?.value?.trim() || '';
+                
+                // Fetch all rooms for indicator calculation
+                let url = `${API_RAUMPROGRAM}/raumprogram?page=1&pageSize=10000`;
+                if (roomTypeId) url += `&roomTypeId=${roomTypeId}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    updateIstIndicators(data.rooms || [], selectedInventoryIds);
+                }
+            } catch (error) {
+                console.error('Error updating IST indicators:', error);
+            }
+        }
+        
+        /**
+         * Update IST page indicators (IST/SOLL comparison KPIs)
+         */
+        function updateIstIndicators(rooms, selectedInventoryIds = []) {
+            const templates = window.inventoryTemplates || [];
+            
+            // Calculate totals
+            let totalGrossIst = 0, totalGrossSoll = 0;
+            let totalNetIst = 0, totalNetSoll = 0;
+            let totalInventoryIst = 0, totalInventorySoll = 0;
+            
+            rooms.forEach(room => {
+                // Gross Area
+                totalGrossIst += Number(room.grossAreaActual) || 0;
+                totalGrossSoll += Number(room.grossAreaPlanned) || 0;
+                
+                // Net Area
+                totalNetIst += Number(room.netAreaActual) || 0;
+                totalNetSoll += Number(room.netAreaPlanned) || 0;
+                
+                // Inventory calculation
+                const inventoryItems = room.inventory || [];
+                inventoryItems.forEach(inv => {
+                    // Only count if in selected inventory templates (or all if none selected)
+                    if (selectedInventoryIds.length > 0 && 
+                        !selectedInventoryIds.includes(String(inv.inventoryTemplateID))) {
+                        return;
+                    }
+                    
+                    const template = templates.find(t => t.inventoryTemplateID === inv.inventoryTemplateID);
+                    const dataType = template?.dataType?.toLowerCase() || 'text';
+                    
+                    // Calculate IST value
+                    const istVal = inv.valueActual;
+                    if (istVal && istVal !== '') {
+                        totalInventoryIst += normalizeInventoryValue(istVal, dataType);
+                    }
+                    
+                    // Calculate SOLL value
+                    const sollVal = inv.valuePlanned;
+                    if (sollVal && sollVal !== '') {
+                        totalInventorySoll += normalizeInventoryValue(sollVal, dataType);
+                    }
+                });
+            });
+            
+            // Update indicator elements
+            const bruttoEl = document.getElementById('istKpiBrutto');
+            const nettoEl = document.getElementById('istKpiNetto');
+            const invEl = document.getElementById('istKpiInventory');
+            
+            if (bruttoEl) {
+                bruttoEl.textContent = `${Math.round(totalGrossIst)} / ${Math.round(totalGrossSoll)} m²`;
+                applyIndicatorColor('istKpiBruttoContainer', totalGrossIst, totalGrossSoll);
+            }
+            if (nettoEl) {
+                nettoEl.textContent = `${Math.round(totalNetIst)} / ${Math.round(totalNetSoll)} m²`;
+                applyIndicatorColor('istKpiNettoContainer', totalNetIst, totalNetSoll);
+            }
+            if (invEl) {
+                invEl.textContent = `${Math.round(totalInventoryIst)} / ${Math.round(totalInventorySoll)}`;
+                applyIndicatorColor('istKpiInventoryContainer', totalInventoryIst, totalInventorySoll);
+            }
+        }
+        
+        /**
+         * Convert boolean input value to standardized string format
+         * Used for consistent boolean storage and comparison
+         * @param {HTMLInputElement} input - Checkbox or other input element
+         * @param {string} dataType - The data type of the field
+         * @returns {string} 'TRUE', 'FALSE', or the original value for non-boolean types
+         */
+        function getBooleanValueForInput(input, dataType) {
+            if (dataType === 'boolean') {
+                return input.checked ? 'TRUE' : 'FALSE';
+            }
+            return input.value;
+        }
+        
+        /**
+         * Normalize inventory value based on data type
+         */
+        function normalizeInventoryValue(value, dataType) {
+            if (value === null || value === undefined || value === '') return 0;
+            
+            switch(dataType) {
+                case 'number':
+                case 'integer':
+                case 'decimal':
+                    const numValue = Number(value);
+                    return !isNaN(numValue) ? numValue : 0;
+                case 'boolean':
+                    const boolVal = value.toString().toUpperCase().trim();
+                    return ['JA', 'YES', 'TRUE', '1'].includes(boolVal) ? 1 : 0;
+                case 'text':
+                default:
+                    return value.toString().trim() !== '' ? 1 : 0;
+            }
+        }
+        
+        /**
+         * Apply color to indicator container based on IST vs SOLL comparison
+         */
+        function applyIndicatorColor(containerId, istValue, sollValue) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Reset classes
+            container.classList.remove('kpi-status-ok', 'kpi-status-under', 'kpi-status-over');
+            
+            // If both values are 0, show as equal (green)
+            // Only remain neutral if no meaningful data exists
+            if (sollValue === 0 && istValue === 0) {
+                container.classList.add('kpi-status-ok'); // Both zero is considered matching
+                return;
+            }
+            
+            if (istValue === sollValue) {
+                container.classList.add('kpi-status-ok'); // Green
+            } else if (istValue < sollValue) {
+                container.classList.add('kpi-status-under'); // Red (too little)
+            } else {
+                container.classList.add('kpi-status-over'); // Yellow (too much)
+            }
+        }
 
         /**
-         * Render IST data table - shows IST values for editing
+         * Render IST data table - shows IST values for editing with SOLL comparison
+         * Implements side-by-side SOLL + IST columns per requirement
          */
-        function renderIstTable(rooms) {
+        function renderIstTable(rooms, selectedInventoryIds = []) {
             const thead = document.getElementById('istTableHead');
             const tbody = document.getElementById('istTableBody');
 
-            // Get selected inventory templates
-            const inventorySelect = document.getElementById('ist-filter-inventory');
-            const selectedInventoryIds = Array.from(inventorySelect?.selectedOptions || [])
-                .map(opt => opt.value)
-                .filter(v => v);
+            // Get column visibility settings
+            const showRaumtyp = document.getElementById('ist-col-raumtyp')?.checked ?? true;
+            const showRaumkategorie = document.getElementById('ist-col-raumkategorie')?.checked ?? true;
+            const showRaum = document.getElementById('ist-col-raum')?.checked ?? true;
+            const showNetArea = document.getElementById('ist-col-netarea')?.checked ?? true;
+            const showGrossArea = document.getElementById('ist-col-grossarea')?.checked ?? true;
+            const showAllSoll = document.getElementById('ist-col-showallsoll')?.checked ?? false;
 
+            // Get selected inventory templates for column headers
             const templates = window.inventoryTemplates || [];
             const selectedTemplates = selectedInventoryIds.length > 0
                 ? templates.filter(t => selectedInventoryIds.includes(String(t.inventoryTemplateID)))
                 : [];
 
-            // Show comment column only when single inventory selected
-            const showComment = selectedInventoryIds.length === 1;
+            // Always show comment columns (SOLL read-only + IST editable)
+            const showComment = true;
 
-            // Build dynamic headers with NetAreaActual and GrossAreaActual
-            let headerHtml = '<tr><th>Raumtyp</th><th>Raum Name</th><th>Nettofläche (m²)</th><th>Bruttofläche (m²)</th>';
+            // Build dynamic headers with SOLL/IST pairs
+            let headerHtml = '<tr>';
+            if (showRaumtyp) headerHtml += '<th>Raumtyp</th>';
+            if (showRaumkategorie) headerHtml += '<th>Raumkategorie</th>';
+            if (showRaum) headerHtml += '<th>Raum</th>';
+            
+            // Net Area SOLL/IST pair
+            if (showNetArea) {
+                headerHtml += '<th style="background:#e0e0e0;">Nettofläche SOLL</th>';
+                headerHtml += '<th>Nettofläche IST</th>';
+            }
+            
+            // Gross Area SOLL/IST pair
+            if (showGrossArea) {
+                headerHtml += '<th style="background:#e0e0e0;">Bruttofläche SOLL</th>';
+                headerHtml += '<th>Bruttofläche IST</th>';
+            }
+
+            // Add inventory columns (SOLL/IST pairs)
             selectedTemplates.forEach(t => {
                 const unit = t.unit ? ` (${t.unit})` : '';
-                headerHtml += `<th>IST: ${escapeHtml(t.propertyName)}${unit}</th>`;
+                headerHtml += `<th style="background:#e0e0e0;">${escapeHtml(t.propertyName)}${unit} SOLL</th>`;
+                headerHtml += `<th>${escapeHtml(t.propertyName)}${unit} IST</th>`;
             });
+            
+            // Comment columns (SOLL read-only + IST editable)
             if (showComment) {
-                headerHtml += '<th>Kommentar</th>';
+                headerHtml += '<th style="background:#e0e0e0;">Kommentar SOLL</th>';
+                headerHtml += '<th>Kommentar IST</th>';
             }
-            headerHtml += '<th>Aktionen</th></tr>';
+            
+            headerHtml += '<th>Aktionen</th>';
+            headerHtml += '</tr>';
             thead.innerHTML = headerHtml;
 
+            // Calculate column count for empty message
+            let colCount = 1; // For actions column
+            if (showRaumtyp) colCount++;
+            if (showRaumkategorie) colCount++;
+            if (showRaum) colCount++;
+            if (showNetArea) colCount += 2; // SOLL + IST
+            if (showGrossArea) colCount += 2; // SOLL + IST
+            colCount += selectedTemplates.length * 2; // SOLL + IST pairs
+            if (showComment) colCount += 2; // SOLL + IST comments
+
             if (!rooms || rooms.length === 0) {
-                // Base columns: Raumtyp, Raum Name, Nettofläche, Bruttofläche, Aktionen = 5
-                const baseColCount = 5;
-                const colspan = baseColCount + selectedTemplates.length + (showComment ? 1 : 0);
-                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center; color:#666;">Keine Daten vorhanden.</td></tr>`;
                 return;
             }
 
             let html = '';
             rooms.forEach(room => {
-                const netAreaActual = room.netAreaActual || 0;
-                const grossAreaActual = room.grossAreaActual || 0;
-
                 html += `<tr data-room-id="${room.roomID}">`;
-                html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
-                html += `<td>${escapeHtml(room.name || '')}</td>`;
-                html += `<td><input type="number" class="form-control ist-input" data-field="netAreaActual" value="${netAreaActual}" step="0.01" style="width:100px;"></td>`;
-                html += `<td><input type="number" class="form-control ist-input" data-field="grossAreaActual" value="${grossAreaActual}" step="0.01" style="width:100px;"></td>`;
-
-                // Add columns for each selected inventory (IST values)
-                selectedTemplates.forEach(t => {
-                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
-                    const value = inv?.valueActual || '';
-                    html += `<td><input type="text" class="form-control ist-input" data-template-id="${t.inventoryTemplateID}" value="${escapeHtml(value)}" style="width:120px;"></td>`;
-                });
-
-                // Add comment input if single inventory selected
-                if (showComment) {
-                    const inv = (room.inventory || [])[0];
-                    const comment = inv?.comment || '';
-                    html += `<td><input type="text" class="form-control ist-input" data-field="comment" value="${escapeHtml(comment)}" style="width:150px;"></td>`;
+                
+                // Non-editable info columns
+                if (showRaumtyp) html += `<td>${escapeHtml(room.roomTypeName || '')}</td>`;
+                if (showRaumkategorie) html += `<td>${escapeHtml(room.roomCategory || '')}</td>`;
+                if (showRaum) html += `<td>${escapeHtml(room.name || '')}</td>`;
+                
+                // Net Area SOLL/IST pair
+                if (showNetArea) {
+                    const netSoll = room.netAreaPlanned || 0;
+                    const netIst = room.netAreaActual || 0;
+                    const netSollClass = getSollCellClass(netIst, netSoll);
+                    html += `<td class="soll-cell ${netSollClass}" data-soll-value="${netSoll}" style="background:#e8e8e8;">${netSoll}</td>`;
+                    html += `<td><input type="number" class="form-control ist-input ist-area-input" data-field="netAreaActual" data-soll="${netSoll}" value="${netIst}" step="0.01" style="width:100px;" oninput="updateSollCellColor(this)"></td>`;
+                }
+                
+                // Gross Area SOLL/IST pair
+                if (showGrossArea) {
+                    const grossSoll = room.grossAreaPlanned || 0;
+                    const grossIst = room.grossAreaActual || 0;
+                    const grossSollClass = getSollCellClass(grossIst, grossSoll);
+                    html += `<td class="soll-cell ${grossSollClass}" data-soll-value="${grossSoll}" style="background:#e8e8e8;">${grossSoll}</td>`;
+                    html += `<td><input type="number" class="form-control ist-input ist-area-input" data-field="grossAreaActual" data-soll="${grossSoll}" value="${grossIst}" step="0.01" style="width:100px;" oninput="updateSollCellColor(this)"></td>`;
                 }
 
-                html += `<td><button class="btn btn-danger btn-sm" onclick="deleteRoom(${room.roomID})" title="Löschen">🗑️</button></td>`;
+                // Inventory columns with SOLL/IST pairs
+                selectedTemplates.forEach(t => {
+                    const inv = (room.inventory || []).find(i => i.inventoryTemplateID === t.inventoryTemplateID);
+                    const sollValue = inv?.valuePlanned || '';
+                    const istValue = inv?.valueActual || '';
+                    const dataType = t.dataType?.toLowerCase() || 'text';
+                    
+                    // SOLL cell (read-only)
+                    const sollClass = getSollCellClassForInventory(istValue, sollValue, dataType);
+                    
+                    if (dataType === 'boolean') {
+                        const sollChecked = isTruthyBooleanValue(sollValue);
+                        html += `<td class="soll-cell ${sollClass}" data-soll-value="${sollValue}" style="background:#e8e8e8; text-align:center;">`;
+                        html += sollChecked ? '✓ Ja' : '✗ Nein';
+                        html += `</td>`;
+                        
+                        // IST cell (editable checkbox)
+                        const istChecked = isTruthyBooleanValue(istValue) ? 'checked' : '';
+                        html += `<td style="text-align:center;"><input type="checkbox" class="ist-input ist-inventory-input ist-inventory-boolean" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" data-datatype="boolean" data-soll="${sollValue}" ${istChecked} style="width:20px; height:20px;" onchange="updateSollCellColorForInventory(this)"></td>`;
+                    } else {
+                        html += `<td class="soll-cell ${sollClass}" data-soll-value="${sollValue}" style="background:#e8e8e8;">${escapeHtml(sollValue)}</td>`;
+                        
+                        // IST cell (editable) with correct input type
+                        const inputType = getInputTypeForDataType(dataType);
+                        const step = (dataType === 'integer') ? '1' : (dataType === 'decimal' || dataType === 'number') ? '0.01' : '';
+                        const stepAttr = step ? `step="${step}"` : '';
+                        html += `<td><input type="${inputType}" class="form-control ist-input ist-inventory-input" data-template-id="${t.inventoryTemplateID}" data-room-id="${room.roomID}" data-datatype="${dataType}" data-soll="${escapeHtml(sollValue)}" value="${escapeHtml(istValue)}" ${stepAttr} style="width:120px;" oninput="updateSollCellColorForInventory(this)"></td>`;
+                    }
+                });
+
+                // Comment columns (SOLL read-only + IST editable)
+                if (showComment) {
+                    // For comments, use the first inventory item's comment or room-level comment
+                    const firstInv = (room.inventory || [])[0];
+                    const commentSoll = firstInv?.comment || room.commentSoll || '';
+                    const commentIst = room.commentIst || firstInv?.commentActual || '';
+                    
+                    html += `<td class="soll-cell" style="background:#e8e8e8; max-width:150px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(commentSoll)}">${escapeHtml(commentSoll)}</td>`;
+                    html += `<td><input type="text" class="form-control ist-input ist-comment-input" data-field="commentIst" value="${escapeHtml(commentIst)}" style="width:150px;" placeholder="IST Kommentar"></td>`;
+                }
+
+                // Actions column - Copy from SOLL button (replaces delete button per requirement)
+                html += `<td><button class="btn btn-secondary btn-sm" onclick="copyIstFromSoll(${room.roomID})" title="IST von SOLL kopieren">📋 SOLL→IST</button></td>`;
+                
                 html += '</tr>';
             });
 
             tbody.innerHTML = html;
+            
+            // Attach autosave and keyboard navigation listeners
+            attachIstAutosaveListeners();
+            attachIstKeyboardNavigation();
+        }
+        
+        /**
+         * Get CSS class for SOLL cell based on IST/SOLL comparison
+         * Green: IST = SOLL, Red: IST < SOLL, Yellow: IST > SOLL
+         */
+        function getSollCellClass(istValue, sollValue) {
+            // Check if IST value is actually set (not null/undefined/empty string)
+            const istIsSet = istValue !== null && istValue !== undefined && istValue !== '';
+            
+            const ist = Number(istValue) || 0;
+            const soll = Number(sollValue) || 0;
+            
+            // If IST is not set at all (empty input), keep grey
+            if (!istIsSet) return '';
+            
+            // Now compare actual values - 0 is a valid value
+            if (ist === soll) return 'soll-match-equal'; // Green
+            if (ist < soll) return 'soll-match-under'; // Red (too little)
+            return 'soll-match-over'; // Yellow (too much)
+        }
+        
+        /**
+         * Get CSS class for inventory SOLL cell based on IST/SOLL comparison
+         */
+        function getSollCellClassForInventory(istValue, sollValue, dataType) {
+            // Check if IST value is actually set
+            const istIsSet = istValue !== null && istValue !== undefined && istValue !== '';
+            if (!istIsSet && dataType !== 'boolean') return ''; // IST not set, neutral grey
+            
+            // For boolean, check if checkbox has been interacted with
+            // But since we always have a value for checkboxes, we compare
+            if (dataType === 'boolean') {
+                // For boolean, always compare - FALSE is a valid value
+                const istNorm = normalizeInventoryValue(istValue, dataType);
+                const sollNorm = normalizeInventoryValue(sollValue, dataType);
+                
+                if (istNorm === sollNorm) return 'soll-match-equal';
+                if (istNorm < sollNorm) return 'soll-match-under';
+                return 'soll-match-over';
+            }
+            
+            const istNorm = normalizeInventoryValue(istValue, dataType);
+            const sollNorm = normalizeInventoryValue(sollValue, dataType);
+            
+            if (istNorm === sollNorm) return 'soll-match-equal'; // Green
+            if (istNorm < sollNorm) return 'soll-match-under'; // Red
+            return 'soll-match-over'; // Yellow
+        }
+        
+        /**
+         * Update SOLL cell color when IST value changes (live during editing)
+         */
+        function updateSollCellColor(istInput) {
+            const row = istInput.closest('tr');
+            const sollCell = istInput.parentElement.previousElementSibling;
+            if (!sollCell || !sollCell.classList.contains('soll-cell')) return;
+            
+            const sollValue = parseFloat(sollCell.dataset.sollValue) || 0;
+            const istInputValue = istInput.value;
+            const istValue = parseFloat(istInputValue) || 0;
+            
+            sollCell.classList.remove('soll-match-equal', 'soll-match-under', 'soll-match-over');
+            
+            // Only apply color if IST has been edited (not empty string)
+            if (istInputValue === '') return;
+            
+            // 0 is a valid value that should be compared
+            if (istValue === sollValue) {
+                sollCell.classList.add('soll-match-equal');
+            } else if (istValue < sollValue) {
+                sollCell.classList.add('soll-match-under');
+            } else {
+                sollCell.classList.add('soll-match-over');
+            }
+        }
+        
+        /**
+         * Update SOLL cell color for inventory items when IST value changes
+         */
+        function updateSollCellColorForInventory(istInput) {
+            const sollCell = istInput.parentElement.previousElementSibling;
+            if (!sollCell || !sollCell.classList.contains('soll-cell')) return;
+            
+            const dataType = istInput.dataset.datatype || 'text';
+            const sollValue = istInput.dataset.soll || '';
+            let istValue;
+            
+            if (dataType === 'boolean') {
+                istValue = istInput.checked ? 'TRUE' : 'FALSE';
+            } else {
+                istValue = istInput.value;
+            }
+            
+            sollCell.classList.remove('soll-match-equal', 'soll-match-under', 'soll-match-over');
+            
+            // For non-boolean types, empty string means not set
+            if (dataType !== 'boolean' && (!istValue || istValue === '')) return;
+            
+            const sollNorm = normalizeInventoryValue(sollValue, dataType);
+            const istNorm = normalizeInventoryValue(istValue, dataType);
+            
+            if (istNorm === sollNorm) {
+                sollCell.classList.add('soll-match-equal');
+            } else if (istNorm < sollNorm) {
+                sollCell.classList.add('soll-match-under');
+            } else {
+                sollCell.classList.add('soll-match-over');
+            }
+        }
+        
+        /**
+         * Copy IST values from SOLL for a specific row
+         */
+        async function copyIstFromSoll(roomId) {
+            const room = window.currentIstRooms.find(r => r.roomID === roomId);
+            if (!room) {
+                showResult('istResult', 'error', '❌ Raum nicht gefunden');
+                return;
+            }
+            
+            // Save state for undo before making changes
+            saveIstUndoState(roomId);
+            
+            showResult('istResult', 'loading', '⏳ Kopiere SOLL nach IST...');
+            
+            try {
+                // Update room areas
+                const roomData = {
+                    roomID: roomId,
+                    name: room.name,
+                    roomTypeID: room.roomTypeID,
+                    netAreaActual: room.netAreaPlanned,
+                    grossAreaActual: room.grossAreaPlanned,
+                    userId: getCurrentUserId()
+                };
+                
+                await updateIstRoom(roomId, roomData);
+                
+                // Update inventory values
+                for (const inv of (room.inventory || [])) {
+                    if (inv.valuePlanned) {
+                        await updateIstRoomInventory(roomId, inv.inventoryTemplateID, inv.valuePlanned);
+                    }
+                }
+                
+                // Reload data
+                await loadIstData(currentIstPage);
+                showResult('istResult', 'success', '✅ SOLL-Werte nach IST kopiert');
+            } catch (error) {
+                console.error('Error copying SOLL to IST:', error);
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Update a single room's IST data
+         */
+        async function updateIstRoom(roomId, roomData) {
+            const response = await fetch(`${API_RAUMPROGRAM}/room/${roomId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(roomData)
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
+        }
+        
+        /**
+         * Update room inventory IST value
+         */
+        async function updateIstRoomInventory(roomId, templateId, valueActual) {
+            const requestBody = {
+                roomID: roomId,
+                inventoryTemplateID: templateId,
+                valueActual: valueActual,
+                userId: getCurrentUserId()
+            };
+            
+            const response = await fetch(`${API_RAUMPROGRAM}/roominventory`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
         }
 
         /**
@@ -5069,12 +5767,432 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             if (nextBtn) nextBtn.disabled = data.page >= data.totalPages;
             if (info) info.textContent = `Seite ${data.page} von ${data.totalPages || 1} (${data.totalCount} Einträge)`;
         }
-
+        
+        // ====================================================================
+        // IST AUTOSAVE FUNCTIONALITY
+        // ====================================================================
+        
         /**
-         * Save IST changes
+         * Check if IST autosave is enabled
          */
-        async function saveIstChanges() {
-            showResult('istResult', 'info', '⚠️ IST-Werte speichern wird in einer zukünftigen Version implementiert.');
+        function isIstAutosaveEnabled() {
+            return document.getElementById('ist-autosave')?.checked ?? true;
+        }
+        
+        /**
+         * Handle IST cell change for autosave
+         */
+        function handleIstCellAutosave(input) {
+            if (!isIstAutosaveEnabled()) return;
+            
+            const key = getIstCellKey(input);
+            
+            // Clear existing timer for this cell
+            if (istAutosaveTimers.has(key)) {
+                clearTimeout(istAutosaveTimers.get(key));
+            }
+            
+            // Set new timer
+            istAutosaveTimers.set(key, setTimeout(async () => {
+                await saveIstSingleCell(input);
+                istAutosaveTimers.delete(key);
+            }, IST_AUTOSAVE_DELAY));
+        }
+        
+        /**
+         * Get unique key for an IST cell
+         */
+        function getIstCellKey(input) {
+            const row = input.closest('tr');
+            const roomId = row?.dataset?.roomId || '';
+            const field = input.dataset?.field || '';
+            const templateId = input.dataset?.templateId || '';
+            return `ist-${roomId}-${field}-${templateId}`;
+        }
+        
+        /**
+         * Save a single IST cell value using partial update (PATCH)
+         */
+        async function saveIstSingleCell(input) {
+            const row = input.closest('tr');
+            const roomId = parseInt(row?.dataset?.roomId);
+            if (isNaN(roomId) || roomId <= 0) return;
+            
+            // Save state for undo before making changes
+            saveIstUndoState(roomId);
+            
+            try {
+                // Show saving indicator
+                input.style.backgroundColor = '#fff3cd';
+                
+                if (input.classList.contains('ist-inventory-input')) {
+                    // Save inventory IST value
+                    const templateId = parseInt(input.dataset.templateId);
+                    if (isNaN(templateId) || templateId <= 0) return;
+                    
+                    const dataType = input.dataset.datatype || 'text';
+                    const value = getBooleanValueForInput(input, dataType);
+                    
+                    await updateIstRoomInventory(roomId, templateId, value);
+                } else if (input.classList.contains('ist-area-input')) {
+                    // Save room area field using PATCH (partial update)
+                    const field = input.dataset.field;
+                    if (field) {
+                        const value = input.value || '';
+                        await patchRoomField(roomId, field, value);
+                    }
+                } else if (input.classList.contains('ist-comment-input')) {
+                    // Save IST comment
+                    const templateId = parseInt(input.dataset.templateId);
+                    if (isNaN(templateId) || templateId <= 0) return;
+                    
+                    await updateIstRoomInventoryComment(roomId, templateId, input.value);
+                }
+                
+                // Show success
+                input.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    input.style.backgroundColor = '';
+                }, 1000);
+                
+                // Update indicators after save
+                const roomTypeId = document.getElementById('ist-filter-roomtype')?.value || '';
+                const inventorySelect = document.getElementById('ist-filter-inventory');
+                const selectedInventoryIds = Array.from(inventorySelect?.selectedOptions || [])
+                    .map(opt => opt.value)
+                    .filter(v => v);
+                await updateIstIndicatorsFromApi(roomTypeId, selectedInventoryIds);
+                
+            } catch (error) {
+                console.error('IST autosave error:', error);
+                // Show error
+                input.style.backgroundColor = '#f8d7da';
+                setTimeout(() => {
+                    input.style.backgroundColor = '';
+                }, 2000);
+            }
+        }
+        
+        /**
+         * Update IST room inventory comment only
+         */
+        async function updateIstRoomInventoryComment(roomId, templateId, comment) {
+            const requestBody = {
+                roomID: roomId,
+                inventoryTemplateID: templateId,
+                comment: comment,
+                userId: getCurrentUserId()
+            };
+            
+            const response = await fetch(`${API_RAUMPROGRAM}/roominventory`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Fehler beim Speichern');
+            }
+            
+            return await response.json();
+        }
+        
+        /**
+         * Attach autosave listeners to IST table
+         */
+        let istAutosaveListenersAttached = false;
+        
+        function attachIstAutosaveListeners() {
+            const tbody = document.getElementById('istTableBody');
+            if (!tbody || istAutosaveListenersAttached) return;
+            
+            // Use event delegation
+            tbody.addEventListener('input', (e) => {
+                if (e.target.classList.contains('ist-input')) {
+                    handleIstCellAutosave(e.target);
+                }
+            });
+            
+            tbody.addEventListener('change', (e) => {
+                if (e.target.classList.contains('ist-input') && e.target.type === 'checkbox') {
+                    handleIstCellAutosave(e.target);
+                }
+            });
+            
+            istAutosaveListenersAttached = true;
+        }
+        
+        /**
+         * Save all IST changes manually
+         */
+        async function saveAllIstChanges() {
+            showResult('istResult', 'loading', '⏳ Speichere alle Änderungen...');
+            
+            const rows = document.querySelectorAll('#istTableBody tr[data-room-id]');
+            let savedCount = 0;
+            let errorCount = 0;
+            
+            for (const row of rows) {
+                const roomId = parseInt(row.dataset.roomId);
+                if (!roomId) continue;
+                
+                try {
+                    const originalRoom = window.currentIstRooms?.find(r => r.roomID === roomId);
+                    if (!originalRoom) continue;
+                    
+                    // Collect area changes
+                    const roomData = {
+                        roomID: roomId,
+                        name: originalRoom.name,
+                        roomTypeID: originalRoom.roomTypeID,
+                        userId: getCurrentUserId()
+                    };
+                    
+                    // Get area inputs
+                    const areaInputs = row.querySelectorAll('.ist-area-input');
+                    areaInputs.forEach(input => {
+                        const field = input.dataset.field;
+                        if (field) {
+                            roomData[field] = input.value ? parseFloat(input.value) : null;
+                        }
+                    });
+                    
+                    await updateIstRoom(roomId, roomData);
+                    
+                    // Handle inventory inputs
+                    const inventoryInputs = row.querySelectorAll('.ist-inventory-input');
+                    for (const invInput of inventoryInputs) {
+                        const templateId = parseInt(invInput.dataset.templateId);
+                        const dataType = invInput.dataset.datatype || 'text';
+                        
+                        if (templateId) {
+                            const value = getBooleanValueForInput(invInput, dataType);
+                            await updateIstRoomInventory(roomId, templateId, value);
+                        }
+                    }
+                    
+                    savedCount++;
+                } catch (error) {
+                    console.error(`Error saving room ${roomId}:`, error);
+                    errorCount++;
+                }
+            }
+            
+            if (errorCount === 0) {
+                showResult('istResult', 'success', `✅ ${savedCount} Räume erfolgreich gespeichert`);
+            } else {
+                showResult('istResult', 'warning', `⚠️ ${savedCount} gespeichert, ${errorCount} Fehler`);
+            }
+            
+            // Reload to refresh
+            await loadIstData(currentIstPage);
+        }
+        
+        // ====================================================================
+        // IST UNDO/REDO FUNCTIONALITY
+        // ====================================================================
+        
+        /**
+         * Save IST state for undo
+         */
+        function saveIstUndoState(roomId) {
+            const room = window.currentIstRooms?.find(r => r.roomID === roomId);
+            if (!room) return;
+            
+            // Clone the room state
+            const state = JSON.parse(JSON.stringify(room));
+            state._timestamp = Date.now();
+            
+            istUndoStack.push(state);
+            
+            // Limit stack size
+            while (istUndoStack.length > IST_UNDO_LIMIT) {
+                istUndoStack.shift();
+            }
+            
+            // Clear redo stack on new action
+            istRedoStack = [];
+        }
+        
+        /**
+         * Undo last IST change
+         */
+        async function istUndo() {
+            if (istUndoStack.length === 0) {
+                showResult('istResult', 'info', 'ℹ️ Nichts zum Rückgängig machen');
+                return;
+            }
+            
+            const state = istUndoStack.pop();
+            
+            // Save current state to redo stack
+            const currentRoom = window.currentIstRooms?.find(r => r.roomID === state.roomID);
+            if (currentRoom) {
+                istRedoStack.push(JSON.parse(JSON.stringify(currentRoom)));
+                while (istRedoStack.length > IST_UNDO_LIMIT) {
+                    istRedoStack.shift();
+                }
+            }
+            
+            // Restore the state
+            try {
+                showResult('istResult', 'loading', '⏳ Rückgängig machen...');
+                
+                const roomData = {
+                    roomID: state.roomID,
+                    name: state.name,
+                    roomTypeID: state.roomTypeID,
+                    netAreaActual: state.netAreaActual,
+                    grossAreaActual: state.grossAreaActual,
+                    userId: getCurrentUserId()
+                };
+                
+                await updateIstRoom(state.roomID, roomData);
+                
+                // Restore inventory values
+                for (const inv of (state.inventory || [])) {
+                    if (inv.valueActual !== undefined) {
+                        await updateIstRoomInventory(state.roomID, inv.inventoryTemplateID, inv.valueActual);
+                    }
+                }
+                
+                await loadIstData(currentIstPage);
+                showResult('istResult', 'success', '✅ Änderung rückgängig gemacht');
+            } catch (error) {
+                console.error('Undo error:', error);
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Redo last undone IST change
+         */
+        async function istRedo() {
+            if (istRedoStack.length === 0) {
+                showResult('istResult', 'info', 'ℹ️ Nichts zum Wiederholen');
+                return;
+            }
+            
+            const state = istRedoStack.pop();
+            
+            // Save current state to undo stack
+            const currentRoom = window.currentIstRooms?.find(r => r.roomID === state.roomID);
+            if (currentRoom) {
+                istUndoStack.push(JSON.parse(JSON.stringify(currentRoom)));
+            }
+            
+            // Apply the redo state
+            try {
+                showResult('istResult', 'loading', '⏳ Wiederholen...');
+                
+                const roomData = {
+                    roomID: state.roomID,
+                    name: state.name,
+                    roomTypeID: state.roomTypeID,
+                    netAreaActual: state.netAreaActual,
+                    grossAreaActual: state.grossAreaActual,
+                    userId: getCurrentUserId()
+                };
+                
+                await updateIstRoom(state.roomID, roomData);
+                
+                for (const inv of (state.inventory || [])) {
+                    if (inv.valueActual !== undefined) {
+                        await updateIstRoomInventory(state.roomID, inv.inventoryTemplateID, inv.valueActual);
+                    }
+                }
+                
+                await loadIstData(currentIstPage);
+                showResult('istResult', 'success', '✅ Änderung wiederhergestellt');
+            } catch (error) {
+                console.error('Redo error:', error);
+                showResult('istResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        // ====================================================================
+        // IST KEYBOARD NAVIGATION (Excel-like)
+        // ====================================================================
+        
+        /**
+         * Attach keyboard navigation to IST table
+         */
+        function attachIstKeyboardNavigation() {
+            const table = document.getElementById('istTable');
+            if (!table) return;
+            
+            table.addEventListener('keydown', (e) => {
+                if (!e.target.classList.contains('ist-input')) return;
+                
+                const cell = e.target.closest('td');
+                const row = cell?.closest('tr');
+                const rows = Array.from(table.querySelectorAll('tbody tr'));
+                const cells = row ? Array.from(row.querySelectorAll('td')) : [];
+                const rowIndex = rows.indexOf(row);
+                const cellIndex = cells.indexOf(cell);
+                
+                let targetInput = null;
+                
+                switch(e.key) {
+                    case 'Tab':
+                        // Tab already works natively
+                        break;
+                    case 'Enter':
+                        // Move to next row, same column
+                        e.preventDefault();
+                        if (rowIndex < rows.length - 1) {
+                            const nextRow = rows[rowIndex + 1];
+                            const nextCells = Array.from(nextRow.querySelectorAll('td'));
+                            if (nextCells[cellIndex]) {
+                                targetInput = nextCells[cellIndex].querySelector('.ist-input');
+                            }
+                        }
+                        break;
+                    case 'ArrowUp':
+                        if (rowIndex > 0) {
+                            e.preventDefault();
+                            const prevRow = rows[rowIndex - 1];
+                            const prevCells = Array.from(prevRow.querySelectorAll('td'));
+                            if (prevCells[cellIndex]) {
+                                targetInput = prevCells[cellIndex].querySelector('.ist-input');
+                            }
+                        }
+                        break;
+                    case 'ArrowDown':
+                        if (rowIndex < rows.length - 1) {
+                            e.preventDefault();
+                            const nextRow = rows[rowIndex + 1];
+                            const nextCells = Array.from(nextRow.querySelectorAll('td'));
+                            if (nextCells[cellIndex]) {
+                                targetInput = nextCells[cellIndex].querySelector('.ist-input');
+                            }
+                        }
+                        break;
+                }
+                
+                if (targetInput) {
+                    targetInput.focus();
+                    if (targetInput.select) targetInput.select();
+                }
+            });
+            
+            // Ctrl+Z and Ctrl+Y for undo/redo
+            document.addEventListener('keydown', (e) => {
+                // Only handle if IST tab is active
+                const istTab = document.getElementById('tab-ausgefuehrt');
+                if (!istTab?.classList.contains('active')) return;
+                
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 'z') {
+                        e.preventDefault();
+                        istUndo();
+                    } else if (e.key === 'y') {
+                        e.preventDefault();
+                        istRedo();
+                    }
+                }
+            });
         }
 
         /**
