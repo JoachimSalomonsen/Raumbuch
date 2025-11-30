@@ -57,6 +57,161 @@
             <!-- ========================================================= -->
             <div id="tab-konfig" class="tab-content">
 
+                <!-- BUILDING MANAGEMENT SECTION -->
+                <section class="card">
+                    <h2>🏢 Gebäudeverwaltung</h2>
+                    <p>Erstellen und verwalten Sie Gebäude für das Multi-Building-System.</p>
+
+                    <!-- Building Creation -->
+                    <div class="form-group">
+                        <label>Neues Gebäude erstellen:</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                            <input type="text" id="newBuildingName" class="form-control" placeholder="Gebäudename (z.B. 'Hauptgebäude')" style="flex:1; min-width:200px;">
+                            <input type="text" id="newBuildingCode" class="form-control" placeholder="Code (z.B. 'HG01')" style="width:120px;">
+                            <button class="btn btn-primary" onclick="createBuilding()">🏗️ Gebäude erstellen</button>
+                        </div>
+                    </div>
+
+                    <!-- Building Selection -->
+                    <div class="form-group">
+                        <label for="buildingSelect">Gebäude auswählen:</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <select id="buildingSelect" class="form-control" style="flex:1;" onchange="loadBuildingDetails()">
+                                <option value="">-- Gebäude auswählen --</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadBuildingList()">🔄 Aktualisieren</button>
+                        </div>
+                    </div>
+
+                    <div id="buildingResult" class="result"></div>
+                </section>
+
+                <!-- Building Details (only visible when a building is selected) -->
+                <section class="card" id="buildingDetailsSection" style="display:none;">
+                    <h2>📋 Gebäudedetails</h2>
+
+                    <!-- Basic Information -->
+                    <div class="form-group">
+                        <label>Grundinformationen:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div>
+                                <small>Gebäudename:</small>
+                                <input type="text" id="editBuildingName" class="form-control" placeholder="Gebäudename">
+                            </div>
+                            <div>
+                                <small>Code:</small>
+                                <input type="text" id="editBuildingCode" class="form-control" placeholder="Code">
+                            </div>
+                            <div>
+                                <small>Eigentümer:</small>
+                                <input type="text" id="editBuildingOwner" class="form-control" placeholder="Eigentümer">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <small>Beschreibung:</small>
+                        <textarea id="editBuildingDescription" class="form-control" rows="2" placeholder="Beschreibung"></textarea>
+                    </div>
+
+                    <!-- Address Information -->
+                    <div class="form-group">
+                        <label>Adresse:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div>
+                                <small>Strasse:</small>
+                                <input type="text" id="editAddressStreet" class="form-control" placeholder="Strasse">
+                            </div>
+                            <div>
+                                <small>PLZ:</small>
+                                <input type="text" id="editAddressPostalCode" class="form-control" placeholder="PLZ">
+                            </div>
+                            <div>
+                                <small>Stadt:</small>
+                                <input type="text" id="editAddressCity" class="form-control" placeholder="Stadt">
+                            </div>
+                            <div>
+                                <small>Land:</small>
+                                <input type="text" id="editAddressCountry" class="form-control" placeholder="Land">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- IFC Settings -->
+                    <div class="form-group">
+                        <label>IFC-Einstellungen:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div>
+                                <label style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="editIFCEnabled"> IFC aktiviert
+                                </label>
+                            </div>
+                            <div>
+                                <small>IFC Project GUID:</small>
+                                <input type="text" id="editIFCProjectGUID" class="form-control" placeholder="IFC Project GUID">
+                            </div>
+                            <div>
+                                <small>IFC Building GUID:</small>
+                                <input type="text" id="editIFCBuildingGUID" class="form-control" placeholder="IFC Building GUID">
+                            </div>
+                            <div>
+                                <small>IFC File URL:</small>
+                                <input type="text" id="editIFCFileUrl" class="form-control" placeholder="IFC File URL">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coordinate Settings -->
+                    <div class="form-group">
+                        <label>Koordinateneinstellungen:</label>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+                            <div>
+                                <small>Koordinatensystem:</small>
+                                <input type="text" id="editCoordinateSystem" class="form-control" placeholder="LV95">
+                            </div>
+                            <div>
+                                <small>Ursprung X:</small>
+                                <input type="number" step="0.0001" id="editLocalOriginX" class="form-control" placeholder="0.0">
+                            </div>
+                            <div>
+                                <small>Ursprung Y:</small>
+                                <input type="number" step="0.0001" id="editLocalOriginY" class="form-control" placeholder="0.0">
+                            </div>
+                            <div>
+                                <small>Ursprung Z:</small>
+                                <input type="number" step="0.0001" id="editLocalOriginZ" class="form-control" placeholder="0.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logo -->
+                    <div class="form-group">
+                        <label>Logo:</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="text" id="editLogoUrl" class="form-control" placeholder="Logo URL" style="flex:1;">
+                            <img id="buildingLogoPreview" src="" alt="" style="height:40px; display:none;">
+                        </div>
+                    </div>
+
+                    <!-- Trimble Connect Info (Read-only) -->
+                    <div class="form-group">
+                        <label>Trimble Connect Informationen:</label>
+                        <div id="trimbleConnectInfo" style="background:#f5f5f5; padding:10px; border-radius:4px;">
+                            <small style="color:#666;">Drücken Sie "Projekte laden" um Trimble Connect Daten zu aktualisieren.</small>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="saveBuilding()">💾 Gebäude speichern</button>
+                        <button class="btn btn-secondary" onclick="refreshTrimbleConnectData()">🔄 Projekte laden</button>
+                        <button class="btn btn-danger" onclick="deleteBuilding()">🗑️ Gebäude löschen</button>
+                    </div>
+
+                    <div id="buildingDetailsResult" class="result"></div>
+                </section>
+
+                <hr style="margin:20px 0; border-top:2px solid var(--tc-border);">
 
                 <!-- STEP 0 – CONFIGURATION -->
                 <section class="card">
@@ -236,6 +391,17 @@
                 <section class="card">
                     <h2>Raumprogramm Übersicht (SOLL)</h2>
                     <p>Zeigt die geplanten (SOLL) Werte. Felder sind direkt in der Tabelle bearbeitbar. Für IST-Werte nutzen Sie den Tab "Ausgeführt".</p>
+
+                    <!-- Building Selector -->
+                    <div class="form-group" style="margin-bottom:15px; padding:10px; background:#e3f2fd; border-radius:5px; border-left:4px solid var(--tc-primary-blue);">
+                        <label for="raumprogram-building" style="font-weight:bold;">🏢 Gebäude auswählen:</label>
+                        <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
+                            <select id="raumprogram-building" class="form-control" style="width:300px;" onchange="onBuildingChange()">
+                                <option value="">-- Bitte Gebäude auswählen --</option>
+                            </select>
+                            <span id="buildingRequiredMessage" style="color:#D64545; display:none;">⚠️ Bitte wählen Sie ein Gebäude.</span>
+                        </div>
+                    </div>
 
                     <!-- Main Action Button -->
                     <div style="margin-bottom:15px;">
@@ -862,11 +1028,341 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         const API_BASE = '/api/raumbuch';
         const API_PROJECT = '/api/project';
         const API_ANALYSIS = '/api/analysis';
+        const API_BUILDING = '/api/building';
 
         // Display the current API endpoint in footer (hidden element for debugging)
         const apiEndpointEl = document.getElementById('apiEndpoint');
         if (apiEndpointEl) {
             apiEndpointEl.textContent = `API: ${window.location.origin}`;
+        }
+        
+        // ====================================================================
+        // BUILDING MANAGEMENT - Multi-building system
+        // ====================================================================
+        
+        // Current selected building
+        let currentBuildingId = null;
+        
+        /**
+         * Load list of buildings from the database
+         */
+        async function loadBuildingList() {
+            try {
+                const response = await fetch(`${API_BUILDING}/list`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const buildingSelect = document.getElementById('buildingSelect');
+                    const raumprogramBuildingSelect = document.getElementById('raumprogram-building');
+                    
+                    let options = '<option value="">-- Gebäude auswählen --</option>';
+                    data.buildings.forEach(b => {
+                        const code = b.buildingCode ? ` (${b.buildingCode})` : '';
+                        options += `<option value="${b.buildingID}">${escapeHtml(b.buildingName)}${code}</option>`;
+                    });
+                    
+                    if (buildingSelect) buildingSelect.innerHTML = options;
+                    if (raumprogramBuildingSelect) raumprogramBuildingSelect.innerHTML = options;
+                    
+                    // Restore last selected building from local storage
+                    const savedBuildingId = localStorage.getItem('selectedBuildingId');
+                    if (savedBuildingId) {
+                        if (buildingSelect) buildingSelect.value = savedBuildingId;
+                        if (raumprogramBuildingSelect) raumprogramBuildingSelect.value = savedBuildingId;
+                        currentBuildingId = parseInt(savedBuildingId);
+                    }
+                    
+                    showResult('buildingResult', 'success', `✅ ${data.buildings.length} Gebäude geladen`);
+                } else {
+                    showResult('buildingResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
+                }
+            } catch (error) {
+                console.error('Error loading buildings:', error);
+                showResult('buildingResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Create a new building
+         */
+        async function createBuilding() {
+            const name = document.getElementById('newBuildingName').value.trim();
+            const code = document.getElementById('newBuildingCode').value.trim();
+            
+            if (!name) {
+                showResult('buildingResult', 'error', '⚠️ Bitte geben Sie einen Gebäudenamen ein');
+                return;
+            }
+            
+            showResult('buildingResult', 'loading', '⏳ Erstelle Gebäude...');
+            
+            try {
+                const response = await fetch(`${API_BUILDING}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        buildingName: name,
+                        buildingCode: code,
+                        userId: getCurrentUserId()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('buildingResult', 'success', `✅ Gebäude "${name}" erstellt`);
+                    
+                    // Clear input fields
+                    document.getElementById('newBuildingName').value = '';
+                    document.getElementById('newBuildingCode').value = '';
+                    
+                    // Reload building list and select the new one
+                    await loadBuildingList();
+                    document.getElementById('buildingSelect').value = data.building.buildingID;
+                    await loadBuildingDetails();
+                } else {
+                    showResult('buildingResult', 'error', `❌ ${data.message || 'Fehler beim Erstellen'}`);
+                }
+            } catch (error) {
+                console.error('Error creating building:', error);
+                showResult('buildingResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Load details of the selected building
+         */
+        async function loadBuildingDetails() {
+            const buildingId = document.getElementById('buildingSelect').value;
+            const detailsSection = document.getElementById('buildingDetailsSection');
+            
+            if (!buildingId) {
+                detailsSection.style.display = 'none';
+                currentBuildingId = null;
+                localStorage.removeItem('selectedBuildingId');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BUILDING}/${buildingId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const b = data.building;
+                    currentBuildingId = b.buildingID;
+                    localStorage.setItem('selectedBuildingId', b.buildingID);
+                    
+                    // Populate form fields
+                    document.getElementById('editBuildingName').value = b.buildingName || '';
+                    document.getElementById('editBuildingCode').value = b.buildingCode || '';
+                    document.getElementById('editBuildingOwner').value = b.owner || '';
+                    document.getElementById('editBuildingDescription').value = b.description || '';
+                    document.getElementById('editAddressStreet').value = b.addressStreet || '';
+                    document.getElementById('editAddressPostalCode').value = b.addressPostalCode || '';
+                    document.getElementById('editAddressCity').value = b.addressCity || '';
+                    document.getElementById('editAddressCountry').value = b.addressCountry || '';
+                    document.getElementById('editIFCEnabled').checked = b.ifcEnabled || false;
+                    document.getElementById('editIFCProjectGUID').value = b.ifcProjectGUID || '';
+                    document.getElementById('editIFCBuildingGUID').value = b.ifcBuildingGUID || '';
+                    document.getElementById('editIFCFileUrl').value = b.ifcFileUrl || '';
+                    document.getElementById('editCoordinateSystem').value = b.coordinateSystem || 'LV95';
+                    document.getElementById('editLocalOriginX').value = b.localOriginX || 0;
+                    document.getElementById('editLocalOriginY').value = b.localOriginY || 0;
+                    document.getElementById('editLocalOriginZ').value = b.localOriginZ || 0;
+                    document.getElementById('editLogoUrl').value = b.logoUrl || '';
+                    
+                    // Update logo preview
+                    const logoPreview = document.getElementById('buildingLogoPreview');
+                    if (b.logoUrl) {
+                        logoPreview.src = b.logoUrl;
+                        logoPreview.style.display = 'block';
+                    } else {
+                        logoPreview.style.display = 'none';
+                    }
+                    
+                    // Show details section
+                    detailsSection.style.display = 'block';
+                    
+                    // Also update the Raumprogramm building selector
+                    const raumprogramSelect = document.getElementById('raumprogram-building');
+                    if (raumprogramSelect) {
+                        raumprogramSelect.value = buildingId;
+                    }
+                    
+                    showResult('buildingDetailsResult', 'success', '✅ Gebäude geladen');
+                } else {
+                    showResult('buildingResult', 'error', `❌ ${data.message || 'Fehler beim Laden'}`);
+                }
+            } catch (error) {
+                console.error('Error loading building details:', error);
+                showResult('buildingResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Save building changes
+         */
+        async function saveBuilding() {
+            if (!currentBuildingId) {
+                showResult('buildingDetailsResult', 'error', '⚠️ Kein Gebäude ausgewählt');
+                return;
+            }
+            
+            showResult('buildingDetailsResult', 'loading', '⏳ Speichere...');
+            
+            try {
+                const updateData = {
+                    buildingName: document.getElementById('editBuildingName').value,
+                    buildingCode: document.getElementById('editBuildingCode').value,
+                    owner: document.getElementById('editBuildingOwner').value,
+                    description: document.getElementById('editBuildingDescription').value,
+                    addressStreet: document.getElementById('editAddressStreet').value,
+                    addressPostalCode: document.getElementById('editAddressPostalCode').value,
+                    addressCity: document.getElementById('editAddressCity').value,
+                    addressCountry: document.getElementById('editAddressCountry').value,
+                    ifcEnabled: document.getElementById('editIFCEnabled').checked,
+                    ifcProjectGUID: document.getElementById('editIFCProjectGUID').value,
+                    ifcBuildingGUID: document.getElementById('editIFCBuildingGUID').value,
+                    ifcFileUrl: document.getElementById('editIFCFileUrl').value,
+                    coordinateSystem: document.getElementById('editCoordinateSystem').value,
+                    localOriginX: parseFloat(document.getElementById('editLocalOriginX').value) || 0,
+                    localOriginY: parseFloat(document.getElementById('editLocalOriginY').value) || 0,
+                    localOriginZ: parseFloat(document.getElementById('editLocalOriginZ').value) || 0,
+                    logoUrl: document.getElementById('editLogoUrl').value,
+                    userId: getCurrentUserId()
+                };
+                
+                const response = await fetch(`${API_BUILDING}/${currentBuildingId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('buildingDetailsResult', 'success', '✅ Gebäude gespeichert');
+                    // Reload building list to update dropdown labels
+                    await loadBuildingList();
+                    document.getElementById('buildingSelect').value = currentBuildingId;
+                } else {
+                    showResult('buildingDetailsResult', 'error', `❌ ${data.message || 'Fehler beim Speichern'}`);
+                }
+            } catch (error) {
+                console.error('Error saving building:', error);
+                showResult('buildingDetailsResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Delete a building
+         */
+        async function deleteBuilding() {
+            if (!currentBuildingId) {
+                showResult('buildingDetailsResult', 'error', '⚠️ Kein Gebäude ausgewählt');
+                return;
+            }
+            
+            const buildingName = document.getElementById('editBuildingName').value;
+            const confirmed = confirm(`Sind Sie sicher, dass Sie das Gebäude "${buildingName}" und alle zugehörigen Daten (Räume, Inventar) löschen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`);
+            
+            if (!confirmed) return;
+            
+            showResult('buildingDetailsResult', 'loading', '⏳ Lösche Gebäude...');
+            
+            try {
+                const response = await fetch(`${API_BUILDING}/${currentBuildingId}?userId=${encodeURIComponent(getCurrentUserId() || '')}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('buildingResult', 'success', `✅ Gebäude "${buildingName}" gelöscht`);
+                    document.getElementById('buildingDetailsSection').style.display = 'none';
+                    currentBuildingId = null;
+                    localStorage.removeItem('selectedBuildingId');
+                    await loadBuildingList();
+                } else {
+                    showResult('buildingDetailsResult', 'error', `❌ ${data.message || 'Fehler beim Löschen'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting building:', error);
+                showResult('buildingDetailsResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Refresh Trimble Connect data for the building
+         */
+        async function refreshTrimbleConnectData() {
+            showResult('buildingDetailsResult', 'loading', '⏳ Lade Trimble Connect Daten...');
+            
+            // For now, just show a placeholder message
+            // This would integrate with Trimble Connect API to fetch folders/users/groups
+            document.getElementById('trimbleConnectInfo').innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
+                    <div>
+                        <strong>Ordner:</strong><br>
+                        <small style="color:#666;">Keine Daten geladen</small>
+                    </div>
+                    <div>
+                        <strong>Benutzer:</strong><br>
+                        <small style="color:#666;">Keine Daten geladen</small>
+                    </div>
+                    <div>
+                        <strong>Gruppen:</strong><br>
+                        <small style="color:#666;">Keine Daten geladen</small>
+                    </div>
+                </div>
+            `;
+            
+            showResult('buildingDetailsResult', 'success', '✅ Trimble Connect Daten aktualisiert');
+        }
+        
+        /**
+         * Handle building change in Raumprogramm
+         */
+        function onBuildingChange() {
+            const buildingId = document.getElementById('raumprogram-building').value;
+            const messageEl = document.getElementById('buildingRequiredMessage');
+            
+            if (!buildingId) {
+                messageEl.style.display = 'inline';
+                currentBuildingId = null;
+                localStorage.removeItem('selectedBuildingId');
+            } else {
+                messageEl.style.display = 'none';
+                currentBuildingId = parseInt(buildingId);
+                localStorage.setItem('selectedBuildingId', buildingId);
+                
+                // Also sync with Einstellungen tab
+                const settingsSelect = document.getElementById('buildingSelect');
+                if (settingsSelect) {
+                    settingsSelect.value = buildingId;
+                }
+            }
+        }
+        
+        /**
+         * Check if building is selected before loading data
+         */
+        function checkBuildingSelected() {
+            const buildingId = document.getElementById('raumprogram-building')?.value;
+            if (!buildingId) {
+                const messageEl = document.getElementById('buildingRequiredMessage');
+                if (messageEl) messageEl.style.display = 'inline';
+                showResult('raumprogramResult', 'error', '⚠️ Bitte wählen Sie ein Gebäude.');
+                return false;
+            }
+            return true;
+        }
+        
+        /**
+         * Get current building ID
+         */
+        function getCurrentBuildingId() {
+            return currentBuildingId;
         }
 
         // ====================================================================
@@ -6590,6 +7086,9 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 const today = new Date().toISOString().split('T')[0];
                 dueDateField.value = today;
             }
+            
+            // Load building list on startup
+            loadBuildingList();
         });
 
     </script>

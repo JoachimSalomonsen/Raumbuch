@@ -38,6 +38,11 @@ namespace RaumbuchService.Data
         public DbSet<UserAccess> UserAccess { get; set; }
 
         /// <summary>
+        /// Buildings for multi-building management.
+        /// </summary>
+        public DbSet<Building> Buildings { get; set; }
+
+        /// <summary>
         /// Room types (Raumtyp) - the main categorization for rooms.
         /// </summary>
         public DbSet<RoomType> RoomTypes { get; set; }
@@ -102,6 +107,7 @@ namespace RaumbuchService.Data
 
             // Explicitly map to table names (matches CreateSchema.sql exactly)
             modelBuilder.Entity<UserAccess>().ToTable("UserAccess");
+            modelBuilder.Entity<Building>().ToTable("Building");
             modelBuilder.Entity<RoomType>().ToTable("RoomType");
             modelBuilder.Entity<Room>().ToTable("Room");
             modelBuilder.Entity<InventoryTemplate>().ToTable("InventoryTemplate");
@@ -124,6 +130,36 @@ namespace RaumbuchService.Data
                 .Property(ua => ua.Role)
                 .HasMaxLength(50);
 
+            // Configure Building entity
+            modelBuilder.Entity<Building>()
+                .HasKey(b => b.BuildingID);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.BuildingName)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.BuildingCode)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginX)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginY)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .Property(b => b.LocalOriginZ)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<Building>()
+                .HasOptional(b => b.ModifiedByUser)
+                .WithMany()
+                .HasForeignKey(b => b.ModifiedByUserID);
+
             // Configure RoomType entity
             modelBuilder.Entity<RoomType>()
                 .HasKey(rt => rt.RoomTypeID);
@@ -145,6 +181,11 @@ namespace RaumbuchService.Data
                 .HasOptional(rt => rt.ModifiedByUser)
                 .WithMany()
                 .HasForeignKey(rt => rt.ModifiedByUserID);
+
+            modelBuilder.Entity<RoomType>()
+                .HasOptional(rt => rt.Building)
+                .WithMany(b => b.RoomTypes)
+                .HasForeignKey(rt => rt.BuildingID);
 
             // Configure Room entity
             modelBuilder.Entity<Room>()
@@ -184,6 +225,11 @@ namespace RaumbuchService.Data
                 .HasOptional(r => r.ModifiedByUser)
                 .WithMany()
                 .HasForeignKey(r => r.ModifiedByUserID);
+
+            modelBuilder.Entity<Room>()
+                .HasOptional(r => r.Building)
+                .WithMany(b => b.Rooms)
+                .HasForeignKey(r => r.BuildingID);
 
             // Configure InventoryTemplate entity
             modelBuilder.Entity<InventoryTemplate>()

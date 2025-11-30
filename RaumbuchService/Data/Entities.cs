@@ -47,6 +47,11 @@ namespace RaumbuchService.Data
         public int RoomTypeID { get; set; }
 
         /// <summary>
+        /// Foreign key to Building.
+        /// </summary>
+        public int? BuildingID { get; set; }
+
+        /// <summary>
         /// Name of the room type (e.g., "Büro", "Besprechungsraum").
         /// </summary>
         [Required]
@@ -77,6 +82,12 @@ namespace RaumbuchService.Data
         public virtual UserAccess ModifiedByUser { get; set; }
 
         /// <summary>
+        /// Navigation property for the building.
+        /// </summary>
+        [ForeignKey("BuildingID")]
+        public virtual Building Building { get; set; }
+
+        /// <summary>
         /// Navigation property for rooms of this type.
         /// </summary>
         public virtual ICollection<Room> Rooms { get; set; }
@@ -100,6 +111,11 @@ namespace RaumbuchService.Data
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int RoomID { get; set; }
+
+        /// <summary>
+        /// Foreign key to Building.
+        /// </summary>
+        public int? BuildingID { get; set; }
 
         /// <summary>
         /// Foreign key to RoomType.
@@ -265,6 +281,12 @@ namespace RaumbuchService.Data
         /// </summary>
         [ForeignKey("ModifiedByUserID")]
         public virtual UserAccess ModifiedByUser { get; set; }
+
+        /// <summary>
+        /// Navigation property for the building.
+        /// </summary>
+        [ForeignKey("BuildingID")]
+        public virtual Building Building { get; set; }
 
         /// <summary>
         /// Navigation property for room type.

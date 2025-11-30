@@ -17,23 +17,71 @@ BEGIN
 END
 GO
 
+-- ================================================================
+-- Create Building table (Multi-building management)
+-- ================================================================
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Building]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[Building] (
+        [BuildingID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [BuildingName] NVARCHAR(255) NOT NULL,
+        [BuildingCode] NVARCHAR(100) NULL,
+        [Description] NVARCHAR(MAX) NULL,
+        -- Address fields
+        [AddressStreet] NVARCHAR(500) NULL,
+        [AddressCity] NVARCHAR(200) NULL,
+        [AddressPostalCode] NVARCHAR(50) NULL,
+        [AddressCountry] NVARCHAR(100) NULL,
+        -- Ownership
+        [Owner] NVARCHAR(255) NULL,
+        [Creator] NVARCHAR(255) NULL,
+        -- IFC fields
+        [IFCProjectGUID] NVARCHAR(255) NULL,
+        [IFCBuildingGUID] NVARCHAR(255) NULL,
+        [IFCEnabled] BIT NOT NULL DEFAULT 0,
+        [IFCFileUrl] NVARCHAR(500) NULL,
+        -- Coordinate settings
+        [CoordinateSystem] NVARCHAR(200) NULL DEFAULT 'LV95',
+        [LocalOriginX] DECIMAL(18,4) NULL DEFAULT 0,
+        [LocalOriginY] DECIMAL(18,4) NULL DEFAULT 0,
+        [LocalOriginZ] DECIMAL(18,4) NULL DEFAULT 0,
+        -- Logo
+        [LogoUrl] NVARCHAR(500) NULL,
+        -- Audit
+        [ModifiedByUserID] NVARCHAR(255) NULL,
+        [ModifiedDate] DATETIME2 NULL,
+        CONSTRAINT [FK_Building_UserAccess] FOREIGN KEY ([ModifiedByUserID]) 
+            REFERENCES [dbo].[UserAccess] ([UserID])
+    );
+    PRINT 'Created table: Building';
+END
+GO
+
 -- Create RoomType table
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[RoomType]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[RoomType] (
         [RoomTypeID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [BuildingID] INT NULL,
         [Name] NVARCHAR(100) NOT NULL,
         [RoomCategory] NVARCHAR(100) NULL,
         [ModifiedByUserID] NVARCHAR(255) NULL,
         [ModifiedDate] DATETIME2 NULL,
         CONSTRAINT [FK_RoomType_UserAccess] FOREIGN KEY ([ModifiedByUserID]) 
-            REFERENCES [dbo].[UserAccess] ([UserID])
+            REFERENCES [dbo].[UserAccess] ([UserID]),
+        CONSTRAINT [FK_RoomType_Building] FOREIGN KEY ([BuildingID]) 
+            REFERENCES [dbo].[Building] ([BuildingID])
     );
     PRINT 'Created table: RoomType';
 END
 ELSE
 BEGIN
     -- Add new columns if table exists but columns don't
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomType]') AND name = 'BuildingID')
+    BEGIN
+        ALTER TABLE [dbo].[RoomType] ADD [BuildingID] INT NULL;
+        PRINT 'Added column: RoomType.BuildingID';
+    END
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoomType]') AND name = 'RoomCategory')
     BEGIN
         ALTER TABLE [dbo].[RoomType] ADD [RoomCategory] NVARCHAR(100) NULL;
@@ -57,6 +105,7 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Ro
 BEGIN
     CREATE TABLE [dbo].[Room] (
         [RoomID] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [BuildingID] INT NULL,
         [RoomTypeID] INT NOT NULL,
         [Name] NVARCHAR(100) NOT NULL,
         [NetAreaPlanned] DECIMAL(18,2) NULL,           -- Planned net area (SOLL) in square meters
@@ -73,6 +122,8 @@ BEGIN
         [ElevationWithFlooring] DECIMAL(18,4) NULL, -- IfcSpace.ElevationWithFlooring
         [ModifiedByUserID] NVARCHAR(255) NULL,
         [ModifiedDate] DATETIME2 NULL,
+        CONSTRAINT [FK_Room_Building] FOREIGN KEY ([BuildingID]) 
+            REFERENCES [dbo].[Building] ([BuildingID]),
         CONSTRAINT [FK_Room_RoomType] FOREIGN KEY ([RoomTypeID]) 
             REFERENCES [dbo].[RoomType] ([RoomTypeID]),
         CONSTRAINT [FK_Room_UserAccess] FOREIGN KEY ([ModifiedByUserID]) 
@@ -82,6 +133,12 @@ BEGIN
 END
 ELSE
 BEGIN
+    -- Add BuildingID column if table exists but column doesn't
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'BuildingID')
+    BEGIN
+        ALTER TABLE [dbo].[Room] ADD [BuildingID] INT NULL;
+        PRINT 'Added column: Room.BuildingID';
+    END
     -- Add new SOLL/IST columns if table exists but columns don't
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Room]') AND name = 'NetAreaPlanned')
     BEGIN
