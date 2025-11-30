@@ -90,8 +90,61 @@
                     <div id="buildingResult" class="result"></div>
                 </section>
 
-                <!-- Building Properties Card (visible when a building is selected) -->
-                <section class="card" id="buildingPropertiesSection" style="display:none;">
+                <!-- KONFIGURATION – With IFC and Logo settings -->
+                <section class="card">
+                    <h2>Konfiguration</h2>
+
+                    <!-- Predefined Folder -->
+                    <div class="form-group">
+                        <label for="targetFolder">Vordefinierte Ordner:</label>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <select id="targetFolder" class="form-control">
+                                <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
+                            <button class="btn btn-secondary" onclick="openPredefinedFolder()">📁 Vordefinierte Ordner öffnen</button>
+                        </div>
+                        <small style="color:#666; margin-top:5px; display:block;">Dieser Ordner wird als Standard für verschiedene Exports verwendet.</small>
+                    </div>
+
+                    <!-- IFC Spaces File -->
+                    <div class="form-group">
+                        <label for="ifcFile">IfcSpaces Datei (.ifc):</label>
+                        <select id="ifcFile" class="form-control">
+                            <option value="">-- IFC auswählen nach "Dateien laden" --</option>
+                        </select>
+                        <small style="color:#666;">Diese Datei wird als Referenz für IFC-Spaces in der gesamten Anwendung verwendet.</small>
+                    </div>
+
+                    <!-- Logo Upload -->
+                    <div class="form-group">
+                        <label>Logo:</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="file" id="logoFileInput" accept="image/*" style="display:none;" onchange="uploadLogo()">
+                            <button class="btn btn-secondary" onclick="document.getElementById('logoFileInput').click()">📷 Logo hochladen</button>
+                            <input type="text" id="editLogoUrl" class="form-control" placeholder="Logo URL (automatisch nach Upload)" style="flex:1;" readonly>
+                            <img id="buildingLogoPreview" src="" alt="" style="height:40px; display:none;">
+                        </div>
+                    </div>
+
+                    <!-- Hidden IFC fields (populated automatically) -->
+                    <input type="hidden" id="editIFCEnabled">
+                    <input type="hidden" id="editIFCProjectGUID">
+                    <input type="hidden" id="editIFCBuildingGUID">
+                    <input type="hidden" id="editIFCFileUrl">
+
+                    <!-- Save Configuration Button -->
+                    <div class="form-group" style="margin-top:15px;">
+                        <button class="btn btn-primary" onclick="saveConfiguration()">💾 Konfiguration speichern</button>
+                    </div>
+
+                    <div id="connectionResult" class="result"></div>
+                </section>
+
+                <hr style="margin:20px 0; border-top:2px solid var(--tc-border);">
+
+                <!-- Building Properties Card (always visible) -->
+                <section class="card" id="buildingPropertiesSection">
                     <h2>📋 Gebäudeeigenschaften</h2>
 
                     <!-- Basic Information -->
@@ -172,39 +225,6 @@
                         <textarea id="editBuildingDescription" class="form-control" rows="2" placeholder="Beschreibung des Gebäudes"></textarea>
                     </div>
 
-                    <!-- IFC Settings -->
-                    <div class="form-group">
-                        <label>IFC-Einstellungen:</label>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
-                            <div>
-                                <label style="display:flex; align-items:center; gap:8px;">
-                                    <input type="checkbox" id="editIFCEnabled"> IFC aktiviert
-                                </label>
-                            </div>
-                            <div>
-                                <small>IFC Project GUID:</small>
-                                <input type="text" id="editIFCProjectGUID" class="form-control" placeholder="IFC Project GUID">
-                            </div>
-                            <div>
-                                <small>IFC Building GUID:</small>
-                                <input type="text" id="editIFCBuildingGUID" class="form-control" placeholder="IFC Building GUID">
-                            </div>
-                            <div>
-                                <small>IFC File URL:</small>
-                                <input type="text" id="editIFCFileUrl" class="form-control" placeholder="IFC File URL">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Logo -->
-                    <div class="form-group">
-                        <label>Logo:</label>
-                        <div style="display:flex; gap:10px; align-items:center;">
-                            <input type="text" id="editLogoUrl" class="form-control" placeholder="Logo URL" style="flex:1;">
-                            <img id="buildingLogoPreview" src="" alt="" style="height:40px; display:none;">
-                        </div>
-                    </div>
-
                     <!-- Trimble Connect Info (Read-only) -->
                     <div class="form-group">
                         <label>Trimble Connect Informationen:</label>
@@ -220,118 +240,6 @@
                     </div>
 
                     <div id="buildingDetailsResult" class="result"></div>
-                </section>
-
-                <hr style="margin:20px 0; border-top:2px solid var(--tc-border);">
-
-                <!-- KONFIGURATION – Simplified -->
-                <section class="card">
-                    <h2>Konfiguration</h2>
-
-                    <!-- Target Folder -->
-                    <div class="form-group">
-                        <label for="targetFolder">Zielordner:</label>
-                        <div style="display:flex; gap:10px; margin-top:10px;">
-                            <select id="targetFolder" class="form-control">
-                                <option value="">-- Klicken Sie auf "Projektdaten laden" --</option>
-                            </select>
-                            <button class="btn btn-secondary" onclick="fetchFiles()">🔄 Dateien laden</button>
-                            <button class="btn btn-secondary" onclick="window.open('https://web.connect.trimble.com/projects/y7-N0uBcXNI/data/folder/syZ23DptUaQ', '_blank')">📁 Zielordner öffnen</button>
-                        </div>
-                    </div>
-
-                    <div id="connectionResult" class="result"></div>
-                </section>
-
-
-                <!-- =============================== -->
-                <!-- Kombinert: Vorlage + Raumbuch -->
-                <!-- =============================== -->
-                <section class="card">
-                    <h2>Raumbuch</h2>
-                    <p>Vorlage laden und Raumbuch erzeugen oder aktualisieren</p>
-
-                    <!-- TEMPLATE -->
-                    <div class="form-group">
-                        <label for="templateFile">Vorlagendatei (.xlsx):</label>
-                        <div style="display:flex; gap:10px; align-items:flex-start;">
-                            <select id="templateFile" class="form-control">
-                                <option value="">-- Vorlage auswählen nach "Dateien laden" --</option>
-                            </select>
-
-                            <!-- Load template headers for mapping -->
-                            <button class="btn btn-primary" onclick="loadTemplateHeaders()">📥 Vorlagen laden</button>
-                        </div>
-                    </div>
-
-                    <!-- COLUMN MAPPING TABLE -->
-                    <div class="form-group" id="mappingTableContainer" style="display:none;">
-                        <label>Spaltenzuordnung:</label>
-                        <table class="mapping-table" style="width:100%; max-width:500px; border-collapse:collapse; margin-top:8px;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align:left; padding:8px; border-bottom:2px solid var(--tc-border); background:#f5f5f5;">Eigenschaft</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:2px solid var(--tc-border); background:#f5f5f5;">Excel-Spalte</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Raumtyp</td>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
-                                        <select id="mappingRaumtyp" class="form-control" style="width:100%; max-width:200px;">
-                                            <option value="">-- Spalte wählen --</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Raumkategorie</td>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
-                                        <select id="mappingRaumkategorie" class="form-control" style="width:100%; max-width:200px;">
-                                            <option value="">-- Spalte wählen --</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">Fläche Soll</td>
-                                    <td style="padding:8px; border-bottom:1px solid var(--tc-border);">
-                                        <select id="mappingFlaecheSoll" class="form-control" style="width:100%; max-width:200px;">
-                                            <option value="">-- Spalte wählen --</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <small>Wählen Sie die Spalten aus der Vorlage, die den Eigenschaften entsprechen</small>
-                    </div>
-
-                    <div id="step1Result" class="result"></div>
-
-                    <!-- IFC FILE -->
-                    <div class="form-group">
-                        <label for="ifcFile">Datei mit IfcSpaces (.ifc):</label>
-                        <select id="ifcFile" class="form-control">
-                            <option value="">-- IFC auswählen nach "Dateien laden" --</option>
-                        </select>
-                    </div>
-
-                    <!-- RAUMBUCH -->
-                    <div class="form-group">
-                        <label for="raumbuchFile">Raumbuch-Datei (.xlsx):</label>
-
-                        <div style="display:flex; gap:10px; align-items:flex-start;">
-                            <select id="raumbuchFile" class="form-control" style="flex:1;">
-                                <option value="">-- Raumbuch auswählen nach "Dateien laden" --</option>
-                            </select>
-
-                            <!-- IFC -> Raumbuch -->
-                            <button class="btn btn-primary" onclick="createRaumbuch()">🏗️ Raumbuch erstellen</button>
-                            <button class="btn btn-secondary" onclick="updateRaumbuch()">🔄 Raumbuch aktualisieren</button>
-                        </div>
-
-                        <small>Wird automatisch ausgefüllt nach "Raumbuch erstellen"</small>
-                    </div>
-
-                    <div id="step3Result" class="result"></div>
                 </section>
 
 
@@ -1106,12 +1014,12 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         async function loadBuildingDetails() {
             const buildingId = document.getElementById('buildingSelect').value;
-            const detailsSection = document.getElementById('buildingPropertiesSection');
             
             if (!buildingId) {
-                detailsSection.style.display = 'none';
                 currentBuildingId = null;
                 localStorage.removeItem('selectedBuildingId');
+                // Clear form fields but keep section visible
+                clearBuildingForm();
                 return;
             }
             
@@ -1134,7 +1042,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     document.getElementById('editAddressPostalCode').value = b.addressPostalCode || '';
                     document.getElementById('editAddressCity').value = b.addressCity || '';
                     document.getElementById('editAddressCountry').value = b.addressCountry || 'Switzerland';
-                    document.getElementById('editIFCEnabled').checked = b.ifcEnabled || false;
+                    // IFC fields are now hidden inputs
+                    document.getElementById('editIFCEnabled').value = b.ifcEnabled ? 'true' : 'false';
                     document.getElementById('editIFCProjectGUID').value = b.ifcProjectGUID || '';
                     document.getElementById('editIFCBuildingGUID').value = b.ifcBuildingGUID || '';
                     document.getElementById('editIFCFileUrl').value = b.ifcFileUrl || '';
@@ -1153,9 +1062,6 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                         logoPreview.style.display = 'none';
                     }
                     
-                    // Show details section
-                    detailsSection.style.display = 'block';
-                    
                     // Also update the Raumprogramm building selector
                     const raumprogramSelect = document.getElementById('raumprogram-building');
                     if (raumprogramSelect) {
@@ -1173,6 +1079,32 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
         }
         
         /**
+         * Clear building form fields
+         */
+        function clearBuildingForm() {
+            document.getElementById('editBuildingName').value = '';
+            document.getElementById('editBuildingCode').value = '';
+            document.getElementById('editBuildingOwner').value = '';
+            document.getElementById('editBuildingCreator').value = '';
+            document.getElementById('editBuildingDescription').value = '';
+            document.getElementById('editAddressStreet').value = '';
+            document.getElementById('editAddressPostalCode').value = '';
+            document.getElementById('editAddressCity').value = '';
+            document.getElementById('editAddressCountry').value = 'Switzerland';
+            document.getElementById('editIFCEnabled').value = 'false';
+            document.getElementById('editIFCProjectGUID').value = '';
+            document.getElementById('editIFCBuildingGUID').value = '';
+            document.getElementById('editIFCFileUrl').value = '';
+            document.getElementById('editCoordinateSystem').value = 'Switzerland/CH1903+ (LV95) – EPSG:2056';
+            document.getElementById('editLocalOriginX').value = 0;
+            document.getElementById('editLocalOriginY').value = 0;
+            document.getElementById('editLocalOriginZ').value = 0;
+            document.getElementById('editLogoUrl').value = '';
+            const logoPreview = document.getElementById('buildingLogoPreview');
+            logoPreview.style.display = 'none';
+        }
+        
+        /**
          * Save building changes
          */
         async function saveBuilding() {
@@ -1184,6 +1116,10 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
             showResult('buildingDetailsResult', 'loading', '⏳ Speichere...');
             
             try {
+                // IFC fields are now stored as hidden inputs
+                const ifcEnabledEl = document.getElementById('editIFCEnabled');
+                const ifcEnabled = ifcEnabledEl.value === 'true' || ifcEnabledEl.checked === true;
+                
                 const updateData = {
                     buildingName: document.getElementById('editBuildingName').value,
                     buildingCode: document.getElementById('editBuildingCode').value,
@@ -1194,7 +1130,7 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                     addressPostalCode: document.getElementById('editAddressPostalCode').value,
                     addressCity: document.getElementById('editAddressCity').value,
                     addressCountry: document.getElementById('editAddressCountry').value,
-                    ifcEnabled: document.getElementById('editIFCEnabled').checked,
+                    ifcEnabled: ifcEnabled,
                     ifcProjectGUID: document.getElementById('editIFCProjectGUID').value,
                     ifcBuildingGUID: document.getElementById('editIFCBuildingGUID').value,
                     ifcFileUrl: document.getElementById('editIFCFileUrl').value,
@@ -1253,7 +1189,8 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
                 
                 if (response.ok && data.success) {
                     showResult('buildingResult', 'success', `✅ Gebäude "${buildingName}" gelöscht`);
-                    document.getElementById('buildingPropertiesSection').style.display = 'none';
+                    // Clear the form but keep section visible
+                    clearBuildingForm();
                     currentBuildingId = null;
                     localStorage.removeItem('selectedBuildingId');
                     await loadBuildingList();
@@ -1349,6 +1286,166 @@ Das Raumprogramm wurde erstellt. Den Link zum Ordner für die weitere Arbeit fin
          */
         function getCurrentBuildingId() {
             return currentBuildingId;
+        }
+        
+        /**
+         * Open the predefined folder in Trimble Connect
+         */
+        function openPredefinedFolder() {
+            const folderSelect = document.getElementById('targetFolder');
+            const selectedFolderId = folderSelect.value;
+            
+            if (!selectedFolderId) {
+                showResult('connectionResult', 'error', '⚠️ Bitte wählen Sie zuerst einen Ordner aus.');
+                return;
+            }
+            
+            // Get the project ID from trimbleConnect context or localStorage
+            let projectId = trimbleConnect.projectId;
+            if (!projectId) {
+                // Try to get from localStorage or other source
+                projectId = localStorage.getItem('trimbleProjectId') || 'y7-N0uBcXNI'; // Default fallback
+            }
+            
+            const url = `https://web.connect.trimble.com/projects/${projectId}/data/folder/${selectedFolderId}`;
+            window.open(url, '_blank');
+        }
+        
+        /**
+         * Upload logo to Azure and update URL
+         */
+        async function uploadLogo() {
+            const fileInput = document.getElementById('logoFileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('connectionResult', 'error', '⚠️ Bitte wählen Sie eine Datei aus.');
+                return;
+            }
+            
+            if (!currentBuildingId) {
+                showResult('connectionResult', 'error', '⚠️ Bitte wählen Sie zuerst ein Gebäude aus.');
+                return;
+            }
+            
+            showResult('connectionResult', 'loading', '⏳ Logo wird hochgeladen...');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('buildingId', currentBuildingId);
+                
+                const response = await fetch(`${API_BUILDING}/upload-logo`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Update the logo URL field
+                    document.getElementById('editLogoUrl').value = data.logoUrl;
+                    
+                    // Update the preview
+                    const logoPreview = document.getElementById('buildingLogoPreview');
+                    logoPreview.src = data.logoUrl;
+                    logoPreview.style.display = 'block';
+                    
+                    showResult('connectionResult', 'success', '✅ Logo erfolgreich hochgeladen');
+                } else {
+                    showResult('connectionResult', 'error', `❌ ${data.message || 'Fehler beim Hochladen'}`);
+                }
+            } catch (error) {
+                console.error('Error uploading logo:', error);
+                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
+            
+            // Clear the file input
+            fileInput.value = '';
+        }
+        
+        /**
+         * Save configuration (Konfiguration speichern)
+         * Saves to JSON and reads IFC properties if IFC file is selected
+         */
+        async function saveConfiguration() {
+            if (!currentBuildingId) {
+                showResult('connectionResult', 'error', '⚠️ Bitte wählen Sie zuerst ein Gebäude aus.');
+                return;
+            }
+            
+            showResult('connectionResult', 'loading', '⏳ Konfiguration wird gespeichert...');
+            
+            try {
+                const ifcFileSelect = document.getElementById('ifcFile');
+                const ifcFileName = ifcFileSelect.value;
+                const targetFolder = document.getElementById('targetFolder').value;
+                
+                // Prepare configuration data
+                const configData = {
+                    buildingId: currentBuildingId,
+                    predefinedFolder: targetFolder,
+                    ifcSpacesFile: ifcFileName,
+                    userId: getCurrentUserId()
+                };
+                
+                // If IFC file is selected, we need to read IFC properties
+                if (ifcFileName) {
+                    configData.ifcEnabled = true;
+                    configData.ifcFileUrl = ifcFileName;
+                    
+                    // Store the IFC file URL in hidden fields
+                    document.getElementById('editIFCFileUrl').value = ifcFileName;
+                    document.getElementById('editIFCEnabled').value = 'true';
+                    
+                    // Try to read IFC GUIDs from the file via API
+                    try {
+                        const ifcResponse = await fetch(`/api/building/read-ifc-properties?buildingId=${currentBuildingId}&ifcFileName=${encodeURIComponent(ifcFileName)}`);
+                        const ifcData = await ifcResponse.json();
+                        
+                        if (ifcResponse.ok && ifcData.success) {
+                            if (ifcData.projectGUID) {
+                                document.getElementById('editIFCProjectGUID').value = ifcData.projectGUID;
+                                configData.ifcProjectGUID = ifcData.projectGUID;
+                            }
+                            if (ifcData.buildingGUID) {
+                                document.getElementById('editIFCBuildingGUID').value = ifcData.buildingGUID;
+                                configData.ifcBuildingGUID = ifcData.buildingGUID;
+                            }
+                            if (ifcData.multipleBuildingsError) {
+                                showResult('connectionResult', 'error', '⚠️ Fehler: Mehrere IfcBuilding-Objekte gefunden. Bitte wählen Sie eine IFC-Datei mit nur einem Gebäude.');
+                                return;
+                            }
+                        }
+                    } catch (ifcError) {
+                        console.warn('Could not read IFC properties:', ifcError);
+                        // Continue saving without IFC GUIDs - they can be added later
+                    }
+                } else {
+                    configData.ifcEnabled = false;
+                    document.getElementById('editIFCEnabled').value = 'false';
+                }
+                
+                // Save the configuration
+                const response = await fetch(`${API_BUILDING}/${currentBuildingId}/save-configuration`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Also save to building record
+                    await saveBuilding();
+                    showResult('connectionResult', 'success', '✅ Konfiguration gespeichert');
+                } else {
+                    showResult('connectionResult', 'error', `❌ ${data.message || 'Fehler beim Speichern'}`);
+                }
+            } catch (error) {
+                console.error('Error saving configuration:', error);
+                showResult('connectionResult', 'error', `❌ Fehler: ${error.message}`);
+            }
         }
 
         // ====================================================================
